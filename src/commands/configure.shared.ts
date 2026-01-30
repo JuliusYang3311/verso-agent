@@ -11,11 +11,15 @@ import { stylePromptHint, stylePromptMessage, stylePromptTitle } from "../termin
 export const CONFIGURE_WIZARD_SECTIONS = [
   "workspace",
   "model",
+  "router",
+  "browser",
+  "context",
   "web",
   "gateway",
   "daemon",
   "channels",
   "skills",
+  "google",
   "health",
 ] as const;
 
@@ -35,6 +39,9 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
 }> = [
   { value: "workspace", label: "Workspace", hint: "Set workspace + sessions" },
   { value: "model", label: "Model", hint: "Pick provider + credentials" },
+  { value: "router", label: "Router", hint: "Smart model routing by task type" },
+  { value: "browser", label: "Browser", hint: "Headless browser & snapshot settings" },
+  { value: "context", label: "Context", hint: "Context window, compaction, memory flush" },
   { value: "web", label: "Web tools", hint: "Configure Brave search + fetch" },
   { value: "gateway", label: "Gateway", hint: "Port, bind, auth, tailscale" },
   {
@@ -48,6 +55,7 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
     hint: "Link WhatsApp/Telegram/etc and defaults",
   },
   { value: "skills", label: "Skills", hint: "Install/enable workspace skills" },
+  { value: "google", label: "Google Workspace", hint: "Gmail, Docs, Calendar, OAuth" },
   {
     value: "health",
     label: "Health check",

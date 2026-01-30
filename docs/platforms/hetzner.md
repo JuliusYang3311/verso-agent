@@ -1,26 +1,26 @@
 ---
-summary: "Run Moltbot Gateway 24/7 on a cheap Hetzner VPS (Docker) with durable state and baked-in binaries"
+summary: "Run Verso Gateway 24/7 on a cheap Hetzner VPS (Docker) with durable state and baked-in binaries"
 read_when:
-  - You want Moltbot running 24/7 on a cloud VPS (not your laptop)
+  - You want Verso running 24/7 on a cloud VPS (not your laptop)
   - You want a production-grade, always-on Gateway on your own VPS
   - You want full control over persistence, binaries, and restart behavior
-  - You are running Moltbot in Docker on Hetzner or a similar provider
+  - You are running Verso in Docker on Hetzner or a similar provider
 ---
 
-# Moltbot on Hetzner (Docker, Production VPS Guide)
+# Verso on Hetzner (Docker, Production VPS Guide)
 
 ## Goal
-Run a persistent Moltbot Gateway on a Hetzner VPS using Docker, with durable state, baked-in binaries, and safe restart behavior.
+Run a persistent Verso Gateway on a Hetzner VPS using Docker, with durable state, baked-in binaries, and safe restart behavior.
 
-If you want “Moltbot 24/7 for ~$5”, this is the simplest reliable setup.
+If you want “Verso 24/7 for ~$5”, this is the simplest reliable setup.
 Hetzner pricing changes; pick the smallest Debian/Ubuntu VPS and scale up if you hit OOMs.
 
 ## What are we doing (simple terms)?
 
 - Rent a small Linux server (Hetzner VPS)
 - Install Docker (isolated app runtime)
-- Start the Moltbot Gateway in Docker
-- Persist `~/.clawdbot` + `~/clawd` on the host (survives restarts/rebuilds)
+- Start the Verso Gateway in Docker
+- Persist `~/.verso` + `~/verso` on the host (survives restarts/rebuilds)
 - Access the Control UI from your laptop via an SSH tunnel
 
 The Gateway can be accessed via:
@@ -37,7 +37,7 @@ For the generic Docker flow, see [Docker](/install/docker).
 
 1) Provision Hetzner VPS  
 2) Install Docker  
-3) Clone Moltbot repository  
+3) Clone Verso repository  
 4) Create persistent host directories  
 5) Configure `.env` and `docker-compose.yml`  
 6) Bake required binaries into the image  
@@ -93,11 +93,11 @@ docker compose version
 
 ---
 
-## 3) Clone the Moltbot repository
+## 3) Clone the Verso repository
 
 ```bash
-git clone https://github.com/moltbot/moltbot.git
-cd moltbot
+git clone https://github.com/verso/verso.git
+cd verso
 ```
 
 This guide assumes you will build a custom image to guarantee binary persistence.
@@ -110,12 +110,12 @@ Docker containers are ephemeral.
 All long-lived state must live on the host.
 
 ```bash
-mkdir -p /root/.clawdbot
-mkdir -p /root/clawd
+mkdir -p /root/.verso
+mkdir -p /root/verso
 
 # Set ownership to the container user (uid 1000):
-chown -R 1000:1000 /root/.clawdbot
-chown -R 1000:1000 /root/clawd
+chown -R 1000:1000 /root/.verso
+chown -R 1000:1000 /root/verso
 ```
 
 ---
@@ -125,16 +125,16 @@ chown -R 1000:1000 /root/clawd
 Create `.env` in the repository root.
 
 ```bash
-CLAWDBOT_IMAGE=moltbot:latest
-CLAWDBOT_GATEWAY_TOKEN=change-me-now
-CLAWDBOT_GATEWAY_BIND=lan
-CLAWDBOT_GATEWAY_PORT=18789
+VERSO_IMAGE=verso:latest
+VERSO_GATEWAY_TOKEN=change-me-now
+VERSO_GATEWAY_BIND=lan
+VERSO_GATEWAY_PORT=18789
 
-CLAWDBOT_CONFIG_DIR=/root/.clawdbot
-CLAWDBOT_WORKSPACE_DIR=/root/clawd
+VERSO_CONFIG_DIR=/root/.verso
+VERSO_WORKSPACE_DIR=/root/verso
 
 GOG_KEYRING_PASSWORD=change-me-now
-XDG_CONFIG_HOME=/home/node/.clawdbot
+XDG_CONFIG_HOME=/home/node/.verso
 ```
 
 Generate strong secrets:
@@ -153,8 +153,8 @@ Create or update `docker-compose.yml`.
 
 ```yaml
 services:
-  moltbot-gateway:
-    image: ${CLAWDBOT_IMAGE}
+  verso-gateway:
+    image: ${VERSO_IMAGE}
     build: .
     restart: unless-stopped
     env_file:
@@ -163,19 +163,19 @@ services:
       - HOME=/home/node
       - NODE_ENV=production
       - TERM=xterm-256color
-      - CLAWDBOT_GATEWAY_BIND=${CLAWDBOT_GATEWAY_BIND}
-      - CLAWDBOT_GATEWAY_PORT=${CLAWDBOT_GATEWAY_PORT}
-      - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN}
+      - VERSO_GATEWAY_BIND=${VERSO_GATEWAY_BIND}
+      - VERSO_GATEWAY_PORT=${VERSO_GATEWAY_PORT}
+      - VERSO_GATEWAY_TOKEN=${VERSO_GATEWAY_TOKEN}
       - GOG_KEYRING_PASSWORD=${GOG_KEYRING_PASSWORD}
       - XDG_CONFIG_HOME=${XDG_CONFIG_HOME}
       - PATH=/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
-      - ${CLAWDBOT_CONFIG_DIR}:/home/node/.clawdbot
-      - ${CLAWDBOT_WORKSPACE_DIR}:/home/node/clawd
+      - ${VERSO_CONFIG_DIR}:/home/node/.verso
+      - ${VERSO_WORKSPACE_DIR}:/home/node/verso
     ports:
       # Recommended: keep the Gateway loopback-only on the VPS; access via SSH tunnel.
       # To expose it publicly, remove the `127.0.0.1:` prefix and firewall accordingly.
-      - "127.0.0.1:${CLAWDBOT_GATEWAY_PORT}:18789"
+      - "127.0.0.1:${VERSO_GATEWAY_PORT}:18789"
 
       # Optional: only if you run iOS/Android nodes against this VPS and need Canvas host.
       # If you expose this publicly, read /gateway/security and firewall accordingly.
@@ -186,9 +186,9 @@ services:
         "dist/index.js",
         "gateway",
         "--bind",
-        "${CLAWDBOT_GATEWAY_BIND}",
+        "${VERSO_GATEWAY_BIND}",
         "--port",
-        "${CLAWDBOT_GATEWAY_PORT}"
+        "${VERSO_GATEWAY_PORT}"
       ]
 ```
 
@@ -259,15 +259,15 @@ CMD ["node","dist/index.js"]
 
 ```bash
 docker compose build
-docker compose up -d moltbot-gateway
+docker compose up -d verso-gateway
 ```
 
 Verify binaries:
 
 ```bash
-docker compose exec moltbot-gateway which gog
-docker compose exec moltbot-gateway which goplaces
-docker compose exec moltbot-gateway which wacli
+docker compose exec verso-gateway which gog
+docker compose exec verso-gateway which goplaces
+docker compose exec verso-gateway which wacli
 ```
 
 Expected output:
@@ -283,7 +283,7 @@ Expected output:
 ## 9) Verify Gateway
 
 ```bash
-docker compose logs -f moltbot-gateway
+docker compose logs -f verso-gateway
 ```
 
 Success:
@@ -308,17 +308,17 @@ Paste your gateway token.
 
 ## What persists where (source of truth)
 
-Moltbot runs in Docker, but Docker is not the source of truth.
+Verso runs in Docker, but Docker is not the source of truth.
 All long-lived state must survive restarts, rebuilds, and reboots.
 
 | Component | Location | Persistence mechanism | Notes |
 |---|---|---|---|
-| Gateway config | `/home/node/.clawdbot/` | Host volume mount | Includes `moltbot.json`, tokens |
-| Model auth profiles | `/home/node/.clawdbot/` | Host volume mount | OAuth tokens, API keys |
-| Skill configs | `/home/node/.clawdbot/skills/` | Host volume mount | Skill-level state |
-| Agent workspace | `/home/node/clawd/` | Host volume mount | Code and agent artifacts |
-| WhatsApp session | `/home/node/.clawdbot/` | Host volume mount | Preserves QR login |
-| Gmail keyring | `/home/node/.clawdbot/` | Host volume + password | Requires `GOG_KEYRING_PASSWORD` |
+| Gateway config | `/home/node/.verso/` | Host volume mount | Includes `verso.json`, tokens |
+| Model auth profiles | `/home/node/.verso/` | Host volume mount | OAuth tokens, API keys |
+| Skill configs | `/home/node/.verso/skills/` | Host volume mount | Skill-level state |
+| Agent workspace | `/home/node/verso/` | Host volume mount | Code and agent artifacts |
+| WhatsApp session | `/home/node/.verso/` | Host volume mount | Preserves QR login |
+| Gmail keyring | `/home/node/.verso/` | Host volume + password | Requires `GOG_KEYRING_PASSWORD` |
 | External binaries | `/usr/local/bin/` | Docker image | Must be baked at build time |
 | Node runtime | Container filesystem | Docker image | Rebuilt every image build |
 | OS packages | Container filesystem | Docker image | Do not install at runtime |

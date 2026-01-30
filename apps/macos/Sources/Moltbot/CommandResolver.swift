@@ -98,7 +98,7 @@ enum CommandResolver {
     }
 
     private static func moltbotManagedPaths(home: URL) -> [String] {
-        let base = home.appendingPathComponent(".clawdbot")
+        let base = home.appendingPathComponent(".verso")
         let bin = base.appendingPathComponent("bin")
         let nodeBin = base.appendingPathComponent("tools/node/bin")
         var paths: [String] = []

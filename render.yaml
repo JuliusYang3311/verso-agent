@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: moltbot
+    name: verso
     runtime: docker
     plan: starter
     healthCheckPath: /health
@@ -10,12 +10,12 @@ services:
       - key: SETUP_PASSWORD
         sync: false
       - key: CLAWDBOT_STATE_DIR
-        value: /data/.clawdbot
+        value: /data/.verso
       - key: CLAWDBOT_WORKSPACE_DIR
         value: /data/workspace
       - key: CLAWDBOT_GATEWAY_TOKEN
         generateValue: true
     disk:
-      name: moltbot-data
+      name: verso-data
       mountPath: /data
       sizeGB: 1

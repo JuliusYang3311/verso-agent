@@ -1,4 +1,4 @@
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import { DEFAULT_ACCOUNT_ID } from "../../routing/session-key.js";
 
 type ChannelSection = {
@@ -7,12 +7,12 @@ type ChannelSection = {
 };
 
 export function setAccountEnabledInConfigSection(params: {
-  cfg: MoltbotConfig;
+  cfg: VersoConfig;
   sectionKey: string;
   accountId: string;
   enabled: boolean;
   allowTopLevel?: boolean;
-}): MoltbotConfig {
+}): VersoConfig {
   const accountKey = params.accountId || DEFAULT_ACCOUNT_ID;
   const channels = params.cfg.channels as Record<string, unknown> | undefined;
   const base = channels?.[params.sectionKey] as ChannelSection | undefined;
@@ -27,7 +27,7 @@ export function setAccountEnabledInConfigSection(params: {
           enabled: params.enabled,
         },
       },
-    } as MoltbotConfig;
+    } as VersoConfig;
   }
 
   const baseAccounts = (base?.accounts ?? {}) as Record<string, Record<string, unknown>>;
@@ -47,15 +47,15 @@ export function setAccountEnabledInConfigSection(params: {
         },
       },
     },
-  } as MoltbotConfig;
+  } as VersoConfig;
 }
 
 export function deleteAccountFromConfigSection(params: {
-  cfg: MoltbotConfig;
+  cfg: VersoConfig;
   sectionKey: string;
   accountId: string;
   clearBaseFields?: string[];
-}): MoltbotConfig {
+}): VersoConfig {
   const accountKey = params.accountId || DEFAULT_ACCOUNT_ID;
   const channels = params.cfg.channels as Record<string, unknown> | undefined;
   const base = channels?.[params.sectionKey] as ChannelSection | undefined;
@@ -76,7 +76,7 @@ export function deleteAccountFromConfigSection(params: {
           accounts: Object.keys(accounts).length ? accounts : undefined,
         },
       },
-    } as MoltbotConfig;
+    } as VersoConfig;
   }
 
   if (baseAccounts && Object.keys(baseAccounts).length > 0) {
@@ -94,14 +94,14 @@ export function deleteAccountFromConfigSection(params: {
           accounts: Object.keys(baseAccounts).length ? baseAccounts : undefined,
         },
       },
-    } as MoltbotConfig;
+    } as VersoConfig;
   }
 
   const nextChannels = { ...params.cfg.channels } as Record<string, unknown>;
   delete nextChannels[params.sectionKey];
-  const nextCfg = { ...params.cfg } as MoltbotConfig;
+  const nextCfg = { ...params.cfg } as VersoConfig;
   if (Object.keys(nextChannels).length > 0) {
-    nextCfg.channels = nextChannels as MoltbotConfig["channels"];
+    nextCfg.channels = nextChannels as VersoConfig["channels"];
   } else {
     delete nextCfg.channels;
   }

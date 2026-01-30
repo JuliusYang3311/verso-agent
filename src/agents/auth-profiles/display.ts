@@ -1,8 +1,8 @@
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import type { AuthProfileStore } from "./types.js";
 
 export function resolveAuthProfileDisplayLabel(params: {
-  cfg?: MoltbotConfig;
+  cfg?: VersoConfig;
   store: AuthProfileStore;
   profileId: string;
 }): string {

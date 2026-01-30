@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IMAGE_NAME="${CLAWDBOT_IMAGE:-moltbot:local}"
-CONFIG_DIR="${CLAWDBOT_CONFIG_DIR:-$HOME/.clawdbot}"
+IMAGE_NAME="${CLAWDBOT_IMAGE:-verso:local}"
+CONFIG_DIR="${CLAWDBOT_CONFIG_DIR:-$HOME/.verso}"
 WORKSPACE_DIR="${CLAWDBOT_WORKSPACE_DIR:-$HOME/clawd}"
 PROFILE_FILE="${CLAWDBOT_PROFILE_FILE:-$HOME/.profile}"
 
@@ -26,7 +26,7 @@ docker run --rm -t \
   -e CLAWDBOT_LIVE_PROVIDERS="${CLAWDBOT_LIVE_PROVIDERS:-}" \
   -e CLAWDBOT_LIVE_MODEL_TIMEOUT_MS="${CLAWDBOT_LIVE_MODEL_TIMEOUT_MS:-}" \
   -e CLAWDBOT_LIVE_REQUIRE_PROFILE_KEYS="${CLAWDBOT_LIVE_REQUIRE_PROFILE_KEYS:-}" \
-  -v "$CONFIG_DIR":/home/node/.clawdbot \
+  -v "$CONFIG_DIR":/home/node/.verso \
   -v "$WORKSPACE_DIR":/home/node/clawd \
   "${PROFILE_MOUNT[@]}" \
   "$IMAGE_NAME" \

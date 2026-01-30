@@ -16,14 +16,14 @@ describe("restart sentinel", () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    prevStateDir = process.env.CLAWDBOT_STATE_DIR;
-    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-sentinel-"));
-    process.env.CLAWDBOT_STATE_DIR = tempDir;
+    prevStateDir = process.env.VERSO_STATE_DIR;
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-sentinel-"));
+    process.env.VERSO_STATE_DIR = tempDir;
   });
 
   afterEach(async () => {
-    if (prevStateDir) process.env.CLAWDBOT_STATE_DIR = prevStateDir;
-    else delete process.env.CLAWDBOT_STATE_DIR;
+    if (prevStateDir) process.env.VERSO_STATE_DIR = prevStateDir;
+    else delete process.env.VERSO_STATE_DIR;
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 

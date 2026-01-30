@@ -1,4 +1,4 @@
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 
 export type IMessageAttachment = {
@@ -31,7 +31,7 @@ export type MonitorIMessageOpts = {
   cliPath?: string;
   dbPath?: string;
   accountId?: string;
-  config?: MoltbotConfig;
+  config?: VersoConfig;
   allowFrom?: Array<string | number>;
   groupAllowFrom?: Array<string | number>;
   includeAttachments?: boolean;

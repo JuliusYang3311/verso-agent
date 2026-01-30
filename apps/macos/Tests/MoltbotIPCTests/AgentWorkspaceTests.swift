@@ -110,7 +110,7 @@ struct AgentWorkspaceTests {
         try """
         # IDENTITY.md - Agent Identity
 
-        - Name: Clawd
+        - Name: Verso
         - Creature: Space Lobster
         - Vibe: Helpful
         - Emoji: lobster

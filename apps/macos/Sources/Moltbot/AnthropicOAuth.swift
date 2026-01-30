@@ -235,7 +235,7 @@ enum MoltbotOAuthStore {
         }
 
         return FileManager().homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot", isDirectory: true)
+            .appendingPathComponent(".verso", isDirectory: true)
             .appendingPathComponent("credentials", isDirectory: true)
     }
 

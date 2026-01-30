@@ -1,11 +1,11 @@
 ---
-summary: "CLI reference for `moltbot directory` (self, peers, groups)"
+summary: "CLI reference for `verso directory` (self, peers, groups)"
 read_when:
   - You want to look up contacts/groups/self ids for a channel
   - You are developing a channel directory adapter
 ---
 
-# `moltbot directory`
+# `verso directory`
 
 Directory lookups for channels that support it (contacts/peers, groups, and “me”).
 
@@ -15,15 +15,15 @@ Directory lookups for channels that support it (contacts/peers, groups, and “m
 - `--json`: output JSON
 
 ## Notes
-- `directory` is meant to help you find IDs you can paste into other commands (especially `moltbot message send --target ...`).
+- `directory` is meant to help you find IDs you can paste into other commands (especially `verso message send --target ...`).
 - For many channels, results are config-backed (allowlists / configured groups) rather than a live provider directory.
 - Default output is `id` (and sometimes `name`) separated by a tab; use `--json` for scripting.
 
 ## Using results with `message send`
 
 ```bash
-moltbot directory peers list --channel slack --query "U0"
-moltbot message send --channel slack --target user:U012ABCDEF --message "hello"
+verso directory peers list --channel slack --query "U0"
+verso message send --channel slack --target user:U012ABCDEF --message "hello"
 ```
 
 ## ID formats (by channel)
@@ -40,21 +40,21 @@ moltbot message send --channel slack --target user:U012ABCDEF --message "hello"
 ## Self (“me”)
 
 ```bash
-moltbot directory self --channel zalouser
+verso directory self --channel zalouser
 ```
 
 ## Peers (contacts/users)
 
 ```bash
-moltbot directory peers list --channel zalouser
-moltbot directory peers list --channel zalouser --query "name"
-moltbot directory peers list --channel zalouser --limit 50
+verso directory peers list --channel zalouser
+verso directory peers list --channel zalouser --query "name"
+verso directory peers list --channel zalouser --limit 50
 ```
 
 ## Groups
 
 ```bash
-moltbot directory groups list --channel zalouser
-moltbot directory groups list --channel zalouser --query "work"
-moltbot directory groups members --channel zalouser --group-id <id>
+verso directory groups list --channel zalouser
+verso directory groups list --channel zalouser --query "work"
+verso directory groups members --channel zalouser --group-id <id>
 ```

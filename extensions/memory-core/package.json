@@ -1,17 +1,17 @@
 {
-  "name": "@moltbot/memory-core",
+  "name": "@verso/memory-core",
   "version": "2026.1.29",
   "type": "module",
-  "description": "Moltbot core memory search plugin",
-  "moltbot": {
+  "description": "Verso core memory search plugin",
+  "verso": {
     "extensions": [
       "./index.ts"
     ]
   },
   "peerDependencies": {
-    "moltbot": ">=2026.1.26"
+    "verso": ">=2026.1.26"
   },
   "devDependencies": {
-    "moltbot": "workspace:*"
+    "verso": "workspace:*"
   }
 }

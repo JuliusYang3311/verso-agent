@@ -1,17 +1,17 @@
 ---
-summary: "CLI reference for `moltbot reset` (reset local state/config)"
+summary: "CLI reference for `verso reset` (reset local state/config)"
 read_when:
   - You want to wipe local state while keeping the CLI installed
   - You want a dry-run of what would be removed
 ---
 
-# `moltbot reset`
+# `verso reset`
 
 Reset local config/state (keeps the CLI installed).
 
 ```bash
-moltbot reset
-moltbot reset --dry-run
-moltbot reset --scope config+creds+sessions --yes --non-interactive
+verso reset
+verso reset --dry-run
+verso reset --scope config+creds+sessions --yes --non-interactive
 ```
 

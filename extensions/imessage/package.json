@@ -1,9 +1,9 @@
 {
-  "name": "@moltbot/imessage",
+  "name": "@verso/imessage",
   "version": "2026.1.29",
   "type": "module",
-  "description": "Moltbot iMessage channel plugin",
-  "moltbot": {
+  "description": "Verso iMessage channel plugin",
+  "verso": {
     "extensions": [
       "./index.ts"
     ]

@@ -10,10 +10,10 @@ import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ParentBasedSampler, TraceIdRatioBasedSampler } from "@opentelemetry/sdk-trace-base";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 
-import type { MoltbotPluginService, DiagnosticEventPayload } from "clawdbot/plugin-sdk";
-import { onDiagnosticEvent, registerLogTransport } from "clawdbot/plugin-sdk";
+import type { VersoPluginService, DiagnosticEventPayload } from "verso/plugin-sdk";
+import { onDiagnosticEvent, registerLogTransport } from "verso/plugin-sdk";
 
-const DEFAULT_SERVICE_NAME = "moltbot";
+const DEFAULT_SERVICE_NAME = "verso";
 
 function normalizeEndpoint(endpoint?: string): string | undefined {
   const trimmed = endpoint?.trim();
@@ -32,7 +32,7 @@ function resolveSampleRate(value: number | undefined): number | undefined {
   return value;
 }
 
-export function createDiagnosticsOtelService(): MoltbotPluginService {
+export function createDiagnosticsOtelService(): VersoPluginService {
   let sdk: NodeSDK | null = null;
   let logProvider: LoggerProvider | null = null;
   let stopLogTransport: (() => void) | null = null;
@@ -118,78 +118,78 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         FATAL: 21 as SeverityNumber,
       };
 
-      const meter = metrics.getMeter("moltbot");
-      const tracer = trace.getTracer("moltbot");
+      const meter = metrics.getMeter("verso");
+      const tracer = trace.getTracer("verso");
 
-      const tokensCounter = meter.createCounter("moltbot.tokens", {
+      const tokensCounter = meter.createCounter("verso.tokens", {
         unit: "1",
         description: "Token usage by type",
       });
-      const costCounter = meter.createCounter("moltbot.cost.usd", {
+      const costCounter = meter.createCounter("verso.cost.usd", {
         unit: "1",
         description: "Estimated model cost (USD)",
       });
-      const durationHistogram = meter.createHistogram("moltbot.run.duration_ms", {
+      const durationHistogram = meter.createHistogram("verso.run.duration_ms", {
         unit: "ms",
         description: "Agent run duration",
       });
-      const contextHistogram = meter.createHistogram("moltbot.context.tokens", {
+      const contextHistogram = meter.createHistogram("verso.context.tokens", {
         unit: "1",
         description: "Context window size and usage",
       });
-      const webhookReceivedCounter = meter.createCounter("moltbot.webhook.received", {
+      const webhookReceivedCounter = meter.createCounter("verso.webhook.received", {
         unit: "1",
         description: "Webhook requests received",
       });
-      const webhookErrorCounter = meter.createCounter("moltbot.webhook.error", {
+      const webhookErrorCounter = meter.createCounter("verso.webhook.error", {
         unit: "1",
         description: "Webhook processing errors",
       });
-      const webhookDurationHistogram = meter.createHistogram("moltbot.webhook.duration_ms", {
+      const webhookDurationHistogram = meter.createHistogram("verso.webhook.duration_ms", {
         unit: "ms",
         description: "Webhook processing duration",
       });
-      const messageQueuedCounter = meter.createCounter("moltbot.message.queued", {
+      const messageQueuedCounter = meter.createCounter("verso.message.queued", {
         unit: "1",
         description: "Messages queued for processing",
       });
-      const messageProcessedCounter = meter.createCounter("moltbot.message.processed", {
+      const messageProcessedCounter = meter.createCounter("verso.message.processed", {
         unit: "1",
         description: "Messages processed by outcome",
       });
-      const messageDurationHistogram = meter.createHistogram("moltbot.message.duration_ms", {
+      const messageDurationHistogram = meter.createHistogram("verso.message.duration_ms", {
         unit: "ms",
         description: "Message processing duration",
       });
-      const queueDepthHistogram = meter.createHistogram("moltbot.queue.depth", {
+      const queueDepthHistogram = meter.createHistogram("verso.queue.depth", {
         unit: "1",
         description: "Queue depth on enqueue/dequeue",
       });
-      const queueWaitHistogram = meter.createHistogram("moltbot.queue.wait_ms", {
+      const queueWaitHistogram = meter.createHistogram("verso.queue.wait_ms", {
         unit: "ms",
         description: "Queue wait time before execution",
       });
-      const laneEnqueueCounter = meter.createCounter("moltbot.queue.lane.enqueue", {
+      const laneEnqueueCounter = meter.createCounter("verso.queue.lane.enqueue", {
         unit: "1",
         description: "Command queue lane enqueue events",
       });
-      const laneDequeueCounter = meter.createCounter("moltbot.queue.lane.dequeue", {
+      const laneDequeueCounter = meter.createCounter("verso.queue.lane.dequeue", {
         unit: "1",
         description: "Command queue lane dequeue events",
       });
-      const sessionStateCounter = meter.createCounter("moltbot.session.state", {
+      const sessionStateCounter = meter.createCounter("verso.session.state", {
         unit: "1",
         description: "Session state transitions",
       });
-      const sessionStuckCounter = meter.createCounter("moltbot.session.stuck", {
+      const sessionStuckCounter = meter.createCounter("verso.session.stuck", {
         unit: "1",
         description: "Sessions stuck in processing",
       });
-      const sessionStuckAgeHistogram = meter.createHistogram("moltbot.session.stuck_age_ms", {
+      const sessionStuckAgeHistogram = meter.createHistogram("verso.session.stuck_age_ms", {
         unit: "ms",
         description: "Age of stuck sessions",
       });
-      const runAttemptCounter = meter.createCounter("moltbot.run.attempt", {
+      const runAttemptCounter = meter.createCounter("verso.run.attempt", {
         unit: "1",
         description: "Run attempts",
       });
@@ -207,7 +207,7 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
               : {}),
           }),
         );
-        const otelLogger = logProvider.getLogger("moltbot");
+        const otelLogger = logProvider.getLogger("verso");
 
         stopLogTransport = registerLogTransport((logObj) => {
           const safeStringify = (value: unknown) => {
@@ -265,29 +265,29 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
           }
 
           const attributes: Record<string, string | number | boolean> = {
-            "moltbot.log.level": logLevelName,
+            "verso.log.level": logLevelName,
           };
-          if (meta?.name) attributes["moltbot.logger"] = meta.name;
+          if (meta?.name) attributes["verso.logger"] = meta.name;
           if (meta?.parentNames?.length) {
-            attributes["moltbot.logger.parents"] = meta.parentNames.join(".");
+            attributes["verso.logger.parents"] = meta.parentNames.join(".");
           }
           if (bindings) {
             for (const [key, value] of Object.entries(bindings)) {
               if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-                attributes[`moltbot.${key}`] = value;
+                attributes[`verso.${key}`] = value;
               } else if (value != null) {
-                attributes[`moltbot.${key}`] = safeStringify(value);
+                attributes[`verso.${key}`] = safeStringify(value);
               }
             }
           }
           if (numericArgs.length > 0) {
-            attributes["moltbot.log.args"] = safeStringify(numericArgs);
+            attributes["verso.log.args"] = safeStringify(numericArgs);
           }
           if (meta?.path?.filePath) attributes["code.filepath"] = meta.path.filePath;
           if (meta?.path?.fileLine) attributes["code.lineno"] = Number(meta.path.fileLine);
           if (meta?.path?.method) attributes["code.function"] = meta.path.method;
           if (meta?.path?.filePathWithLine) {
-            attributes["moltbot.code.location"] = meta.path.filePathWithLine;
+            attributes["verso.code.location"] = meta.path.filePathWithLine;
           }
 
           otelLogger.emit({
@@ -316,48 +316,48 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
 
       const recordModelUsage = (evt: Extract<DiagnosticEventPayload, { type: "model.usage" }>) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.provider": evt.provider ?? "unknown",
-          "moltbot.model": evt.model ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.provider": evt.provider ?? "unknown",
+          "verso.model": evt.model ?? "unknown",
         };
 
         const usage = evt.usage;
-        if (usage.input) tokensCounter.add(usage.input, { ...attrs, "moltbot.token": "input" });
-        if (usage.output) tokensCounter.add(usage.output, { ...attrs, "moltbot.token": "output" });
+        if (usage.input) tokensCounter.add(usage.input, { ...attrs, "verso.token": "input" });
+        if (usage.output) tokensCounter.add(usage.output, { ...attrs, "verso.token": "output" });
         if (usage.cacheRead)
-          tokensCounter.add(usage.cacheRead, { ...attrs, "moltbot.token": "cache_read" });
+          tokensCounter.add(usage.cacheRead, { ...attrs, "verso.token": "cache_read" });
         if (usage.cacheWrite)
-          tokensCounter.add(usage.cacheWrite, { ...attrs, "moltbot.token": "cache_write" });
+          tokensCounter.add(usage.cacheWrite, { ...attrs, "verso.token": "cache_write" });
         if (usage.promptTokens)
-          tokensCounter.add(usage.promptTokens, { ...attrs, "moltbot.token": "prompt" });
-        if (usage.total) tokensCounter.add(usage.total, { ...attrs, "moltbot.token": "total" });
+          tokensCounter.add(usage.promptTokens, { ...attrs, "verso.token": "prompt" });
+        if (usage.total) tokensCounter.add(usage.total, { ...attrs, "verso.token": "total" });
 
         if (evt.costUsd) costCounter.add(evt.costUsd, attrs);
         if (evt.durationMs) durationHistogram.record(evt.durationMs, attrs);
         if (evt.context?.limit)
           contextHistogram.record(evt.context.limit, {
             ...attrs,
-            "moltbot.context": "limit",
+            "verso.context": "limit",
           });
         if (evt.context?.used)
           contextHistogram.record(evt.context.used, {
             ...attrs,
-            "moltbot.context": "used",
+            "verso.context": "used",
           });
 
         if (!tracesEnabled) return;
         const spanAttrs: Record<string, string | number> = {
           ...attrs,
-          "moltbot.sessionKey": evt.sessionKey ?? "",
-          "moltbot.sessionId": evt.sessionId ?? "",
-          "moltbot.tokens.input": usage.input ?? 0,
-          "moltbot.tokens.output": usage.output ?? 0,
-          "moltbot.tokens.cache_read": usage.cacheRead ?? 0,
-          "moltbot.tokens.cache_write": usage.cacheWrite ?? 0,
-          "moltbot.tokens.total": usage.total ?? 0,
+          "verso.sessionKey": evt.sessionKey ?? "",
+          "verso.sessionId": evt.sessionId ?? "",
+          "verso.tokens.input": usage.input ?? 0,
+          "verso.tokens.output": usage.output ?? 0,
+          "verso.tokens.cache_read": usage.cacheRead ?? 0,
+          "verso.tokens.cache_write": usage.cacheWrite ?? 0,
+          "verso.tokens.total": usage.total ?? 0,
         };
 
-        const span = spanWithDuration("moltbot.model.usage", spanAttrs, evt.durationMs);
+        const span = spanWithDuration("verso.model.usage", spanAttrs, evt.durationMs);
         span.end();
       };
 
@@ -365,8 +365,8 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "webhook.received" }>,
       ) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.webhook": evt.updateType ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.webhook": evt.updateType ?? "unknown",
         };
         webhookReceivedCounter.add(1, attrs);
       };
@@ -375,16 +375,16 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "webhook.processed" }>,
       ) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.webhook": evt.updateType ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.webhook": evt.updateType ?? "unknown",
         };
         if (typeof evt.durationMs === "number") {
           webhookDurationHistogram.record(evt.durationMs, attrs);
         }
         if (!tracesEnabled) return;
         const spanAttrs: Record<string, string | number> = { ...attrs };
-        if (evt.chatId !== undefined) spanAttrs["moltbot.chatId"] = String(evt.chatId);
-        const span = spanWithDuration("moltbot.webhook.processed", spanAttrs, evt.durationMs);
+        if (evt.chatId !== undefined) spanAttrs["verso.chatId"] = String(evt.chatId);
+        const span = spanWithDuration("verso.webhook.processed", spanAttrs, evt.durationMs);
         span.end();
       };
 
@@ -392,17 +392,17 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "webhook.error" }>,
       ) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.webhook": evt.updateType ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.webhook": evt.updateType ?? "unknown",
         };
         webhookErrorCounter.add(1, attrs);
         if (!tracesEnabled) return;
         const spanAttrs: Record<string, string | number> = {
           ...attrs,
-          "moltbot.error": evt.error,
+          "verso.error": evt.error,
         };
-        if (evt.chatId !== undefined) spanAttrs["moltbot.chatId"] = String(evt.chatId);
-        const span = tracer.startSpan("moltbot.webhook.error", {
+        if (evt.chatId !== undefined) spanAttrs["verso.chatId"] = String(evt.chatId);
+        const span = tracer.startSpan("verso.webhook.error", {
           attributes: spanAttrs,
         });
         span.setStatus({ code: SpanStatusCode.ERROR, message: evt.error });
@@ -413,8 +413,8 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "message.queued" }>,
       ) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.source": evt.source ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.source": evt.source ?? "unknown",
         };
         messageQueuedCounter.add(1, attrs);
         if (typeof evt.queueDepth === "number") {
@@ -426,8 +426,8 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         evt: Extract<DiagnosticEventPayload, { type: "message.processed" }>,
       ) => {
         const attrs = {
-          "moltbot.channel": evt.channel ?? "unknown",
-          "moltbot.outcome": evt.outcome ?? "unknown",
+          "verso.channel": evt.channel ?? "unknown",
+          "verso.outcome": evt.outcome ?? "unknown",
         };
         messageProcessedCounter.add(1, attrs);
         if (typeof evt.durationMs === "number") {
@@ -435,12 +435,12 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         }
         if (!tracesEnabled) return;
         const spanAttrs: Record<string, string | number> = { ...attrs };
-        if (evt.sessionKey) spanAttrs["moltbot.sessionKey"] = evt.sessionKey;
-        if (evt.sessionId) spanAttrs["moltbot.sessionId"] = evt.sessionId;
-        if (evt.chatId !== undefined) spanAttrs["moltbot.chatId"] = String(evt.chatId);
-        if (evt.messageId !== undefined) spanAttrs["moltbot.messageId"] = String(evt.messageId);
-        if (evt.reason) spanAttrs["moltbot.reason"] = evt.reason;
-        const span = spanWithDuration("moltbot.message.processed", spanAttrs, evt.durationMs);
+        if (evt.sessionKey) spanAttrs["verso.sessionKey"] = evt.sessionKey;
+        if (evt.sessionId) spanAttrs["verso.sessionId"] = evt.sessionId;
+        if (evt.chatId !== undefined) spanAttrs["verso.chatId"] = String(evt.chatId);
+        if (evt.messageId !== undefined) spanAttrs["verso.messageId"] = String(evt.messageId);
+        if (evt.reason) spanAttrs["verso.reason"] = evt.reason;
+        const span = spanWithDuration("verso.message.processed", spanAttrs, evt.durationMs);
         if (evt.outcome === "error") {
           span.setStatus({ code: SpanStatusCode.ERROR, message: evt.error });
         }
@@ -450,7 +450,7 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
       const recordLaneEnqueue = (
         evt: Extract<DiagnosticEventPayload, { type: "queue.lane.enqueue" }>,
       ) => {
-        const attrs = { "moltbot.lane": evt.lane };
+        const attrs = { "verso.lane": evt.lane };
         laneEnqueueCounter.add(1, attrs);
         queueDepthHistogram.record(evt.queueSize, attrs);
       };
@@ -458,7 +458,7 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
       const recordLaneDequeue = (
         evt: Extract<DiagnosticEventPayload, { type: "queue.lane.dequeue" }>,
       ) => {
-        const attrs = { "moltbot.lane": evt.lane };
+        const attrs = { "verso.lane": evt.lane };
         laneDequeueCounter.add(1, attrs);
         queueDepthHistogram.record(evt.queueSize, attrs);
         if (typeof evt.waitMs === "number") {
@@ -469,38 +469,38 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
       const recordSessionState = (
         evt: Extract<DiagnosticEventPayload, { type: "session.state" }>,
       ) => {
-        const attrs: Record<string, string> = { "moltbot.state": evt.state };
-        if (evt.reason) attrs["moltbot.reason"] = evt.reason;
+        const attrs: Record<string, string> = { "verso.state": evt.state };
+        if (evt.reason) attrs["verso.reason"] = evt.reason;
         sessionStateCounter.add(1, attrs);
       };
 
       const recordSessionStuck = (
         evt: Extract<DiagnosticEventPayload, { type: "session.stuck" }>,
       ) => {
-        const attrs: Record<string, string> = { "moltbot.state": evt.state };
+        const attrs: Record<string, string> = { "verso.state": evt.state };
         sessionStuckCounter.add(1, attrs);
         if (typeof evt.ageMs === "number") {
           sessionStuckAgeHistogram.record(evt.ageMs, attrs);
         }
         if (!tracesEnabled) return;
         const spanAttrs: Record<string, string | number> = { ...attrs };
-        if (evt.sessionKey) spanAttrs["moltbot.sessionKey"] = evt.sessionKey;
-        if (evt.sessionId) spanAttrs["moltbot.sessionId"] = evt.sessionId;
-        spanAttrs["moltbot.queueDepth"] = evt.queueDepth ?? 0;
-        spanAttrs["moltbot.ageMs"] = evt.ageMs;
-        const span = tracer.startSpan("moltbot.session.stuck", { attributes: spanAttrs });
+        if (evt.sessionKey) spanAttrs["verso.sessionKey"] = evt.sessionKey;
+        if (evt.sessionId) spanAttrs["verso.sessionId"] = evt.sessionId;
+        spanAttrs["verso.queueDepth"] = evt.queueDepth ?? 0;
+        spanAttrs["verso.ageMs"] = evt.ageMs;
+        const span = tracer.startSpan("verso.session.stuck", { attributes: spanAttrs });
         span.setStatus({ code: SpanStatusCode.ERROR, message: "session stuck" });
         span.end();
       };
 
       const recordRunAttempt = (evt: Extract<DiagnosticEventPayload, { type: "run.attempt" }>) => {
-        runAttemptCounter.add(1, { "moltbot.attempt": evt.attempt });
+        runAttemptCounter.add(1, { "verso.attempt": evt.attempt });
       };
 
       const recordHeartbeat = (
         evt: Extract<DiagnosticEventPayload, { type: "diagnostic.heartbeat" }>,
       ) => {
-        queueDepthHistogram.record(evt.queued, { "moltbot.channel": "heartbeat" });
+        queueDepthHistogram.record(evt.queued, { "verso.channel": "heartbeat" });
       };
 
       unsubscribe = onDiagnosticEvent((evt: DiagnosticEventPayload) => {
@@ -562,5 +562,5 @@ export function createDiagnosticsOtelService(): MoltbotPluginService {
         sdk = null;
       }
     },
-  } satisfies MoltbotPluginService;
+  } satisfies VersoPluginService;
 }

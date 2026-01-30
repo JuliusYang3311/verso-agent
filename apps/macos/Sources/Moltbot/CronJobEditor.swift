@@ -12,11 +12,11 @@ struct CronJobEditor: View {
 
     let labelColumnWidth: CGFloat = 160
     static let introText =
-        "Create a schedule that wakes clawd via the Gateway. "
+        "Create a schedule that wakes verso via the Gateway. "
             + "Use an isolated session for agent turns so your main chat stays clean."
     static let sessionTargetNote =
         "Main jobs post a system event into the current main session. "
-            + "Isolated jobs run clawd in a dedicated session and can deliver results (WhatsApp/Telegram/Discord/etc)."
+            + "Isolated jobs run verso in a dedicated session and can deliver results (WhatsApp/Telegram/Discord/etc)."
     static let scheduleKindNote =
         "“At” runs once, “Every” repeats with a duration, “Cron” uses a 5-field Unix expression."
     static let isolatedPayloadNote =
@@ -322,7 +322,7 @@ struct CronJobEditor: View {
             Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 10) {
                 GridRow {
                     self.gridLabel("Message")
-                    TextField("What should clawd do?", text: self.$agentMessage, axis: .vertical)
+                    TextField("What should verso do?", text: self.$agentMessage, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(3...7)
                         .frame(maxWidth: .infinity)

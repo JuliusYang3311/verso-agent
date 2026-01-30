@@ -1,11 +1,11 @@
 ---
-summary: "CLI reference for `moltbot channels` (accounts, status, login/logout, logs)"
+summary: "CLI reference for `verso channels` (accounts, status, login/logout, logs)"
 read_when:
   - You want to add/remove channel accounts (WhatsApp/Telegram/Discord/Google Chat/Slack/Mattermost (plugin)/Signal/iMessage)
   - You want to check channel status or tail channel logs
 ---
 
-# `moltbot channels`
+# `verso channels`
 
 Manage chat channel accounts and their runtime status on the Gateway.
 
@@ -16,43 +16,43 @@ Related docs:
 ## Common commands
 
 ```bash
-moltbot channels list
-moltbot channels status
-moltbot channels capabilities
-moltbot channels capabilities --channel discord --target channel:123
-moltbot channels resolve --channel slack "#general" "@jane"
-moltbot channels logs --channel all
+verso channels list
+verso channels status
+verso channels capabilities
+verso channels capabilities --channel discord --target channel:123
+verso channels resolve --channel slack "#general" "@jane"
+verso channels logs --channel all
 ```
 
 ## Add / remove accounts
 
 ```bash
-moltbot channels add --channel telegram --token <bot-token>
-moltbot channels remove --channel telegram --delete
+verso channels add --channel telegram --token <bot-token>
+verso channels remove --channel telegram --delete
 ```
 
-Tip: `moltbot channels add --help` shows per-channel flags (token, app token, signal-cli paths, etc).
+Tip: `verso channels add --help` shows per-channel flags (token, app token, signal-cli paths, etc).
 
 ## Login / logout (interactive)
 
 ```bash
-moltbot channels login --channel whatsapp
-moltbot channels logout --channel whatsapp
+verso channels login --channel whatsapp
+verso channels logout --channel whatsapp
 ```
 
 ## Troubleshooting
 
-- Run `moltbot status --deep` for a broad probe.
-- Use `moltbot doctor` for guided fixes.
-- `moltbot channels list` prints `Claude: HTTP 403 ... user:profile` → usage snapshot needs the `user:profile` scope. Use `--no-usage`, or provide a claude.ai session key (`CLAUDE_WEB_SESSION_KEY` / `CLAUDE_WEB_COOKIE`), or re-auth via Claude Code CLI.
+- Run `verso status --deep` for a broad probe.
+- Use `verso doctor` for guided fixes.
+- `verso channels list` prints `Claude: HTTP 403 ... user:profile` → usage snapshot needs the `user:profile` scope. Use `--no-usage`, or provide a claude.ai session key (`CLAUDE_WEB_SESSION_KEY` / `CLAUDE_WEB_COOKIE`), or re-auth via Claude Code CLI.
 
 ## Capabilities probe
 
 Fetch provider capability hints (intents/scopes where available) plus static feature support:
 
 ```bash
-moltbot channels capabilities
-moltbot channels capabilities --channel discord --target channel:123
+verso channels capabilities
+verso channels capabilities --channel discord --target channel:123
 ```
 
 Notes:
@@ -65,9 +65,9 @@ Notes:
 Resolve channel/user names to IDs using the provider directory:
 
 ```bash
-moltbot channels resolve --channel slack "#general" "@jane"
-moltbot channels resolve --channel discord "My Server/#support" "@someone"
-moltbot channels resolve --channel matrix "Project Room"
+verso channels resolve --channel slack "#general" "@jane"
+verso channels resolve --channel discord "My Server/#support" "@someone"
+verso channels resolve --channel matrix "Project Room"
 ```
 
 Notes:

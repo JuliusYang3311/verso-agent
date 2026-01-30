@@ -1,9 +1,9 @@
 {
-  "name": "@moltbot/copilot-proxy",
+  "name": "@verso/copilot-proxy",
   "version": "2026.1.29",
   "type": "module",
-  "description": "Moltbot Copilot Proxy provider plugin",
-  "moltbot": {
+  "description": "Verso Copilot Proxy provider plugin",
+  "verso": {
     "extensions": [
       "./index.ts"
     ]

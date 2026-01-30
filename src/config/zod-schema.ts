@@ -27,7 +27,21 @@ const NodeHostSchema = z
   .strict()
   .optional();
 
-export const MoltbotSchema = z
+const GoogleServiceIdSchema = z.enum(["gmail", "docs", "sheets", "slides", "calendar", "drive"]);
+
+const GoogleConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    oauthJsonPath: z.string().optional(),
+    tokensPath: z.string().optional(),
+    services: z.array(GoogleServiceIdSchema).optional(),
+    defaultDriveFolderId: z.string().optional(),
+    uploadPath: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
+export const VersoSchema = z
   .object({
     meta: z
       .object({
@@ -154,7 +168,7 @@ export const MoltbotSchema = z
               .object({
                 cdpPort: z.number().int().min(1).max(65535).optional(),
                 cdpUrl: z.string().optional(),
-                driver: z.union([z.literal("clawd"), z.literal("extension")]).optional(),
+                driver: z.union([z.literal("verso"), z.literal("extension")]).optional(),
                 color: HexColorSchema,
               })
               .strict()
@@ -527,6 +541,7 @@ export const MoltbotSchema = z
       })
       .strict()
       .optional(),
+    google: GoogleConfigSchema,
   })
   .strict()
   .superRefine((cfg, ctx) => {

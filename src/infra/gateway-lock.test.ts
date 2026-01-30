@@ -10,15 +10,15 @@ import { acquireGatewayLock, GatewayLockError } from "./gateway-lock.js";
 import { resolveConfigPath, resolveGatewayLockDir, resolveStateDir } from "../config/paths.js";
 
 async function makeEnv() {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-gateway-lock-"));
-  const configPath = path.join(dir, "moltbot.json");
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-gateway-lock-"));
+  const configPath = path.join(dir, "verso.json");
   await fs.writeFile(configPath, "{}", "utf8");
   await fs.mkdir(resolveGatewayLockDir(), { recursive: true });
   return {
     env: {
       ...process.env,
-      CLAWDBOT_STATE_DIR: dir,
-      CLAWDBOT_CONFIG_PATH: configPath,
+      VERSO_STATE_DIR: dir,
+      VERSO_CONFIG_PATH: configPath,
     },
     cleanup: async () => {
       await fs.rm(dir, { recursive: true, force: true });

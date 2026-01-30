@@ -40,7 +40,7 @@ enum DebugActions {
     static func openConfigFolder() {
         let url = FileManager()
             .homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot", isDirectory: true)
+            .appendingPathComponent(".verso", isDirectory: true)
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
@@ -196,7 +196,7 @@ enum DebugActions {
     private static func resolveSessionStorePath() -> String {
         let defaultPath = SessionLoader.defaultStorePath
         let configURL = FileManager().homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot/moltbot.json")
+            .appendingPathComponent(".verso/moltbot.json")
         guard
             let data = try? Data(contentsOf: configURL),
             let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

@@ -1,5 +1,5 @@
 import { formatCliCommand } from "../cli/command-format.js";
-import type { MoltbotConfig } from "../config/config.js";
+import type { VersoConfig } from "../config/config.js";
 import { readConfigFileSnapshot, resolveGatewayPort, writeConfigFile } from "../config/config.js";
 import { logConfigUpdated } from "../config/logging.js";
 import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
@@ -10,9 +10,13 @@ import { resolveUserPath } from "../utils.js";
 import { createClackPrompter } from "../wizard/clack-prompter.js";
 import { WizardCancelledError } from "../wizard/prompts.js";
 import { removeChannelConfigWizard } from "./configure.channels.js";
+import { promptContextConfig } from "./configure.context.js";
 import { maybeInstallDaemon } from "./configure.daemon.js";
 import { promptGatewayConfig } from "./configure.gateway.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
+import { promptRouterConfig } from "./configure.router.js";
+import { promptBrowserConfig } from "./configure.browser.js";
+import { promptGoogleConfig } from "./configure.google.js";
 import type {
   ChannelsWizardMode,
   ConfigureWizardParams,
@@ -79,7 +83,7 @@ async function promptChannelMode(runtime: RuntimeEnv): Promise<ChannelsWizardMod
         {
           value: "remove",
           label: "Remove channel config",
-          hint: "Delete channel tokens/settings from moltbot.json",
+          hint: "Delete channel tokens/settings from verso.json",
         },
       ],
       initialValue: "configure",
@@ -89,9 +93,9 @@ async function promptChannelMode(runtime: RuntimeEnv): Promise<ChannelsWizardMod
 }
 
 async function promptWebToolsConfig(
-  nextConfig: MoltbotConfig,
+  nextConfig: VersoConfig,
   runtime: RuntimeEnv,
-): Promise<MoltbotConfig> {
+): Promise<VersoConfig> {
   const existingSearch = nextConfig.tools?.web?.search;
   const existingFetch = nextConfig.tools?.web?.fetch;
   const hasSearchKey = Boolean(existingSearch?.apiKey);
@@ -175,11 +179,11 @@ export async function runConfigureWizard(
 ) {
   try {
     printWizardHeader(runtime);
-    intro(opts.command === "update" ? "Moltbot update wizard" : "Moltbot configure");
+    intro(opts.command === "update" ? "Verso update wizard" : "Verso configure");
     const prompter = createClackPrompter();
 
     const snapshot = await readConfigFileSnapshot();
-    const baseConfig: MoltbotConfig = snapshot.valid ? snapshot.config : {};
+    const baseConfig: VersoConfig = snapshot.valid ? snapshot.config : {};
 
     if (snapshot.exists) {
       const title = snapshot.valid ? "Existing config detected" : "Invalid config";
@@ -196,7 +200,7 @@ export async function runConfigureWizard(
       }
       if (!snapshot.valid) {
         outro(
-          `Config invalid. Run \`${formatCliCommand("moltbot doctor")}\` to repair it, then re-run configure.`,
+          `Config invalid. Run \`${formatCliCommand("verso doctor")}\` to repair it, then re-run configure.`,
         );
         runtime.exit(1);
         return;
@@ -206,8 +210,8 @@ export async function runConfigureWizard(
     const localUrl = "ws://127.0.0.1:18789";
     const localProbe = await probeGatewayReachable({
       url: localUrl,
-      token: baseConfig.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN,
-      password: baseConfig.gateway?.auth?.password ?? process.env.CLAWDBOT_GATEWAY_PASSWORD,
+      token: baseConfig.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN,
+      password: baseConfig.gateway?.auth?.password ?? process.env.VERSO_GATEWAY_PASSWORD,
     });
     const remoteUrl = baseConfig.gateway?.remote?.url?.trim() ?? "";
     const remoteProbe = remoteUrl
@@ -274,7 +278,7 @@ export async function runConfigureWizard(
     let gatewayToken: string | undefined =
       nextConfig.gateway?.auth?.token ??
       baseConfig.gateway?.auth?.token ??
-      process.env.CLAWDBOT_GATEWAY_TOKEN;
+      process.env.VERSO_GATEWAY_TOKEN;
 
     const persistConfig = async () => {
       nextConfig = applyWizardMetadata(nextConfig, {
@@ -318,8 +322,24 @@ export async function runConfigureWizard(
         nextConfig = await promptAuthConfig(nextConfig, runtime, prompter);
       }
 
+      if (selected.includes("context")) {
+        nextConfig = await promptContextConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("router")) {
+        nextConfig = await promptRouterConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("browser")) {
+        nextConfig = await promptBrowserConfig(nextConfig, runtime);
+      }
+
       if (selected.includes("web")) {
         nextConfig = await promptWebToolsConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("google")) {
+        nextConfig = await promptGoogleConfig(nextConfig, runtime);
       }
 
       if (selected.includes("gateway")) {
@@ -377,9 +397,8 @@ export async function runConfigureWizard(
         const remoteUrl = nextConfig.gateway?.remote?.url?.trim();
         const wsUrl =
           nextConfig.gateway?.mode === "remote" && remoteUrl ? remoteUrl : localLinks.wsUrl;
-        const token = nextConfig.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN;
-        const password =
-          nextConfig.gateway?.auth?.password ?? process.env.CLAWDBOT_GATEWAY_PASSWORD;
+        const token = nextConfig.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN;
+        const password = nextConfig.gateway?.auth?.password ?? process.env.VERSO_GATEWAY_PASSWORD;
         await waitForGatewayReachable({
           url: wsUrl,
           token,
@@ -437,8 +456,28 @@ export async function runConfigureWizard(
           await persistConfig();
         }
 
+        if (choice === "context") {
+          nextConfig = await promptContextConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "router") {
+          nextConfig = await promptRouterConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "browser") {
+          nextConfig = await promptBrowserConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
         if (choice === "web") {
           nextConfig = await promptWebToolsConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "google") {
+          nextConfig = await promptGoogleConfig(nextConfig, runtime);
           await persistConfig();
         }
 
@@ -502,9 +541,8 @@ export async function runConfigureWizard(
           const remoteUrl = nextConfig.gateway?.remote?.url?.trim();
           const wsUrl =
             nextConfig.gateway?.mode === "remote" && remoteUrl ? remoteUrl : localLinks.wsUrl;
-          const token = nextConfig.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN;
-          const password =
-            nextConfig.gateway?.auth?.password ?? process.env.CLAWDBOT_GATEWAY_PASSWORD;
+          const token = nextConfig.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN;
+          const password = nextConfig.gateway?.auth?.password ?? process.env.VERSO_GATEWAY_PASSWORD;
           await waitForGatewayReachable({
             url: wsUrl,
             token,
@@ -551,9 +589,9 @@ export async function runConfigureWizard(
       basePath: nextConfig.gateway?.controlUi?.basePath,
     });
     // Try both new and old passwords since gateway may still have old config.
-    const newPassword = nextConfig.gateway?.auth?.password ?? process.env.CLAWDBOT_GATEWAY_PASSWORD;
-    const oldPassword = baseConfig.gateway?.auth?.password ?? process.env.CLAWDBOT_GATEWAY_PASSWORD;
-    const token = nextConfig.gateway?.auth?.token ?? process.env.CLAWDBOT_GATEWAY_TOKEN;
+    const newPassword = nextConfig.gateway?.auth?.password ?? process.env.VERSO_GATEWAY_PASSWORD;
+    const oldPassword = baseConfig.gateway?.auth?.password ?? process.env.VERSO_GATEWAY_PASSWORD;
+    const token = nextConfig.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN;
 
     let gatewayProbe = await probeGatewayReachable({
       url: links.wsUrl,

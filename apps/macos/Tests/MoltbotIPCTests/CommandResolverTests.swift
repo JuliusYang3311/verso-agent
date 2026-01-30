@@ -112,7 +112,7 @@ import Testing
     @Test func buildsSSHCommandForRemoteMode() async throws {
         let defaults = self.makeDefaults()
         defaults.set(AppState.ConnectionMode.remote.rawValue, forKey: connectionModeKey)
-        defaults.set("clawd@example.com:2222", forKey: remoteTargetKey)
+        defaults.set("verso@example.com:2222", forKey: remoteTargetKey)
         defaults.set("/tmp/id_ed25519", forKey: remoteIdentityKey)
         defaults.set("/srv/moltbot", forKey: remoteProjectRootKey)
 
@@ -124,7 +124,7 @@ import Testing
 
         #expect(cmd.first == "/usr/bin/ssh")
         if let marker = cmd.firstIndex(of: "--") {
-            #expect(cmd[marker + 1] == "clawd@example.com")
+            #expect(cmd[marker + 1] == "verso@example.com")
         } else {
             #expect(Bool(false))
         }
@@ -149,7 +149,7 @@ import Testing
     @Test func configRootLocalOverridesRemoteDefaults() async throws {
         let defaults = self.makeDefaults()
         defaults.set(AppState.ConnectionMode.remote.rawValue, forKey: connectionModeKey)
-        defaults.set("clawd@example.com:2222", forKey: remoteTargetKey)
+        defaults.set("verso@example.com:2222", forKey: remoteTargetKey)
 
         let tmp = try makeTempDir()
         CommandResolver.setProjectRoot(tmp.path)

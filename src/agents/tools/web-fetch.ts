@@ -1,6 +1,6 @@
 import { Type } from "@sinclair/typebox";
 
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import {
   closeDispatcher,
   createPinnedDispatcher,
@@ -11,6 +11,17 @@ import type { Dispatcher } from "undici";
 import { stringEnum } from "../schema/typebox.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
+import {
+  browserSnapshot,
+  browserStart,
+  browserOpenTab,
+  browserCloseTab,
+} from "../../browser/client.js";
+import { resolveBrowserConfig } from "../../browser/config.js";
+import { loadConfig } from "../../config/config.js";
+
+// ... (rest of imports)
+
 import {
   CacheEntry,
   DEFAULT_CACHE_TTL_MINUTES,
@@ -41,7 +52,7 @@ const DEFAULT_ERROR_MAX_CHARS = 4_000;
 const DEFAULT_FIRECRAWL_BASE_URL = "https://api.firecrawl.dev";
 const DEFAULT_FIRECRAWL_MAX_AGE_MS = 172_800_000;
 const DEFAULT_FETCH_USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_3_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36";
 
 const FETCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 
@@ -61,7 +72,7 @@ const WebFetchSchema = Type.Object({
   ),
 });
 
-type WebFetchConfig = NonNullable<MoltbotConfig["tools"]>["web"] extends infer Web
+type WebFetchConfig = NonNullable<VersoConfig["tools"]>["web"] extends infer Web
   ? Web extends { fetch?: infer Fetch }
     ? Fetch
     : undefined
@@ -78,7 +89,7 @@ type FirecrawlFetchConfig =
     }
   | undefined;
 
-function resolveFetchConfig(cfg?: MoltbotConfig): WebFetchConfig {
+function resolveFetchConfig(cfg?: VersoConfig): WebFetchConfig {
   const fetch = cfg?.tools?.web?.fetch;
   if (!fetch || typeof fetch !== "object") return undefined;
   return fetch as WebFetchConfig;
@@ -412,6 +423,37 @@ async function runWebFetch(params: {
       writeCache(FETCH_CACHE, cacheKey, payload, params.cacheTtlMs);
       return payload;
     }
+
+    // Try Browser Fallback (Verso Isolated Browser)
+    try {
+      const browserFallback = await tryBrowserFallback({
+        url: finalUrl,
+        extractMode: params.extractMode,
+        timeoutSeconds: params.timeoutSeconds,
+      });
+      if (browserFallback) {
+        const truncated = truncateText(browserFallback.text, params.maxChars);
+        const payload = {
+          url: params.url,
+          finalUrl,
+          status: 200,
+          contentType: "text/markdown",
+          title: undefined,
+          extractMode: params.extractMode,
+          extractor: "browser-verso",
+          truncated: truncated.truncated,
+          length: truncated.text.length,
+          fetchedAt: new Date().toISOString(),
+          tookMs: Date.now() - start,
+          text: truncated.text,
+        };
+        writeCache(FETCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+        return payload;
+      }
+    } catch (err) {
+      // Ignore fallback error, throw original
+    }
+
     throw error;
   }
 
@@ -454,7 +496,39 @@ async function runWebFetch(params: {
         contentType: res.headers.get("content-type"),
         maxChars: DEFAULT_ERROR_MAX_CHARS,
       });
-      throw new Error(`Web fetch failed (${res.status}): ${detail || res.statusText}`);
+      const errorMsg = `Web fetch failed (${res.status}): ${detail || res.statusText}`;
+
+      // Try Browser Fallback (Verso Isolated Browser) on 403/4xx/5xx
+      try {
+        const browserFallback = await tryBrowserFallback({
+          url: finalUrl,
+          extractMode: params.extractMode,
+          timeoutSeconds: params.timeoutSeconds,
+        });
+        if (browserFallback) {
+          const truncated = truncateText(browserFallback.text, params.maxChars);
+          const payload = {
+            url: params.url,
+            finalUrl,
+            status: 200, // Browser success override
+            contentType: "text/markdown",
+            title: undefined,
+            extractMode: params.extractMode,
+            extractor: "browser-verso",
+            truncated: truncated.truncated,
+            length: truncated.text.length,
+            fetchedAt: new Date().toISOString(),
+            tookMs: Date.now() - start,
+            text: truncated.text,
+          };
+          writeCache(FETCH_CACHE, cacheKey, payload, params.cacheTtlMs);
+          return payload;
+        }
+      } catch (err) {
+        // Ignore fallback error, throw original
+      }
+
+      throw new Error(errorMsg);
     }
 
     const contentType = res.headers.get("content-type") ?? "application/octet-stream";
@@ -569,8 +643,59 @@ function resolveFirecrawlEndpoint(baseUrl: string): string {
   }
 }
 
+async function tryBrowserFallback(params: {
+  url: string;
+  extractMode: ExtractMode;
+  timeoutSeconds: number;
+}): Promise<{ text: string; title?: string } | null> {
+  try {
+    const cfg = loadConfig();
+    const browserCfg = resolveBrowserConfig(cfg.browser, cfg);
+    if (!browserCfg.enabled) return null;
+
+    const profile = "verso";
+    await browserStart(undefined, { profile });
+
+    // Open Tab
+    // Note: browserOpenTab returns { targetId: string } or similar?
+    // Checking browser-tool.ts: return jsonResult(await browserOpenTab(...))
+    // client.js likely returns the result object directly.
+    // Based on browser-tool.ts line 304: `browserStatus` returns object.
+
+    // We imported browserOpenTab from client.js.
+    // We need to handle the return type.
+    const openRes = await browserOpenTab(undefined, params.url, { profile });
+    const targetId = typeof openRes === "string" ? openRes : (openRes as any).targetId;
+
+    // Give some time for Cloudflare/scripts to load
+    await new Promise((r) => setTimeout(r, 3000));
+
+    try {
+      const res = await browserSnapshot(undefined, {
+        profile,
+        targetId,
+        format: "ai",
+        mode: "efficient",
+      });
+
+      if (res.format === "ai") {
+        return {
+          text: res.snapshot,
+          title: undefined,
+        };
+      }
+    } finally {
+      await browserCloseTab(undefined, targetId, { profile });
+    }
+    return null;
+  } catch (err) {
+    console.warn("WebFetch: Browser fallback failed:", err);
+    return null;
+  }
+}
+
 export function createWebFetchTool(options?: {
-  config?: MoltbotConfig;
+  config?: VersoConfig;
   sandboxed?: boolean;
 }): AnyAgentTool | null {
   const fetch = resolveFetchConfig(options?.config);

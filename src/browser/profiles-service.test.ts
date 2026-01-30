@@ -21,11 +21,11 @@ vi.mock("./trash.js", () => ({
 }));
 
 vi.mock("./chrome.js", () => ({
-  resolveClawdUserDataDir: vi.fn(() => "/tmp/clawd-test/clawd/user-data"),
+  resolveVersoUserDataDir: vi.fn(() => "/tmp/verso-test/verso/user-data"),
 }));
 
 import { loadConfig, writeConfigFile } from "../config/config.js";
-import { resolveClawdUserDataDir } from "./chrome.js";
+import { resolveVersoUserDataDir } from "./chrome.js";
 import { movePathToTrash } from "./trash.js";
 
 function createCtx(resolved: BrowserServerState["resolved"]) {
@@ -101,9 +101,9 @@ describe("BrowserProfilesService", () => {
 
     vi.mocked(loadConfig).mockReturnValue({
       browser: {
-        defaultProfile: "clawd",
+        defaultProfile: "verso",
         profiles: {
-          clawd: { cdpPort: 18800, color: "#FF4500" },
+          verso: { cdpPort: 18800, color: "#FF4500" },
           remote: { cdpUrl: "http://10.0.0.42:9222", color: "#0066CC" },
         },
       },
@@ -127,18 +127,18 @@ describe("BrowserProfilesService", () => {
 
     vi.mocked(loadConfig).mockReturnValue({
       browser: {
-        defaultProfile: "clawd",
+        defaultProfile: "verso",
         profiles: {
-          clawd: { cdpPort: 18800, color: "#FF4500" },
+          verso: { cdpPort: 18800, color: "#FF4500" },
           work: { cdpPort: 18801, color: "#0066CC" },
         },
       },
     });
 
-    const tempDir = fs.mkdtempSync(path.join("/tmp", "clawd-profile-"));
+    const tempDir = fs.mkdtempSync(path.join("/tmp", "verso-profile-"));
     const userDataDir = path.join(tempDir, "work", "user-data");
     fs.mkdirSync(path.dirname(userDataDir), { recursive: true });
-    vi.mocked(resolveClawdUserDataDir).mockReturnValue(userDataDir);
+    vi.mocked(resolveVersoUserDataDir).mockReturnValue(userDataDir);
 
     const service = createBrowserProfilesService(ctx);
     const result = await service.deleteProfile("work");

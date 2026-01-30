@@ -1,9 +1,9 @@
 {
-  "name": "@moltbot/nostr",
+  "name": "@verso/nostr",
   "version": "2026.1.29",
   "type": "module",
-  "description": "Moltbot Nostr channel plugin for NIP-04 encrypted DMs",
-  "moltbot": {
+  "description": "Verso Nostr channel plugin for NIP-04 encrypted DMs",
+  "verso": {
     "extensions": [
       "./index.ts"
     ],
@@ -18,13 +18,13 @@
       "quickstartAllowFrom": true
     },
     "install": {
-      "npmSpec": "@moltbot/nostr",
+      "npmSpec": "@verso/nostr",
       "localPath": "extensions/nostr",
       "defaultChoice": "npm"
     }
   },
   "dependencies": {
-    "moltbot": "workspace:*",
+    "verso": "workspace:*",
     "nostr-tools": "^2.20.0",
     "zod": "^4.3.6"
   }

@@ -1,6 +1,6 @@
-# @clawdbot/voice-call
+# @verso/voice-call
 
-Official Voice Call plugin for **Clawdbot**.
+Official Voice Call plugin for **Verso**.
 
 Providers:
 - **Twilio** (Programmable Voice + Media Streams)
@@ -13,10 +13,10 @@ Plugin system: `https://docs.molt.bot/plugin`
 
 ## Install (local dev)
 
-### Option A: install via Clawdbot (recommended)
+### Option A: install via Verso (recommended)
 
 ```bash
-clawdbot plugins install @clawdbot/voice-call
+verso plugins install @verso/voice-call
 ```
 
 Restart the Gateway afterwards.
@@ -24,9 +24,9 @@ Restart the Gateway afterwards.
 ### Option B: copy into your global extensions folder (dev)
 
 ```bash
-mkdir -p ~/.clawdbot/extensions
-cp -R extensions/voice-call ~/.clawdbot/extensions/voice-call
-cd ~/.clawdbot/extensions/voice-call && pnpm install
+mkdir -p ~/.verso/extensions
+cp -R extensions/voice-call ~/.verso/extensions/voice-call
+cd ~/.verso/extensions/voice-call && pnpm install
 ```
 
 ## Config
@@ -100,13 +100,13 @@ Notes:
 ## CLI
 
 ```bash
-clawdbot voicecall call --to "+15555550123" --message "Hello from Clawdbot"
-clawdbot voicecall continue --call-id <id> --message "Any questions?"
-clawdbot voicecall speak --call-id <id> --message "One moment"
-clawdbot voicecall end --call-id <id>
-clawdbot voicecall status --call-id <id>
-clawdbot voicecall tail
-clawdbot voicecall expose --mode funnel
+verso voicecall call --to "+15555550123" --message "Hello from Verso"
+verso voicecall continue --call-id <id> --message "Any questions?"
+verso voicecall speak --call-id <id> --message "One moment"
+verso voicecall end --call-id <id>
+verso voicecall status --call-id <id>
+verso voicecall tail
+verso voicecall expose --mode funnel
 ```
 
 ## Tool

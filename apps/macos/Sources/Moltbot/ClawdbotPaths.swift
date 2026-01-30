@@ -22,7 +22,7 @@ enum MoltbotPaths {
             return URL(fileURLWithPath: override, isDirectory: true)
         }
         return FileManager().homeDirectoryForCurrentUser
-            .appendingPathComponent(".clawdbot", isDirectory: true)
+            .appendingPathComponent(".verso", isDirectory: true)
     }
 
     static var configURL: URL {

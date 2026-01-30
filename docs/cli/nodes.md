@@ -1,11 +1,11 @@
 ---
-summary: "CLI reference for `moltbot nodes` (list/status/approve/invoke, camera/canvas/screen)"
+summary: "CLI reference for `verso nodes` (list/status/approve/invoke, camera/canvas/screen)"
 read_when:
   - You’re managing paired nodes (cameras, screen, canvas)
   - You need to approve requests or invoke node commands
 ---
 
-# `moltbot nodes`
+# `verso nodes`
 
 Manage paired nodes (devices) and invoke node capabilities.
 
@@ -20,14 +20,14 @@ Common options:
 ## Common commands
 
 ```bash
-moltbot nodes list
-moltbot nodes list --connected
-moltbot nodes list --last-connected 24h
-moltbot nodes pending
-moltbot nodes approve <requestId>
-moltbot nodes status
-moltbot nodes status --connected
-moltbot nodes status --last-connected 24h
+verso nodes list
+verso nodes list --connected
+verso nodes list --last-connected 24h
+verso nodes pending
+verso nodes approve <requestId>
+verso nodes status
+verso nodes status --connected
+verso nodes status --last-connected 24h
 ```
 
 `nodes list` prints pending/paired tables. Paired rows include the most recent connect age (Last Connect).
@@ -37,10 +37,10 @@ filter to nodes that connected within a duration (e.g. `24h`, `7d`).
 ## Invoke / run
 
 ```bash
-moltbot nodes invoke --node <id|name|ip> --command <command> --params <json>
-moltbot nodes run --node <id|name|ip> <command...>
-moltbot nodes run --raw "git status"
-moltbot nodes run --agent main --node <id|name|ip> --raw "git status"
+verso nodes invoke --node <id|name|ip> --command <command> --params <json>
+verso nodes run --node <id|name|ip> <command...>
+verso nodes run --raw "git status"
+verso nodes run --agent main --node <id|name|ip> --raw "git status"
 ```
 
 Invoke flags:

@@ -2,8 +2,8 @@ import Foundation
 
 enum LaunchAgentManager {
     private static let legacyLaunchdLabels = [
-        "com.steipete.clawdbot",
-        "com.clawdbot.mac",
+        "com.steipete.verso",
+        "com.verso.mac",
     ]
     private static var plistURL: URL {
         FileManager().homeDirectoryForCurrentUser

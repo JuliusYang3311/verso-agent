@@ -5,7 +5,7 @@ Adds the `lobster` agent tool as an **optional** plugin tool.
 ## What this is
 
 - Lobster is a standalone workflow shell (typed JSON-first pipelines + approvals/resume).
-- This plugin integrates Lobster with Clawdbot *without core changes*.
+- This plugin integrates Lobster with Verso *without core changes*.
 
 ## Enable
 
@@ -30,19 +30,19 @@ Enable it in an agent allowlist:
 }
 ```
 
-## Using `clawd.invoke` (Lobster → Clawdbot tools)
+## Using `verso.invoke` (Lobster → Verso tools)
 
-Some Lobster pipelines may include a `clawd.invoke` step to call back into Clawdbot tools/plugins (for example: `gog` for Google Workspace, `gh` for GitHub, `message.send`, etc.).
+Some Lobster pipelines may include a `verso.invoke` step to call back into Verso tools/plugins (for example: `gog` for Google Workspace, `gh` for GitHub, `message.send`, etc.).
 
-For this to work, the Clawdbot Gateway must expose the tool bridge endpoint and the target tool must be allowed by policy:
+For this to work, the Verso Gateway must expose the tool bridge endpoint and the target tool must be allowed by policy:
 
-- Clawdbot provides an HTTP endpoint: `POST /tools/invoke`.
+- Verso provides an HTTP endpoint: `POST /tools/invoke`.
 - The request is gated by **gateway auth** (e.g. `Authorization: Bearer …` when token auth is enabled).
-- The invoked tool is gated by **tool policy** (global + per-agent + provider + group policy). If the tool is not allowed, Clawdbot returns `404 Tool not available`.
+- The invoked tool is gated by **tool policy** (global + per-agent + provider + group policy). If the tool is not allowed, Verso returns `404 Tool not available`.
 
 ### Allowlisting recommended
 
-To avoid letting workflows call arbitrary tools, set a tight allowlist on the agent that will be used by `clawd.invoke`.
+To avoid letting workflows call arbitrary tools, set a tight allowlist on the agent that will be used by `verso.invoke`.
 
 Example (allow only a small set of tools):
 

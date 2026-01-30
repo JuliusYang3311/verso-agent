@@ -345,8 +345,8 @@ actor MacNodeRuntime {
         let sessionKey = self.mainSessionKey
         let json = try await CanvasManager.shared.eval(sessionKey: sessionKey, javaScript: """
         (() => {
-          if (!globalThis.clawdbotA2UI) return JSON.stringify({ ok: false, error: "missing moltbotA2UI" });
-          return JSON.stringify(globalThis.clawdbotA2UI.reset());
+          if (!globalThis.versoA2UI) return JSON.stringify({ ok: false, error: "missing moltbotA2UI" });
+          return JSON.stringify(globalThis.versoA2UI.reset());
         })()
         """)
         return BridgeInvokeResponse(id: req.id, ok: true, payloadJSON: json)
@@ -374,9 +374,9 @@ actor MacNodeRuntime {
         let js = """
         (() => {
           try {
-            if (!globalThis.clawdbotA2UI) return JSON.stringify({ ok: false, error: "missing moltbotA2UI" });
+            if (!globalThis.versoA2UI) return JSON.stringify({ ok: false, error: "missing moltbotA2UI" });
             const messages = \(messagesJSON);
-            return JSON.stringify(globalThis.clawdbotA2UI.applyMessages(messages));
+            return JSON.stringify(globalThis.versoA2UI.applyMessages(messages));
           } catch (e) {
             return JSON.stringify({ ok: false, error: String(e?.message ?? e) });
           }
@@ -417,7 +417,7 @@ actor MacNodeRuntime {
             do {
                 let sessionKey = self.mainSessionKey
                 let ready = try await CanvasManager.shared.eval(sessionKey: sessionKey, javaScript: """
-                (() => String(Boolean(globalThis.clawdbotA2UI)))()
+                (() => String(Boolean(globalThis.versoA2UI)))()
                 """)
                 let trimmed = ready.trimmingCharacters(in: .whitespacesAndNewlines)
                 if trimmed == "true" { return true }

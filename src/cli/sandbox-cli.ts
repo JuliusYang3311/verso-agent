@@ -15,30 +15,30 @@ type CommandOptions = Record<string, unknown>;
 
 const SANDBOX_EXAMPLES = {
   main: [
-    ["moltbot sandbox list", "List all sandbox containers."],
-    ["moltbot sandbox list --browser", "List only browser containers."],
-    ["moltbot sandbox recreate --all", "Recreate all containers."],
-    ["moltbot sandbox recreate --session main", "Recreate a specific session."],
-    ["moltbot sandbox recreate --agent mybot", "Recreate agent containers."],
-    ["moltbot sandbox explain", "Explain effective sandbox config."],
+    ["verso sandbox list", "List all sandbox containers."],
+    ["verso sandbox list --browser", "List only browser containers."],
+    ["verso sandbox recreate --all", "Recreate all containers."],
+    ["verso sandbox recreate --session main", "Recreate a specific session."],
+    ["verso sandbox recreate --agent mybot", "Recreate agent containers."],
+    ["verso sandbox explain", "Explain effective sandbox config."],
   ],
   list: [
-    ["moltbot sandbox list", "List all sandbox containers."],
-    ["moltbot sandbox list --browser", "List only browser containers."],
-    ["moltbot sandbox list --json", "JSON output."],
+    ["verso sandbox list", "List all sandbox containers."],
+    ["verso sandbox list --browser", "List only browser containers."],
+    ["verso sandbox list --json", "JSON output."],
   ],
   recreate: [
-    ["moltbot sandbox recreate --all", "Recreate all containers."],
-    ["moltbot sandbox recreate --session main", "Recreate a specific session."],
-    ["moltbot sandbox recreate --agent mybot", "Recreate a specific agent (includes sub-agents)."],
-    ["moltbot sandbox recreate --browser --all", "Recreate only browser containers."],
-    ["moltbot sandbox recreate --all --force", "Skip confirmation."],
+    ["verso sandbox recreate --all", "Recreate all containers."],
+    ["verso sandbox recreate --session main", "Recreate a specific session."],
+    ["verso sandbox recreate --agent mybot", "Recreate a specific agent (includes sub-agents)."],
+    ["verso sandbox recreate --browser --all", "Recreate only browser containers."],
+    ["verso sandbox recreate --all --force", "Skip confirmation."],
   ],
   explain: [
-    ["moltbot sandbox explain", "Show effective sandbox config."],
-    ["moltbot sandbox explain --session agent:main:main", "Explain a specific session."],
-    ["moltbot sandbox explain --agent work", "Explain an agent sandbox."],
-    ["moltbot sandbox explain --json", "JSON output."],
+    ["verso sandbox explain", "Show effective sandbox config."],
+    ["verso sandbox explain --session agent:main:main", "Explain a specific session."],
+    ["verso sandbox explain --agent work", "Explain an agent sandbox."],
+    ["verso sandbox explain --json", "JSON output."],
   ],
 } as const;
 

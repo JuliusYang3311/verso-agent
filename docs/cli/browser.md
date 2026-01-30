@@ -1,14 +1,14 @@
 ---
-summary: "CLI reference for `moltbot browser` (profiles, tabs, actions, extension relay)"
+summary: "CLI reference for `verso browser` (profiles, tabs, actions, extension relay)"
 read_when:
-  - You use `moltbot browser` and want examples for common tasks
+  - You use `verso browser` and want examples for common tasks
   - You want to control a browser running on another machine via a node host
   - You want to use the Chrome extension relay (attach/detach via toolbar button)
 ---
 
-# `moltbot browser`
+# `verso browser`
 
-Manage Moltbot’s browser control server and run browser actions (tabs, snapshots, screenshots, navigation, clicks, typing).
+Manage Verso’s browser control server and run browser actions (tabs, snapshots, screenshots, navigation, clicks, typing).
 
 Related:
 - Browser tool + API: [Browser tool](/tools/browser)
@@ -25,37 +25,37 @@ Related:
 ## Quick start (local)
 
 ```bash
-moltbot browser --browser-profile chrome tabs
-moltbot browser --browser-profile clawd start
-moltbot browser --browser-profile clawd open https://example.com
-moltbot browser --browser-profile clawd snapshot
+verso browser --browser-profile chrome tabs
+verso browser --browser-profile verso start
+verso browser --browser-profile verso open https://example.com
+verso browser --browser-profile verso snapshot
 ```
 
 ## Profiles
 
 Profiles are named browser routing configs. In practice:
-- `clawd`: launches/attaches to a dedicated Moltbot-managed Chrome instance (isolated user data dir).
+- `verso`: launches/attaches to a dedicated Verso-managed Chrome instance (isolated user data dir).
 - `chrome`: controls your existing Chrome tab(s) via the Chrome extension relay.
 
 ```bash
-moltbot browser profiles
-moltbot browser create-profile --name work --color "#FF5A36"
-moltbot browser delete-profile --name work
+verso browser profiles
+verso browser create-profile --name work --color "#FF5A36"
+verso browser delete-profile --name work
 ```
 
 Use a specific profile:
 
 ```bash
-moltbot browser --browser-profile work tabs
+verso browser --browser-profile work tabs
 ```
 
 ## Tabs
 
 ```bash
-moltbot browser tabs
-moltbot browser open https://docs.molt.bot
-moltbot browser focus <targetId>
-moltbot browser close <targetId>
+verso browser tabs
+verso browser open https://docs.molt.bot
+verso browser focus <targetId>
+verso browser close <targetId>
 ```
 
 ## Snapshot / screenshot / actions
@@ -63,21 +63,21 @@ moltbot browser close <targetId>
 Snapshot:
 
 ```bash
-moltbot browser snapshot
+verso browser snapshot
 ```
 
 Screenshot:
 
 ```bash
-moltbot browser screenshot
+verso browser screenshot
 ```
 
 Navigate/click/type (ref-based UI automation):
 
 ```bash
-moltbot browser navigate https://example.com
-moltbot browser click <ref>
-moltbot browser type <ref> "hello"
+verso browser navigate https://example.com
+verso browser click <ref>
+verso browser type <ref> "hello"
 ```
 
 ## Chrome extension relay (attach via toolbar button)
@@ -87,8 +87,8 @@ This mode lets the agent control an existing Chrome tab that you attach manually
 Install the unpacked extension to a stable path:
 
 ```bash
-moltbot browser extension install
-moltbot browser extension path
+verso browser extension install
+verso browser extension path
 ```
 
 Then Chrome → `chrome://extensions` → enable “Developer mode” → “Load unpacked” → select the printed folder.

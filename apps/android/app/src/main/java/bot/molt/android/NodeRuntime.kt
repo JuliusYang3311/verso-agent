@@ -1207,7 +1207,7 @@ private const val a2uiReadyCheckJS: String =
   """
   (() => {
     try {
-      return !!globalThis.clawdbotA2UI && typeof globalThis.clawdbotA2UI.applyMessages === 'function';
+      return !!globalThis.versoA2UI && typeof globalThis.versoA2UI.applyMessages === 'function';
     } catch (_) {
       return false;
     }
@@ -1218,8 +1218,8 @@ private const val a2uiResetJS: String =
   """
   (() => {
     try {
-      if (!globalThis.clawdbotA2UI) return { ok: false, error: "missing moltbotA2UI" };
-      return globalThis.clawdbotA2UI.reset();
+      if (!globalThis.versoA2UI) return { ok: false, error: "missing moltbotA2UI" };
+      return globalThis.versoA2UI.reset();
     } catch (e) {
       return { ok: false, error: String(e?.message ?? e) };
     }
@@ -1230,9 +1230,9 @@ private fun a2uiApplyMessagesJS(messagesJson: String): String {
   return """
     (() => {
       try {
-        if (!globalThis.clawdbotA2UI) return { ok: false, error: "missing moltbotA2UI" };
+        if (!globalThis.versoA2UI) return { ok: false, error: "missing moltbotA2UI" };
         const messages = $messagesJson;
-        return globalThis.clawdbotA2UI.applyMessages(messages);
+        return globalThis.versoA2UI.applyMessages(messages);
       } catch (e) {
         return { ok: false, error: String(e?.message ?? e) };
       }

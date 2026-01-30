@@ -3,7 +3,7 @@ import type {
   ChannelResolveKind,
   ChannelResolveResult,
   RuntimeEnv,
-} from "clawdbot/plugin-sdk";
+} from "verso/plugin-sdk";
 
 import {
   listMatrixDirectoryGroupsLive,

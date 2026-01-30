@@ -27,7 +27,7 @@ function resolveMode(input: string): "off" | "serve" | "funnel" {
 
 function resolveDefaultStorePath(config: VoiceCallConfig): string {
   const base =
-    config.store?.trim() || path.join(os.homedir(), "clawd", "voice-calls");
+    config.store?.trim() || path.join(os.homedir(), "verso", "voice-calls");
   return path.join(resolveUserPath(base), "calls.jsonl");
 }
 

@@ -1,9 +1,9 @@
 {
-  "name": "@moltbot/discord",
+  "name": "@verso/discord",
   "version": "2026.1.29",
   "type": "module",
-  "description": "Moltbot Discord channel plugin",
-  "moltbot": {
+  "description": "Verso Discord channel plugin",
+  "verso": {
     "extensions": [
       "./index.ts"
     ]

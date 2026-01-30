@@ -1,12 +1,12 @@
 import type { App } from "@slack/bolt";
 import { describe, expect, it } from "vitest";
 
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { createSlackMonitorContext, normalizeSlackChannelType } from "./context.js";
 
 const baseParams = () => ({
-  cfg: {} as MoltbotConfig,
+  cfg: {} as VersoConfig,
   accountId: "default",
   botToken: "token",
   app: { client: {} } as App,
@@ -30,7 +30,7 @@ const baseParams = () => ({
   replyToMode: "off" as const,
   slashCommand: {
     enabled: false,
-    name: "clawd",
+    name: "verso",
     sessionPrefix: "slack:slash",
     ephemeral: true,
   },

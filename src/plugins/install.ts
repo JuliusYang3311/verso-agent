@@ -21,8 +21,7 @@ type PackageManifest = {
   name?: string;
   version?: string;
   dependencies?: Record<string, string>;
-  moltbot?: { extensions?: string[] };
-  [LEGACY_MANIFEST_KEY]?: { extensions?: string[] };
+  verso?: { extensions?: string[] };
 };
 
 export type InstallPluginResult =
@@ -54,14 +53,14 @@ function safeFileName(input: string): string {
   return safeDirName(input);
 }
 
-async function ensureMoltbotExtensions(manifest: PackageManifest) {
-  const extensions = manifest.moltbot?.extensions ?? manifest[LEGACY_MANIFEST_KEY]?.extensions;
+async function ensureVersoExtensions(manifest: PackageManifest) {
+  const extensions = manifest.verso?.extensions ?? manifest[LEGACY_MANIFEST_KEY]?.extensions;
   if (!Array.isArray(extensions)) {
-    throw new Error("package.json missing moltbot.extensions");
+    throw new Error("package.json missing verso.extensions");
   }
   const list = extensions.map((e) => (typeof e === "string" ? e.trim() : "")).filter(Boolean);
   if (list.length === 0) {
-    throw new Error("package.json moltbot.extensions is empty");
+    throw new Error("package.json verso.extensions is empty");
   }
   return list;
 }
@@ -101,7 +100,7 @@ async function installPluginFromPackageDir(params: {
 
   let extensions: string[];
   try {
-    extensions = await ensureMoltbotExtensions(manifest);
+    extensions = await ensureVersoExtensions(manifest);
   } catch (err) {
     return { ok: false, error: String(err) };
   }
@@ -219,7 +218,7 @@ export async function installPluginFromArchive(params: {
     return { ok: false, error: `unsupported archive: ${archivePath}` };
   }
 
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-plugin-"));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-plugin-"));
   const extractDir = path.join(tmpDir, "extract");
   await fs.mkdir(extractDir, { recursive: true });
 
@@ -352,7 +351,7 @@ export async function installPluginFromNpmSpec(params: {
   const spec = params.spec.trim();
   if (!spec) return { ok: false, error: "missing npm spec" };
 
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "moltbot-npm-pack-"));
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-npm-pack-"));
   logger.info?.(`Downloading ${spec}…`);
   const res = await runCommandWithTimeout(["npm", "pack", spec], {
     timeoutMs: Math.max(timeoutMs, 300_000),

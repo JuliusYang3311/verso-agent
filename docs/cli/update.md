@@ -1,28 +1,28 @@
 ---
-summary: "CLI reference for `moltbot update` (safe-ish source update + gateway auto-restart)"
+summary: "CLI reference for `verso update` (safe-ish source update + gateway auto-restart)"
 read_when:
   - You want to update a source checkout safely
   - You need to understand `--update` shorthand behavior
 ---
 
-# `moltbot update`
+# `verso update`
 
-Safely update Moltbot and switch between stable/beta/dev channels.
+Safely update Verso and switch between stable/beta/dev channels.
 
 If you installed via **npm/pnpm** (global install, no git metadata), updates happen via the package manager flow in [Updating](/install/updating).
 
 ## Usage
 
 ```bash
-moltbot update
-moltbot update status
-moltbot update wizard
-moltbot update --channel beta
-moltbot update --channel dev
-moltbot update --tag beta
-moltbot update --no-restart
-moltbot update --json
-moltbot --update
+verso update
+verso update status
+verso update wizard
+verso update --channel beta
+verso update --channel dev
+verso update --tag beta
+verso update --no-restart
+verso update --json
+verso --update
 ```
 
 ## Options
@@ -40,9 +40,9 @@ Note: downgrades require confirmation because older versions can break configura
 Show the active update channel + git tag/branch/SHA (for source checkouts), plus update availability.
 
 ```bash
-moltbot update status
-moltbot update status --json
-moltbot update status --timeout 10
+verso update status
+verso update status --json
+verso update status --timeout 10
 ```
 
 Options:
@@ -57,10 +57,10 @@ offers to create one.
 
 ## What it does
 
-When you switch channels explicitly (`--channel ...`), Moltbot also keeps the
+When you switch channels explicitly (`--channel ...`), Verso also keeps the
 install method aligned:
 
-- `dev` → ensures a git checkout (default: `~/moltbot`, override with `CLAWDBOT_GIT_DIR`),
+- `dev` → ensures a git checkout (default: `~/verso`, override with `VERSO_GIT_DIR`),
   updates it, and installs the global CLI from that checkout.
 - `stable`/`beta` → installs from npm using the matching dist-tag.
 
@@ -81,16 +81,16 @@ High-level:
 5. Rebases onto the selected commit (dev only).
 6. Installs deps (pnpm preferred; npm fallback).
 7. Builds + builds the Control UI.
-8. Runs `moltbot doctor` as the final “safe update” check.
+8. Runs `verso doctor` as the final “safe update” check.
 9. Syncs plugins to the active channel (dev uses bundled extensions; stable/beta uses npm) and updates npm-installed plugins.
 
 ## `--update` shorthand
 
-`moltbot --update` rewrites to `moltbot update` (useful for shells and launcher scripts).
+`verso --update` rewrites to `verso update` (useful for shells and launcher scripts).
 
 ## See also
 
-- `moltbot doctor` (offers to run update first on git checkouts)
+- `verso doctor` (offers to run update first on git checkouts)
 - [Development channels](/install/development-channels)
 - [Updating](/install/updating)
 - [CLI reference](/cli)

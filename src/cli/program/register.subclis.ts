@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import { isTruthyEnvValue } from "../../infra/env.js";
 import { buildParseArgv, getPrimaryCommand, hasHelpOrVersion } from "../argv.js";
 import { resolveActionArgs } from "./helpers.js";
@@ -13,16 +13,16 @@ type SubCliEntry = {
 };
 
 const shouldRegisterPrimaryOnly = (argv: string[]) => {
-  if (isTruthyEnvValue(process.env.CLAWDBOT_DISABLE_LAZY_SUBCOMMANDS)) return false;
+  if (isTruthyEnvValue(process.env.VERSO_DISABLE_LAZY_SUBCOMMANDS)) return false;
   if (hasHelpOrVersion(argv)) return false;
   return true;
 };
 
 const shouldEagerRegisterSubcommands = (_argv: string[]) => {
-  return isTruthyEnvValue(process.env.CLAWDBOT_DISABLE_LAZY_SUBCOMMANDS);
+  return isTruthyEnvValue(process.env.VERSO_DISABLE_LAZY_SUBCOMMANDS);
 };
 
-const loadConfig = async (): Promise<MoltbotConfig> => {
+const loadConfig = async (): Promise<VersoConfig> => {
   const mod = await import("../../config/config.js");
   return mod.loadConfig();
 };
@@ -225,6 +225,14 @@ const entries: SubCliEntry[] = [
     register: async (program) => {
       const mod = await import("../update-cli.js");
       mod.registerUpdateCli(program);
+    },
+  },
+  {
+    name: "google",
+    description: "Google Workspace tools",
+    register: async (program) => {
+      const mod = await import("../google-cli.js");
+      mod.registerGoogleCli(program);
     },
   },
 ];

@@ -7,7 +7,7 @@ read_when:
 
 # Camera capture (agent)
 
-Moltbot supports **camera capture** for agent workflows:
+Verso supports **camera capture** for agent workflows:
 
 - **iOS node** (paired via Gateway): capture a **photo** (`jpg`) or **short video clip** (`mp4`, with optional audio) via `node.invoke`.
 - **Android node** (paired via Gateway): capture a **photo** (`jpg`) or **short video clip** (`mp4`, with optional audio) via `node.invoke`.
@@ -67,10 +67,10 @@ The easiest way to get attachments is via the CLI helper, which writes decoded m
 Examples:
 
 ```bash
-moltbot nodes camera snap --node <id>               # default: both front + back (2 MEDIA lines)
-moltbot nodes camera snap --node <id> --facing front
-moltbot nodes camera clip --node <id> --duration 3000
-moltbot nodes camera clip --node <id> --no-audio
+verso nodes camera snap --node <id>               # default: both front + back (2 MEDIA lines)
+verso nodes camera snap --node <id> --facing front
+verso nodes camera clip --node <id> --duration 3000
+verso nodes camera clip --node <id> --no-audio
 ```
 
 Notes:
@@ -108,30 +108,30 @@ Photos are recompressed to keep the base64 payload under 5 MB.
 
 The macOS companion app exposes a checkbox:
 
-- **Settings → General → Allow Camera** (`moltbot.cameraEnabled`)
+- **Settings → General → Allow Camera** (`verso.cameraEnabled`)
   - Default: **off**
   - When off: camera requests return “Camera disabled by user”.
 
 ### CLI helper (node invoke)
 
-Use the main `moltbot` CLI to invoke camera commands on the macOS node.
+Use the main `verso` CLI to invoke camera commands on the macOS node.
 
 Examples:
 
 ```bash
-moltbot nodes camera list --node <id>            # list camera ids
-moltbot nodes camera snap --node <id>            # prints MEDIA:<path>
-moltbot nodes camera snap --node <id> --max-width 1280
-moltbot nodes camera snap --node <id> --delay-ms 2000
-moltbot nodes camera snap --node <id> --device-id <id>
-moltbot nodes camera clip --node <id> --duration 10s          # prints MEDIA:<path>
-moltbot nodes camera clip --node <id> --duration-ms 3000      # prints MEDIA:<path> (legacy flag)
-moltbot nodes camera clip --node <id> --device-id <id>
-moltbot nodes camera clip --node <id> --no-audio
+verso nodes camera list --node <id>            # list camera ids
+verso nodes camera snap --node <id>            # prints MEDIA:<path>
+verso nodes camera snap --node <id> --max-width 1280
+verso nodes camera snap --node <id> --delay-ms 2000
+verso nodes camera snap --node <id> --device-id <id>
+verso nodes camera clip --node <id> --duration 10s          # prints MEDIA:<path>
+verso nodes camera clip --node <id> --duration-ms 3000      # prints MEDIA:<path> (legacy flag)
+verso nodes camera clip --node <id> --device-id <id>
+verso nodes camera clip --node <id> --no-audio
 ```
 
 Notes:
-- `moltbot nodes camera snap` defaults to `maxWidth=1600` unless overridden.
+- `verso nodes camera snap` defaults to `maxWidth=1600` unless overridden.
 - On macOS, `camera.snap` waits `delayMs` (default 2000ms) after warm-up/exposure settle before capturing.
 - Photo payloads are recompressed to keep base64 under 5 MB.
 
@@ -145,7 +145,7 @@ Notes:
 For *screen* video (not camera), use the macOS companion:
 
 ```bash
-moltbot nodes screen record --node <id> --duration 10s --fps 15   # prints MEDIA:<path>
+verso nodes screen record --node <id> --duration 10s --fps 15   # prints MEDIA:<path>
 ```
 
 Notes:

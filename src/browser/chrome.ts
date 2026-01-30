@@ -14,12 +14,12 @@ import {
   resolveBrowserExecutableForPlatform,
 } from "./chrome.executables.js";
 import {
-  decorateClawdProfile,
+  decorateVersoProfile,
   ensureProfileCleanExit,
   isProfileDecorated,
 } from "./chrome.profile-decoration.js";
 import type { ResolvedBrowserConfig, ResolvedBrowserProfile } from "./config.js";
-import { DEFAULT_CLAWD_BROWSER_COLOR, DEFAULT_CLAWD_BROWSER_PROFILE_NAME } from "./constants.js";
+import { DEFAULT_VERSO_BROWSER_COLOR, DEFAULT_VERSO_BROWSER_PROFILE_NAME } from "./constants.js";
 
 const log = createSubsystemLogger("browser").child("chrome");
 
@@ -31,7 +31,7 @@ export {
   resolveBrowserExecutableForPlatform,
 } from "./chrome.executables.js";
 export {
-  decorateClawdProfile,
+  decorateVersoProfile,
   ensureProfileCleanExit,
   isProfileDecorated,
 } from "./chrome.profile-decoration.js";
@@ -57,7 +57,7 @@ function resolveBrowserExecutable(resolved: ResolvedBrowserConfig): BrowserExecu
   return resolveBrowserExecutableForPlatform(resolved, process.platform);
 }
 
-export function resolveClawdUserDataDir(profileName = DEFAULT_CLAWD_BROWSER_PROFILE_NAME) {
+export function resolveVersoUserDataDir(profileName = DEFAULT_VERSO_BROWSER_PROFILE_NAME) {
   return path.join(CONFIG_DIR, "browser", profileName, "user-data");
 }
 
@@ -150,7 +150,7 @@ export async function isChromeCdpReady(
   return await canOpenWebSocket(wsUrl, handshakeTimeoutMs);
 }
 
-export async function launchClawdChrome(
+export async function launchVersoChrome(
   resolved: ResolvedBrowserConfig,
   profile: ResolvedBrowserProfile,
 ): Promise<RunningChrome> {
@@ -166,13 +166,13 @@ export async function launchClawdChrome(
     );
   }
 
-  const userDataDir = resolveClawdUserDataDir(profile.name);
+  const userDataDir = resolveVersoUserDataDir(profile.name);
   fs.mkdirSync(userDataDir, { recursive: true });
 
   const needsDecorate = !isProfileDecorated(
     userDataDir,
     profile.name,
-    (profile.color ?? DEFAULT_CLAWD_BROWSER_COLOR).toUpperCase(),
+    (profile.color ?? DEFAULT_VERSO_BROWSER_COLOR).toUpperCase(),
   );
 
   // First launch to create preference files if missing, then decorate and relaunch.
@@ -189,6 +189,8 @@ export async function launchClawdChrome(
       "--disable-session-crashed-bubble",
       "--hide-crash-restore-bubble",
       "--password-store=basic",
+      "--disable-blink-features=AutomationControlled",
+      "--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     ];
 
     if (resolved.headless) {
@@ -246,23 +248,31 @@ export async function launchClawdChrome(
 
   if (needsDecorate) {
     try {
-      decorateClawdProfile(userDataDir, {
+      decorateVersoProfile(userDataDir, {
         name: profile.name,
         color: profile.color,
       });
-      log.info(`🦞 clawd browser profile decorated (${profile.color})`);
+      log.info(`🦞 verso browser profile decorated (${profile.color})`);
     } catch (err) {
-      log.warn(`clawd browser profile decoration failed: ${String(err)}`);
+      log.warn(`verso browser profile decoration failed: ${String(err)}`);
     }
   }
 
   try {
     ensureProfileCleanExit(userDataDir);
   } catch (err) {
-    log.warn(`clawd browser clean-exit prefs failed: ${String(err)}`);
+    log.warn(`verso browser clean-exit prefs failed: ${String(err)}`);
   }
 
   const proc = spawnOnce();
+
+  // Capture stderr for debugging launch failures
+  let lastStderr = "";
+  proc.stderr.on("data", (chunk) => {
+    const text = chunk.toString().trim();
+    if (text) lastStderr = text;
+  });
+
   // Wait for CDP to come up.
   const readyDeadline = Date.now() + 15_000;
   while (Date.now() < readyDeadline) {
@@ -276,14 +286,15 @@ export async function launchClawdChrome(
     } catch {
       // ignore
     }
+    const suffix = lastStderr ? ` (Chrome stderr: ${lastStderr})` : "";
     throw new Error(
-      `Failed to start Chrome CDP on port ${profile.cdpPort} for profile "${profile.name}".`,
+      `Failed to start Chrome CDP on port ${profile.cdpPort} for profile "${profile.name}".${suffix}`,
     );
   }
 
   const pid = proc.pid ?? -1;
   log.info(
-    `🦞 clawd browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
+    `🦞 verso browser started (${exe.kind}) profile "${profile.name}" on 127.0.0.1:${profile.cdpPort} (pid ${pid})`,
   );
 
   return {
@@ -296,7 +307,7 @@ export async function launchClawdChrome(
   };
 }
 
-export async function stopClawdChrome(running: RunningChrome, timeoutMs = 2500) {
+export async function stopVersoChrome(running: RunningChrome, timeoutMs = 2500) {
   const proc = running.proc;
   if (proc.killed) return;
   try {

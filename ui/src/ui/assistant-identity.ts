@@ -1,8 +1,8 @@
 const MAX_ASSISTANT_NAME = 50;
 const MAX_ASSISTANT_AVATAR = 200;
 
-export const DEFAULT_ASSISTANT_NAME = "Assistant";
-export const DEFAULT_ASSISTANT_AVATAR = "A";
+export const DEFAULT_ASSISTANT_NAME = "Verso";
+export const DEFAULT_ASSISTANT_AVATAR = "assets/verso-logo.png";
 
 export type AssistantIdentity = {
   agentId?: string | null;
@@ -12,8 +12,8 @@ export type AssistantIdentity = {
 
 declare global {
   interface Window {
-    __CLAWDBOT_ASSISTANT_NAME__?: string;
-    __CLAWDBOT_ASSISTANT_AVATAR__?: string;
+    __VERSO_ASSISTANT_NAME__?: string;
+    __VERSO_ASSISTANT_AVATAR__?: string;
   }
 }
 
@@ -43,7 +43,7 @@ export function resolveInjectedAssistantIdentity(): AssistantIdentity {
     return normalizeAssistantIdentity({});
   }
   return normalizeAssistantIdentity({
-    name: window.__CLAWDBOT_ASSISTANT_NAME__,
-    avatar: window.__CLAWDBOT_ASSISTANT_AVATAR__,
+    name: window.__VERSO_ASSISTANT_NAME__,
+    avatar: window.__VERSO_ASSISTANT_AVATAR__,
   });
 }

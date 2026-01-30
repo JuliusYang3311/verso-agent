@@ -3,7 +3,7 @@ import { getFinishedSession, getSession, markExited } from "../../agents/bash-pr
 import { createExecTool } from "../../agents/bash-tools.js";
 import { resolveSandboxRuntimeStatus } from "../../agents/sandbox.js";
 import { killProcessTree } from "../../agents/shell-utils.js";
-import type { MoltbotConfig } from "../../config/config.js";
+import type { VersoConfig } from "../../config/config.js";
 import { formatCliCommand } from "../../cli/command-format.js";
 import { logVerbose } from "../../globals.js";
 import { clampInt } from "../../utils.js";
@@ -33,7 +33,7 @@ type ActiveBashJob =
 
 let activeJob: ActiveBashJob | null = null;
 
-function resolveForegroundMs(cfg: MoltbotConfig): number {
+function resolveForegroundMs(cfg: VersoConfig): number {
   const raw = cfg.commands?.bashForegroundMs;
   if (typeof raw !== "number" || Number.isNaN(raw)) return DEFAULT_FOREGROUND_MS;
   return clampInt(raw, 0, MAX_FOREGROUND_MS);
@@ -87,7 +87,7 @@ function parseBashRequest(raw: string): BashRequest | null {
 
 function resolveRawCommandBody(params: {
   ctx: MsgContext;
-  cfg: MoltbotConfig;
+  cfg: VersoConfig;
   agentId?: string;
   isGroup: boolean;
 }) {
@@ -168,16 +168,14 @@ function formatElevatedUnavailableMessage(params: {
   lines.push("- agents.list[].tools.elevated.enabled");
   lines.push("- agents.list[].tools.elevated.allowFrom.<provider>");
   if (params.sessionKey) {
-    lines.push(
-      `See: ${formatCliCommand(`moltbot sandbox explain --session ${params.sessionKey}`)}`,
-    );
+    lines.push(`See: ${formatCliCommand(`verso sandbox explain --session ${params.sessionKey}`)}`);
   }
   return lines.join("\n");
 }
 
 export async function handleBashChatCommand(params: {
   ctx: MsgContext;
-  cfg: MoltbotConfig;
+  cfg: VersoConfig;
   agentId?: string;
   sessionKey: string;
   isGroup: boolean;

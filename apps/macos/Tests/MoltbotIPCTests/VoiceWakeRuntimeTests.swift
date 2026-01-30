@@ -5,7 +5,7 @@ import Testing
 
 @Suite struct VoiceWakeRuntimeTests {
     @Test func trimsAfterTriggerKeepsPostSpeech() {
-        let triggers = ["claude", "clawd"]
+        let triggers = ["claude", "verso"]
         let text = "hey Claude how are you"
         #expect(VoiceWakeRuntime._testTrimmedAfterTrigger(text, triggers: triggers) == "how are you")
     }
@@ -24,8 +24,8 @@ import Testing
     }
 
     @Test func hasContentAfterTriggerFalseWhenOnlyTrigger() {
-        let triggers = ["clawd"]
-        let text = "hey clawd"
+        let triggers = ["verso"]
+        let text = "hey verso"
         #expect(!VoiceWakeRuntime._testHasContentAfterTrigger(text, triggers: triggers))
     }
 
@@ -36,30 +36,30 @@ import Testing
     }
 
     @Test func gateRequiresGapBetweenTriggerAndCommand() {
-        let transcript = "hey clawd do thing"
+        let transcript = "hey verso do thing"
         let segments = makeSegments(
             transcript: transcript,
             words: [
                 ("hey", 0.0, 0.1),
-                ("clawd", 0.2, 0.1),
+                ("verso", 0.2, 0.1),
                 ("do", 0.35, 0.1),
                 ("thing", 0.5, 0.1),
             ])
-        let config = WakeWordGateConfig(triggers: ["clawd"], minPostTriggerGap: 0.3)
+        let config = WakeWordGateConfig(triggers: ["verso"], minPostTriggerGap: 0.3)
         #expect(WakeWordGate.match(transcript: transcript, segments: segments, config: config) == nil)
     }
 
     @Test func gateAcceptsGapAndExtractsCommand() {
-        let transcript = "hey clawd do thing"
+        let transcript = "hey verso do thing"
         let segments = makeSegments(
             transcript: transcript,
             words: [
                 ("hey", 0.0, 0.1),
-                ("clawd", 0.2, 0.1),
+                ("verso", 0.2, 0.1),
                 ("do", 0.9, 0.1),
                 ("thing", 1.1, 0.1),
             ])
-        let config = WakeWordGateConfig(triggers: ["clawd"], minPostTriggerGap: 0.3)
+        let config = WakeWordGateConfig(triggers: ["verso"], minPostTriggerGap: 0.3)
         #expect(WakeWordGate.match(transcript: transcript, segments: segments, config: config)?.command == "do thing")
     }
 }

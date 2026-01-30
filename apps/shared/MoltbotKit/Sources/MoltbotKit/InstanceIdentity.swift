@@ -6,7 +6,7 @@ import UIKit
 
 public enum InstanceIdentity {
     private static let suiteName = "bot.molt.shared"
-    private static let legacySuiteName = "com.clawdbot.shared"
+    private static let legacySuiteName = "com.verso.shared"
     private static let instanceIdKey = "instanceId"
 
     private static var defaults: UserDefaults {
