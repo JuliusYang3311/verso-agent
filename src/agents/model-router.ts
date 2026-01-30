@@ -1,30 +1,14 @@
 /**
- * Smart model router for task-based model selection.
- * Classifies user input and selects appropriate model for execution.
+ * Smart model router for dynamic model selection.
+ * Analyzes user input and selects appropriate model from available candidates.
  */
 
 import type { VersoConfig } from "../config/config.js";
-import type { RouterConfig, RouterTaskType } from "../config/types.router.js";
+import type { RouterConfig } from "../config/types.router.js";
 import { parseModelRef, type ModelRef } from "./model-selection.js";
 import { logVerbose } from "../globals.js";
 
-const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 5000;
-const DEFAULT_TASK_TYPE: RouterTaskType = "chat";
-
-const DEFAULT_CLASSIFICATION_PROMPT = `You are a task classifier. Analyze the user's message and classify it into exactly one category.
-
-Categories:
-- coding: Programming, debugging, code review, technical implementation
-- writing: Creative writing, essays, documentation, editing text
-- analysis: Data analysis, research, summarization, evaluation
-- reasoning: Math, logic, problem-solving, planning, complex decisions
-- creative: Brainstorming, design, artistic content, creative ideas
-- chat: General conversation, simple questions, greetings
-
-User message:
-{input}
-
-Respond with ONLY the category name (one word, lowercase). No explanation.`;
+const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 10000;
 
 const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS list for the USER INPUT.
 
@@ -52,54 +36,13 @@ Response: <selected_model>google/gemini-2.5-pro</selected_model>
 
 ### TASK:
 USER INPUT: "{input}"
-Response:`;
-
-/**
- * Build the classification prompt with user input.
- */
-export function buildClassificationPrompt(input: string, customPrompt?: string): string {
-  const template = customPrompt || DEFAULT_CLASSIFICATION_PROMPT;
-  return template.replace("{input}", input);
-}
+Response:<selected_model>model-id</selected_model>`;
 
 export function buildSelectionPrompt(params: { input: string; models: string[] }): string {
   return DYNAMIC_SELECTION_PROMPT.replace("{input}", params.input).replace(
     "{models}",
     params.models.map((m) => `- ${m}`).join("\n"),
   );
-}
-
-/**
- * Parse the LLM response to extract task type.
- */
-export function parseClassificationResponse(
-  response: string,
-  validTypes: Set<string>,
-  defaultTask: RouterTaskType,
-): RouterTaskType {
-  const cleaned = response.trim().toLowerCase();
-  // Try to extract a single word that matches a valid type
-  const words = cleaned.split(/\s+/);
-  for (const word of words) {
-    if (validTypes.has(word)) {
-      return word as RouterTaskType;
-    }
-  }
-  return defaultTask;
-}
-
-/**
- * Get valid task types from router config.
- */
-export function getValidTaskTypes(routerConfig: RouterConfig): Set<string> {
-  const types = new Set<string>(["coding", "writing", "analysis", "chat", "reasoning", "creative"]);
-  // Add any custom task types from taskModels config
-  if (routerConfig.taskModels) {
-    for (const key of Object.keys(routerConfig.taskModels)) {
-      types.add(key);
-    }
-  }
-  return types;
 }
 
 /**
@@ -114,40 +57,11 @@ export function resolveRouterConfig(cfg: VersoConfig): RouterConfig | null {
 }
 
 /**
- * Resolve model for a given task type from router config.
- */
-export function resolveModelForTask(
-  taskType: RouterTaskType,
-  routerConfig: RouterConfig,
-  defaultProvider: string,
-): ModelRef | null {
-  const taskModels = routerConfig.taskModels;
-  if (!taskModels) {
-    return null;
-  }
-
-  const modelRef = taskModels[taskType];
-  if (!modelRef) {
-    // Try default task
-    const defaultTask = routerConfig.defaultTask ?? DEFAULT_TASK_TYPE;
-    const defaultModelRef = taskModels[defaultTask];
-    if (!defaultModelRef) {
-      return null;
-    }
-    return parseModelRef(defaultModelRef, defaultProvider);
-  }
-
-  return parseModelRef(modelRef, defaultProvider);
-}
-
-/**
  * Result of router model resolution.
  */
 export type RouterModelResult = {
   /** Whether router was used (enabled and configured) */
   routerUsed: boolean;
-  /** Classified task type (if router was used) */
-  taskType?: RouterTaskType;
   /** Resolved provider (if router provided a model) */
   provider?: string;
   /** Resolved model (if router provided a model) */
@@ -158,24 +72,8 @@ export type RouterModelResult = {
   error?: string;
 };
 
-/**
- * Parameters for the classifier call.
- */
-export type ClassifyTaskParams = {
-  input: string;
-  routerConfig: RouterConfig;
-  /** Called to make the actual LLM classification call */
-  callClassifier: (params: {
-    provider: string;
-    model: string;
-    prompt: string;
-    timeoutMs: number;
-  }) => Promise<string>;
-};
-
 export type SelectDynamicModelParams = {
   input: string;
-  taskType: RouterTaskType;
   candidates: string[];
   callClassifier: (params: {
     provider: string;
@@ -186,52 +84,8 @@ export type SelectDynamicModelParams = {
   classifierModel: string;
 };
 
-/**
- * Classify task type using the configured classifier model.
- */
-export async function classifyTask(
-  params: ClassifyTaskParams,
-): Promise<{ taskType: RouterTaskType; timeMs: number } | { error: string }> {
-  const { input, routerConfig, callClassifier } = params;
-
-  const classifierModel = routerConfig.classifierModel;
-  if (!classifierModel) {
-    return { error: "No classifier model configured" };
-  }
-
-  const parsed = parseModelRef(classifierModel, "google");
-  if (!parsed) {
-    return { error: `Invalid classifier model: ${classifierModel}` };
-  }
-
-  const prompt = buildClassificationPrompt(input, routerConfig.classificationPrompt);
-  const timeoutMs = routerConfig.classificationTimeoutMs ?? DEFAULT_CLASSIFICATION_TIMEOUT_MS;
-
-  const startTime = Date.now();
-  try {
-    const response = await callClassifier({
-      provider: parsed.provider,
-      model: parsed.model,
-      prompt,
-      timeoutMs,
-    });
-
-    const validTypes = getValidTaskTypes(routerConfig);
-    const defaultTask = routerConfig.defaultTask ?? DEFAULT_TASK_TYPE;
-    const taskType = parseClassificationResponse(response, validTypes, defaultTask);
-
-    return {
-      taskType,
-      timeMs: Date.now() - startTime,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { error: `Classification failed: ${message}` };
-  }
-}
-
 export async function selectDynamicModel(params: SelectDynamicModelParams): Promise<string | null> {
-  const { input, taskType, candidates, callClassifier, classifierModel } = params;
+  const { input, candidates, callClassifier, classifierModel } = params;
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0];
 
@@ -381,7 +235,6 @@ export async function resolveRouterModel(params: {
     if (candidates.length > 0) {
       const selectedId = await selectDynamicModel({
         input,
-        taskType,
         candidates,
         callClassifier,
         classifierModel: routerConfig.classifierModel ?? "google/gemini-2.0-flash",
@@ -402,15 +255,13 @@ export async function resolveRouterModel(params: {
   if (!resolvedModel || !resolvedProvider) {
     return {
       routerUsed: true,
-      taskType,
       classificationTimeMs: timeMs,
-      error: `No model available for task: ${taskType} (excluded: ${excludeModels.join(", ")})`,
+      error: `No model available (excluded: ${excludeModels.join(", ")})`,
     };
   }
 
   return {
     routerUsed: true,
-    taskType,
     provider: resolvedProvider,
     model: resolvedModel,
     classificationTimeMs: timeMs,

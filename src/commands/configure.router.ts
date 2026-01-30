@@ -79,17 +79,12 @@ export async function promptRouterConfig(
     runtime,
   );
 
-  // Simplified: No task mapping configuration anymore. Pure dynamic.
-  const taskModels = existingRouter?.taskModels ?? {};
-
   const routerConfig: RouterConfig = {
     enabled: true,
     classifierModel: String(classifierModel) || DEFAULT_CLASSIFIER_MODEL,
-    taskModels: Object.keys(taskModels).length > 0 ? taskModels : undefined,
-    defaultTask: existingRouter?.defaultTask ?? "chat",
   };
 
-  runtime.log(`Router enabled with ${Object.keys(taskModels).length} task mappings`);
+  runtime.log(`Router enabled for dynamic model selection`);
 
   // Ask for Global Default/Fallback Model
   // (Used when router is disabled, fails, or returns no result)

@@ -107,9 +107,6 @@ export const AgentDefaultsSchema = z
       .object({
         enabled: z.boolean().optional(),
         classifierModel: z.string().optional(),
-        taskModels: z.record(z.string(), z.string()).optional(),
-        defaultTask: z.string().optional(),
-        classificationPrompt: z.string().optional(),
         classificationTimeoutMs: z.number().int().positive().optional(),
       })
       .strict()

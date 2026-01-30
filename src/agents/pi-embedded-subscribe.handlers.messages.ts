@@ -203,7 +203,11 @@ export function handleMessageEnd(
 
   if (shouldEmitReasoningBeforeAnswer) maybeEmitReasoning();
 
+  // Only emit block replies for final outputs, not intermediate tool call rounds
+  const isToolCallRound = assistantMessage.stopReason === "toolUse";
+
   if (
+    !isToolCallRound &&
     (ctx.state.blockReplyBreak === "message_end" ||
       (ctx.blockChunker ? ctx.blockChunker.hasBuffered() : ctx.state.blockBuffer.length > 0)) &&
     text &&
@@ -257,7 +261,7 @@ export function handleMessageEnd(
     ctx.emitReasoningStream(rawThinking);
   }
 
-  if (ctx.state.blockReplyBreak === "text_end" && onBlockReply) {
+  if (!isToolCallRound && ctx.state.blockReplyBreak === "text_end" && onBlockReply) {
     const tailResult = ctx.consumeReplyDirectives("", { final: true });
     if (tailResult) {
       const {

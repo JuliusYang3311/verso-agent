@@ -16,6 +16,7 @@ import { promptGatewayConfig } from "./configure.gateway.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
 import { promptRouterConfig } from "./configure.router.js";
 import { promptBrowserConfig } from "./configure.browser.js";
+import { promptNodeHostConfig } from "./configure.nodehost.js";
 import { promptGoogleConfig } from "./configure.google.js";
 import type {
   ChannelsWizardMode,
@@ -334,6 +335,10 @@ export async function runConfigureWizard(
         nextConfig = await promptBrowserConfig(nextConfig, runtime);
       }
 
+      if (selected.includes("nodehost")) {
+        nextConfig = await promptNodeHostConfig(nextConfig, runtime);
+      }
+
       if (selected.includes("web")) {
         nextConfig = await promptWebToolsConfig(nextConfig, runtime);
       }
@@ -468,6 +473,11 @@ export async function runConfigureWizard(
 
         if (choice === "browser") {
           nextConfig = await promptBrowserConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "nodehost") {
+          nextConfig = await promptNodeHostConfig(nextConfig, runtime);
           await persistConfig();
         }
 

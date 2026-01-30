@@ -22,6 +22,7 @@ import {
   gmailListMessages,
   gmailGetMessage,
   gmailSendEmail,
+  gmailSendEmailWithAttachment,
   docsCreateDocument,
   sheetsCreateSpreadsheet,
   sheetsAppendValues,
@@ -30,6 +31,7 @@ import {
   driveListFiles,
   slidesCreatePresentation,
   driveUploadFile,
+  driveDownloadFile,
 } from "./tools/web-tools.js";
 import { createTtsTool } from "./tools/tts-tool.js";
 
@@ -156,7 +158,7 @@ export function createVersoTools(options?: {
   if (options?.config?.google?.enabled) {
     const services = options.config.google.services || ["gmail", "docs", "calendar"];
     if (services.includes("gmail")) {
-      tools.push(gmailListMessages, gmailGetMessage, gmailSendEmail);
+      tools.push(gmailListMessages, gmailGetMessage, gmailSendEmail, gmailSendEmailWithAttachment);
     }
     if (services.includes("docs")) {
       tools.push(docsCreateDocument);
@@ -168,7 +170,7 @@ export function createVersoTools(options?: {
       tools.push(calendarListEvents, calendarCreateEvent);
     }
     if (services.includes("drive")) {
-      tools.push(driveListFiles, driveUploadFile);
+      tools.push(driveListFiles, driveUploadFile, driveDownloadFile);
     }
     if (services.includes("slides")) {
       tools.push(slidesCreatePresentation);

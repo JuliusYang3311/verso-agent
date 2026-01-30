@@ -367,12 +367,10 @@ export async function runPreparedReply(
         finalModel = routerResult.model;
         if (retryCount > 0) {
           console.log(
-            `[Router] Retry ${retryCount}/${maxRetries}: Selected ${finalProvider}/${finalModel} (task: ${routerResult.taskType})`,
+            `[Router] Retry ${retryCount}/${maxRetries}: Selected ${finalProvider}/${finalModel}`,
           );
         } else {
-          console.log(
-            `[Router] Selected ${finalProvider}/${finalModel} (task: ${routerResult.taskType})`,
-          );
+          console.log(`[Router] Selected ${finalProvider}/${finalModel}`);
         }
       } else if (routerResult.error) {
         console.log(`[Router] classification failed: ${routerResult.error}`);

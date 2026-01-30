@@ -301,3 +301,80 @@ export const driveUploadFile: AnyAgentTool = {
     return jsonResult(res.data);
   },
 };
+
+export const driveDownloadFile: AnyAgentTool = {
+  name: "drive_download_file",
+  label: "Download from Drive",
+  description: "Download a file from Google Drive to local filesystem.",
+  parameters: Type.Object({
+    fileId: Type.String({ description: "The ID of the file to download from Google Drive" }),
+    localPath: Type.String({
+      description: "Local path where the file should be saved (including filename)",
+    }),
+    exportMimeType: Type.Optional(
+      Type.String({
+        description: "MIME type to export Google Workspace files as (e.g., application/pdf)",
+      }),
+    ),
+  }),
+  async execute(_toolCallId, params) {
+    const auth = await getGoogleOAuthClient();
+    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+
+    const drive = google.drive({ version: "v3", auth });
+    const fileId = readStringParam(params, "fileId", { required: true });
+    const localPath = readStringParam(params, "localPath", { required: true });
+    const exportMimeType = readStringParam(params, "exportMimeType");
+
+    // First, get file metadata to check mimeType
+    const metadata = await drive.files.get({
+      fileId,
+      fields: "mimeType, name",
+    });
+
+    const mimeType = metadata.data.mimeType;
+    const isGoogleDoc = mimeType?.startsWith("application/vnd.google-apps.");
+
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+
+    // Ensure directory exists
+    const dir = path.dirname(localPath);
+    fs.mkdirSync(dir, { recursive: true });
+
+    let res;
+    if (isGoogleDoc) {
+      // It's a Google Workspace file, must export
+      const targetMimeType = exportMimeType || "application/pdf";
+      res = await drive.files.export(
+        { fileId, mimeType: targetMimeType },
+        { responseType: "stream" },
+      );
+    } else {
+      // It's a binary file, simple download
+      res = await drive.files.get({ fileId, alt: "media" }, { responseType: "stream" });
+    }
+
+    // Write to local file
+    const dest = fs.createWriteStream(localPath);
+
+    return new Promise((resolve, reject) => {
+      (res.data as any)
+        .on("end", () => {
+          resolve(
+            jsonResult({
+              success: true,
+              fileId,
+              localPath,
+              originalMimeType: mimeType,
+              message: `File ${isGoogleDoc ? "exported" : "downloaded"} successfully to ${localPath}`,
+            }),
+          );
+        })
+        .on("error", (err: Error) => {
+          reject(new Error(`Download failed: ${err.message}`));
+        })
+        .pipe(dest);
+    });
+  },
+};

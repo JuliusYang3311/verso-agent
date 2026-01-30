@@ -110,3 +110,83 @@ export const gmailSendEmail: AnyAgentTool = {
     return jsonResult(res.data);
   },
 };
+
+export const gmailSendEmailWithAttachment: AnyAgentTool = {
+  name: "gmail_send_email_with_attachment",
+  label: "Send Gmail Email with Attachment",
+  description: "Send an email via Gmail with file attachments.",
+  parameters: Type.Object({
+    to: Type.String({ description: "Recipient email address" }),
+    subject: Type.String({ description: "Email subject" }),
+    body: Type.String({ description: "Email body text" }),
+    attachmentPath: Type.String({
+      description: "Path to the local file to attach (e.g., /path/to/document.pdf)",
+    }),
+  }),
+  async execute(_toolCallId, params) {
+    const auth = await getGoogleOAuthClient();
+    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+
+    const gmail = google.gmail({ version: "v1", auth });
+    const to = readStringParam(params, "to", { required: true });
+    const subject = readStringParam(params, "subject", { required: true });
+    const body = readStringParam(params, "body", { required: true });
+    const attachmentPath = readStringParam(params, "attachmentPath", { required: true });
+
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const mime = await import("mime-types");
+
+    if (!fs.existsSync(attachmentPath)) {
+      throw new Error(`Attachment file not found: ${attachmentPath}`);
+    }
+
+    const fileName = path.basename(attachmentPath);
+    const mimeType = mime.lookup(attachmentPath) || "application/octet-stream";
+    const fileContent = fs.readFileSync(attachmentPath);
+    const base64File = fileContent.toString("base64");
+
+    const boundary = "----=_Part_" + Date.now();
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString("base64")}?=`;
+
+    const messageParts = [
+      `To: ${to}`,
+      `Subject: ${utf8Subject}`,
+      "MIME-Version: 1.0",
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      body,
+      "",
+      `--${boundary}`,
+      `Content-Type: ${mimeType}; name="${fileName}"`,
+      "Content-Transfer-Encoding: base64",
+      `Content-Disposition: attachment; filename="${fileName}"`,
+      "",
+      base64File,
+      "",
+      `--${boundary}--`,
+    ];
+
+    const message = messageParts.join("\n");
+    const encodedMessage = Buffer.from(message)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const res = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    return jsonResult({
+      ...res.data,
+      attachmentSent: fileName,
+    });
+  },
+};
