@@ -19,5 +19,9 @@ export function collectConfigEnvVars(cfg?: VersoConfig): Record<string, string> 
     entries[key] = value;
   }
 
+  if (cfg?.moltbook?.apiKey) {
+    entries.MOLTBOOK_API_KEY = cfg.moltbook.apiKey;
+  }
+
   return entries;
 }
