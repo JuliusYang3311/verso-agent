@@ -21,14 +21,14 @@ const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS
 3. DO NOT include any other text.
 4. **PRIORITY RULE**: Unless the User Input requires high reasoning (e.g., coding, complex document analysis, creative writing) or specifically mentions a powerful model, ALWAYS prefer the most cost-effective model (typically 'flash' models) that can complete the task. Reserve 'pro' models for high-complexity work.
 5. **MODEL HIERARCHY & COST RULES**:
-   - **Versioning**: Higher version number = More advanced (e.g., 2.0 > 1.5).
+   - **Versioning**: Higher version number = More advanced (e.g., 3.0 > 2.5).
    - **Tiers**: 'Pro' is superior to 'Flash' in reasoning but ~2x more expensive.
    - **Generations**: Newer generation > Older generation in performance.
    - **Cost Scaling**:
      - Flash < Pro (within same gen).
      - Older Gen < Newer Gen (typically).
      - Top-tier capability is significantly more expensive than mid-tier.
-   - **Selection Strategy**: Use the cheapest sufficient model. Only select Pro/Newer models if the complexity demands it.
+   - **Selection Strategy**: Under the premise of meeting task requirements, choose the cheapest model. Only select Pro/Newer models if the complexity demands it.
 
 ### EXAMPLES:
 Input: "hello"
