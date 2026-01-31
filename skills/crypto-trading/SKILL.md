@@ -86,6 +86,28 @@ Perform on-chain swaps directly via your wallet.
     python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
     ```
 
+    python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
+    ```
+
+### 4. Arbitrage Monitor (Live)
+Real-time scanner comparing Market Price (CoinGecko) vs Chain Price (Uniswap V3).
+
+**Features:**
+- **Dynamic Hot List**: Automatically fetches Top tokens from 1inch if no args provided.
+- **Custom List**: Spy on specific assets with `--tokens`.
+
+**Usage:**
+```bash
+# Monitor "Hot" DeFi Blue Chips (Default)
+python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor
+
+# Monitor Specific Tokens
+python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --tokens PEPE,SHIB,WETH
+
+# Auto-Trade Mode (Execute Swaps if Profit > 2%)
+python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --auto-trade --interval 300
+```
+
 **Note:**
 - `evm_wallet.py` requires `web3` library.
 
