@@ -23,5 +23,12 @@ export function collectConfigEnvVars(cfg?: VersoConfig): Record<string, string> 
     entries.MOLTBOOK_API_KEY = cfg.moltbook.apiKey;
   }
 
+  if (cfg?.crypto?.alchemyApiKey) {
+    entries.ALCHEMY_API_KEY = cfg.crypto.alchemyApiKey;
+  }
+  if (cfg?.crypto?.privateKey) {
+    entries.WALLET_PRIVATE_KEY = cfg.crypto.privateKey;
+  }
+
   return entries;
 }
