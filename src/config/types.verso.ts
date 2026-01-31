@@ -99,6 +99,14 @@ export type VersoConfig = {
   talk?: TalkConfig;
   gateway?: GatewayConfig;
   google?: GoogleConfig;
+  moltbook?: MoltbookConfig;
+};
+
+export type MoltbookConfig = {
+  enabled?: boolean;
+  apiKey?: string;
+  agentName?: string;
+  bio?: string;
 };
 
 export type ConfigValidationIssue = {

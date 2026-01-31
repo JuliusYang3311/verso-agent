@@ -554,6 +554,15 @@ export const VersoSchema = z
       .strict()
       .optional(),
     google: GoogleConfigSchema,
+    moltbook: z
+      .object({
+        enabled: z.boolean().optional(),
+        apiKey: z.string().optional(),
+        agentName: z.string().optional(),
+        bio: z.string().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((cfg, ctx) => {

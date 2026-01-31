@@ -19,6 +19,7 @@ import { promptBrowserConfig } from "./configure.browser.js";
 import { promptNodeHostConfig } from "./configure.nodehost.js";
 import { promptCryptoConfig } from "./configure.crypto.js";
 import { promptGoogleConfig } from "./configure.google.js";
+import { configureMoltbook } from "./configure.moltbook.js";
 import type {
   ChannelsWizardMode,
   ConfigureWizardParams,
@@ -529,6 +530,11 @@ export async function runConfigureWizard(
 
         if (choice === "crypto") {
           nextConfig = await promptCryptoConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "moltbook") {
+          await configureMoltbook({ cfg: nextConfig });
           await persistConfig();
         }
 
