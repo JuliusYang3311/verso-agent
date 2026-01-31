@@ -41,6 +41,16 @@ const GoogleConfigSchema = z
   .strict()
   .optional();
 
+const CryptoConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    rpcUrl: z.string().optional(),
+    privateKey: z.string().optional(),
+    explorerApiKey: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
 export const VersoSchema = z
   .object({
     meta: z
@@ -50,6 +60,7 @@ export const VersoSchema = z
       })
       .strict()
       .optional(),
+    crypto: CryptoConfigSchema,
     env: z
       .object({
         shellEnv: z

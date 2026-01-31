@@ -17,6 +17,7 @@ import { promptAuthConfig } from "./configure.gateway-auth.js";
 import { promptRouterConfig } from "./configure.router.js";
 import { promptBrowserConfig } from "./configure.browser.js";
 import { promptNodeHostConfig } from "./configure.nodehost.js";
+import { promptCryptoConfig } from "./configure.crypto.js";
 import { promptGoogleConfig } from "./configure.google.js";
 import type {
   ChannelsWizardMode,
@@ -374,6 +375,10 @@ export async function runConfigureWizard(
         nextConfig = await setupSkills(nextConfig, wsDir, runtime, prompter);
       }
 
+      if (selected.includes("crypto")) {
+        nextConfig = await promptCryptoConfig(nextConfig, runtime);
+      }
+
       await persistConfig();
 
       if (selected.includes("daemon")) {
@@ -519,6 +524,11 @@ export async function runConfigureWizard(
         if (choice === "skills") {
           const wsDir = resolveUserPath(workspaceDir);
           nextConfig = await setupSkills(nextConfig, wsDir, runtime, prompter);
+          await persistConfig();
+        }
+
+        if (choice === "crypto") {
+          nextConfig = await promptCryptoConfig(nextConfig, runtime);
           await persistConfig();
         }
 

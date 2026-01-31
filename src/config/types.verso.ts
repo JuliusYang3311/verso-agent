@@ -1,6 +1,7 @@
 import type { AgentBinding, AgentsConfig } from "./types.agents.js";
 import type { ApprovalsConfig } from "./types.approvals.js";
 import type { AuthConfig } from "./types.auth.js";
+import type { CryptoConfig } from "./types.crypto.js";
 import type { GoogleConfig } from "./types.google.js";
 import type { DiagnosticsConfig, LoggingConfig, SessionConfig, WebConfig } from "./types.base.js";
 import type { BrowserConfig } from "./types.browser.js";
@@ -33,6 +34,7 @@ export type VersoConfig = {
     lastTouchedAt?: string;
   };
   auth?: AuthConfig;
+  crypto?: CryptoConfig;
   env?: {
     /** Opt-in: import missing secrets from a login shell environment (exec `$SHELL -l -c 'env -0'`). */
     shellEnv?: {
