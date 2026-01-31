@@ -1,22 +1,22 @@
 import type { VersoConfig } from "./types.js";
 
 export function collectConfigEnvVars(cfg?: VersoConfig): Record<string, string> {
-  const envConfig = cfg?.env;
-  if (!envConfig) return {};
-
   const entries: Record<string, string> = {};
+  const envConfig = cfg?.env;
 
-  if (envConfig.vars) {
+  if (envConfig?.vars) {
     for (const [key, value] of Object.entries(envConfig.vars)) {
       if (!value) continue;
       entries[key] = value;
     }
   }
 
-  for (const [key, value] of Object.entries(envConfig)) {
-    if (key === "shellEnv" || key === "vars") continue;
-    if (typeof value !== "string" || !value.trim()) continue;
-    entries[key] = value;
+  if (envConfig) {
+    for (const [key, value] of Object.entries(envConfig)) {
+      if (key === "shellEnv" || key === "vars") continue;
+      if (typeof value !== "string" || !value.trim()) continue;
+      entries[key] = value;
+    }
   }
 
   if (cfg?.moltbook?.apiKey) {

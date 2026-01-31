@@ -217,7 +217,7 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       });
 
       // Apply config.env to process.env BEFORE substitution so ${VAR} can reference config-defined vars
-      if (resolved && typeof resolved === "object" && "env" in resolved) {
+      if (resolved && typeof resolved === "object") {
         applyConfigEnv(resolved as VersoConfig, deps.env);
       }
 
