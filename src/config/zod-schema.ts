@@ -47,6 +47,7 @@ const CryptoConfigSchema = z
     rpcUrl: z.string().optional(),
     privateKey: z.string().optional(),
     explorerApiKey: z.string().optional(),
+    alchemyApiKey: z.string().optional(),
   })
   .strict()
   .optional();

@@ -3,4 +3,5 @@ export type CryptoConfig = {
   rpcUrl?: string;
   privateKey?: string;
   explorerApiKey?: string;
+  alchemyApiKey?: string;
 };

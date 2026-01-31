@@ -11,35 +11,36 @@ This skill allows you to check cryptocurrency prices and execute trades via on-c
 
 To use wallet features, configure via `verso config` or set manually:
 
-### On-Chain Configuration (Multi-chain)
-To use on-chain wallet features (native transfers & swaps):
-- `WALLET_PRIVATE_KEY`: Your wallet private key (keep this secure!).
-- `RPC_URL`: RPC Endpoint. **The script automatically detects the network (Polygon, Ethereum, Optimism, Arbitrum) based on this URL.**
-  - **Polygon**: `https://polygon-rpc.com`
-  - **Ethereum**: `https://cloudflare-eth.com`
-  - **Optimism**: `https://mainnet.optimism.io`
-  - **Arbitrum**: `https://arb1.arbitrum.io/rpc`
-- `EXPLORER_API_KEY`: **Etherscan API Key** (Unified V2). One key now works for all networks (Polygon, Optimism, Arbitrum, Ethereum).
+### On-Chain Configuration (Private RPC)
+To use on-chain wallet features, you **must** configure an Alchemy API Key for stability.
 
-### Troubleshooting
-If you encounter "Too many requests", try using a different RPC URL. The script automatically optimizes Gas fees (EIP-1559) for efficiency.
+- `WALLET_PRIVATE_KEY`: Your wallet private key.
+- `ALCHEMY_API_KEY`: Your Alchemy Project API Key.
+- `EXPLORER_API_KEY`: Etherscan Unified API Key (Optional).
+
+*Run `verso configure` to set these up interactively.*
 
 ## Capabilities
 
 ### 1. Check Prices & History
 
-Use `get_price.py` for market data or `evm_wallet.py` for history.
-
 **Usage:**
 ```bash
-# Market Price
-python3 skills/crypto-trading/scripts/get_price.py bitcoin
-
-# Wallet History (Last 10 Txs)
+# Wallet History (Polygon default)
 python3 skills/crypto-trading/scripts/evm_wallet.py --action history
+
+# Check Ethereum History
+python3 skills/crypto-trading/scripts/evm_wallet.py --action history --network ethereum
 ```
 
 ### 2. On-Chain Wallet (EVM)
+Supports **Polygon**, **Ethereum**, **Optimism**, **Arbitrum**.
+Use `--network <name>` to switch chains (default: `polygon`).
+
+**Balance:**
+```bash
+python3 skills/crypto-trading/scripts/evm_wallet.py --action balance --network optimism
+```
 
 Use the `scripts/evm_wallet.py` script to interact with your wallet.
 
@@ -75,9 +76,14 @@ Perform on-chain swaps directly via your wallet.
     ```
 
 *   **Swap with Slippage Protection:**
-    ```bash
     # Default slippage is 0.5%
     python3 skills/crypto-trading/scripts/evm_wallet.py --action swap --token-in <Addr> --token-out <Addr> --amount 10 --slippage 1.0
+    ```
+
+*   **Custom Fee Tier (For Low Liquidity / Stablecoins):**
+    ```bash
+    # Use 500 for Stablecoins (0.05%), 3000 for standard (0.3%), 10000 for exotic (1%)
+    python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
     ```
 
 **Note:**

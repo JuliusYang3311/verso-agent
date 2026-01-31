@@ -26,7 +26,7 @@ CHAIN_CONFIG = {
         'name': 'Polygon',
         'symbol': 'MATIC',
         'router': "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-        'quoter': "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+        'quoter': "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         'rpc_fallbacks': [
             'https://polygon-rpc.com', 'https://rpc-mainnet.maticvigil.com',
             'https://1rpc.io/matic', 'https://polygon.drpc.org'
@@ -36,21 +36,21 @@ CHAIN_CONFIG = {
         'name': 'Ethereum',
         'symbol': 'ETH',
         'router': "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-        'quoter': "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+        'quoter': "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         'rpc_fallbacks': ['https://cloudflare-eth.com', 'https://eth.llamarpc.com']
     },
     10: {
         'name': 'Optimism',
         'symbol': 'ETH',
         'router': "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-        'quoter': "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+        'quoter': "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         'rpc_fallbacks': ['https://mainnet.optimism.io', 'https://optimism.drpc.org']
     },
     42161: {
         'name': 'Arbitrum One',
         'symbol': 'ETH',
         'router': "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-        'quoter': "0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6",
+        'quoter': "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
         'rpc_fallbacks': ['https://arb1.arbitrum.io/rpc', 'https://arbitrum.drpc.org']
     }
 }
@@ -89,7 +89,7 @@ def calc_gas_fees(w3):
     try:
         latest = w3.eth.get_block("latest")
         base_fee = latest['baseFeePerGas']
-        priority_fee = w3.to_wei(1.5, 'gwei')
+        priority_fee = w3.to_wei(30, 'gwei')
         max_fee = (2 * base_fee) + priority_fee
         return {'maxFeePerGas': max_fee, 'maxPriorityFeePerGas': priority_fee}
     except:
@@ -152,14 +152,19 @@ def fetch_portfolio_from_api(address, chain_id, api_key=None):
     return list(candidates), native_bal
 
 def fetch_native_price(chain_id):
-    coin = 'polygon-ecosystem-token' if chain_id == 137 else 'ethereum'
-    if chain_id == 10: coin = 'optimism'
-    if chain_id == 42161: coin = 'arbitrum'
-    try:
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin}&vs_currencies=usd"
-        return requests.get(url, timeout=5).json().get(coin, {}).get('usd', 0)
-    except:
-        return 0
+    # Try POL ID first, then legacy MATIC
+    coins = ['polygon-ecosystem-token', 'matic-network'] if chain_id == 137 else ['ethereum']
+    if chain_id == 10: coins = ['optimism']
+    if chain_id == 42161: coins = ['arbitrum']
+    
+    for coin in coins:
+        try:
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin}&vs_currencies=usd"
+            price = requests.get(url, timeout=5).json().get(coin, {}).get('usd', 0)
+            if price > 0: return price
+        except:
+            pass
+    return 0
 
 # --- Main ---
 
@@ -219,8 +224,6 @@ def get_quote(w3, token_in, token_out, amount_in_wei, fee=3000):
         print(f"Quote Error: {e}")
         return None
 
-# --- Main ---
-
 def main():
     parser = argparse.ArgumentParser(description='Verso EVM Wallet')
     parser.add_argument('--action', required=True, choices=['balance', 'transfer', 'portfolio', 'explorer', 'approve', 'swap', 'quote', 'history'])
@@ -229,14 +232,22 @@ def main():
     parser.add_argument('--token', help='Token Symbol/Address')
     parser.add_argument('--token-in', help='Swap Input Token Address')
     parser.add_argument('--token-out', help='Swap Output Token Address')
+    parser.add_argument('--fee', type=int, default=3000, help='Pool Fee Tier (e.g. 500, 3000, 10000). Default 3000')
     parser.add_argument('--slippage', type=float, default=0.5, help='Slippage tolerance %% (default 0.5)')
-    parser.add_argument('--rpc', help='Override RPC')
+    
+    # Network Selection (replaces generic --rpc)
+    parser.add_argument('--network', default='polygon', choices=['polygon', 'ethereum', 'optimism', 'arbitrum'], help='Network selection (default: polygon)')
+    
+    # Legacy args, kept for compatibility but de-prioritized
+    parser.add_argument('--rpc', help='(Deprecated) Override RPC URL') 
     parser.add_argument('--api-key', help='Explorer API Key')
     args = parser.parse_args()
 
-    # Load Config (simplified logic)
+    # Load Config
     config_path = os.path.expanduser("~/.verso/verso.json")
-    rpc_url = os.getenv('RPC_URL', 'https://polygon-rpc.com')
+    # Default to None, strict Alchemy requirement
+    rpc_url = None 
+    alchemy_api_key = os.getenv('ALCHEMY_API_KEY')
     private_key = os.getenv('WALLET_PRIVATE_KEY')
     explorer_api_key = os.getenv('EXPLORER_API_KEY')
 
@@ -245,7 +256,7 @@ def main():
             with open(config_path) as f:
                 c = json.load(f).get('crypto', {})
                 if c.get('enabled'):
-                    rpc_url = c.get('rpcUrl', rpc_url)
+                    alchemy_api_key = c.get('alchemyApiKey', alchemy_api_key)
                     private_key = c.get('privateKey', private_key)
                     explorer_api_key = c.get('explorerApiKey', explorer_api_key)
         except: pass
@@ -253,6 +264,24 @@ def main():
     if args.rpc: rpc_url = args.rpc
     if args.api_key: explorer_api_key = args.api_key
 
+    if not alchemy_api_key and not args.rpc:
+        print("Error: Alchemy API Key is required for Private RPC. Please run 'verso configure' or set ALCHEMY_API_KEY.")
+        sys.exit(1)
+
+    if args.rpc:
+        rpc_url = args.rpc
+    else:
+        # Build Alchemy URL based on --network
+        alchemy_map = {
+            'polygon': "polygon-mainnet",
+            'ethereum': "eth-mainnet",
+            'optimism': "opt-mainnet",
+            'arbitrum': "arb-mainnet"
+        }
+        network_key = alchemy_map.get(args.network, 'polygon-mainnet')
+        rpc_url = f"https://{network_key}.g.alchemy.com/v2/{alchemy_api_key}"
+        print(f"⚡ Connected to {args.network.title()} via Alchemy Private RPC")
+        
     w3 = get_web3_with_fallback(rpc_url)
     
     chain_id = w3.eth.chain_id
@@ -302,15 +331,24 @@ def main():
         c_in = w3.eth.contract(address=t_in, abi=abi_dec)
         c_out = w3.eth.contract(address=t_out, abi=abi_dec)
         
-        dec_in = c_in.functions.decimals().call()
-        sym_in = c_in.functions.symbol().call()
-        dec_out = c_out.functions.decimals().call()
-        sym_out = c_out.functions.symbol().call()
+        try:
+            dec_in = c_in.functions.decimals().call()
+            sym_in = c_in.functions.symbol().call()
+        except: 
+            dec_in = 18
+            sym_in = "IN"
+            
+        try:
+            dec_out = c_out.functions.decimals().call()
+            sym_out = c_out.functions.symbol().call()
+        except:
+            dec_out = 18
+            sym_out = "OUT"
         
         amount_in_wei = int(args.amount * (10**dec_in))
         
-        print(f"Quoting {args.amount} {sym_in} -> {sym_out} ...")
-        out_wei = get_quote(w3, t_in, t_out, amount_in_wei)
+        print(f"Quoting {args.amount} {sym_in} -> {sym_out} (Fee: {args.fee}) ...")
+        out_wei = get_quote(w3, t_in, t_out, amount_in_wei, args.fee)
         
         if out_wei:
             val = Decimal(out_wei) / Decimal(10**dec_out)
@@ -481,8 +519,8 @@ def main():
             amount_in_wei = int(args.amount * (10**dec_in))
             
             # 1. Get Quote & Calculate Min Amount Out (Slippage Protection)
-            print(f"checking price for {args.amount} on {config['name']}...")
-            expected_out_wei = get_quote(w3, token_in, token_out, amount_in_wei)
+            print(f"checking price for {args.amount} on {config['name']} (Fee: {args.fee})...")
+            expected_out_wei = get_quote(w3, token_in, token_out, amount_in_wei, args.fee)
             
             if not expected_out_wei:
                 print("Error: Could not fetch price quote. Network busy or no liquidity.")
@@ -494,8 +532,8 @@ def main():
             print(f"Quoted Out: {expected_out_wei} (Wei)")
             print(f"Slippage: {slippage_pct}% -> Min Out: {min_out_wei} (Wei)")
 
-            # Fee: 3000 (0.3%) default
-            fee = 3000 
+            # Fee: from args
+            fee = args.fee 
             
             # exactInputSingle params:
             # (tokenIn, tokenOut, fee, recipient, deadline, amountIn, amountOutMinimum, sqrtPriceLimitX96)

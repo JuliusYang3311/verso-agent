@@ -24,11 +24,23 @@ export async function promptCryptoConfig(
     };
   }
 
-  const rpcUrl = (await guardCancel(
+  /* Public RPC Removed for Stability */
+  /*
+    const rpcUrl = (await guardCancel(
+      text({
+        message: "RPC URL (for EVM Wallet)",
+        placeholder: "https://polygon-rpc.com",
+        initialValue: existing?.rpcUrl || "https://polygon-rpc.com",
+      }),
+      runtime,
+    )) as string;
+    */
+
+  const alchemyApiKey = (await guardCancel(
     text({
-      message: "RPC URL (for EVM Wallet)",
-      placeholder: "https://polygon-rpc.com",
-      initialValue: existing?.rpcUrl || "https://polygon-rpc.com",
+      message: "Alchemy API Key (Required for Private RPC)",
+      placeholder: "Your Alchemy Key",
+      initialValue: existing?.alchemyApiKey || "",
     }),
     runtime,
   )) as string;
@@ -44,7 +56,7 @@ export async function promptCryptoConfig(
 
   const explorerApiKey = (await guardCancel(
     text({
-      message: "Polygonscan/Etherscan API Key (Optional, for fast portfolio)",
+      message: "Etherscan/Polygonscan API Key (Unified V2)",
       placeholder: "Your API Key",
       initialValue: existing?.explorerApiKey,
     }),
@@ -55,7 +67,8 @@ export async function promptCryptoConfig(
     ...nextConfig,
     crypto: {
       enabled,
-      rpcUrl: rpcUrl || undefined,
+      rpcUrl: undefined, // Cleared to enforce Alchemy
+      alchemyApiKey: alchemyApiKey || undefined,
       privateKey: privateKey || undefined,
       explorerApiKey: explorerApiKey || undefined,
     },
