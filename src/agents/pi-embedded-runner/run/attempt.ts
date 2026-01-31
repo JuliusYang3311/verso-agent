@@ -286,7 +286,9 @@ export async function runEmbeddedAttempt(
       config: params.config,
     });
     const sandboxInfo = buildEmbeddedSandboxInfo(sandbox, params.bashElevated);
-    const reasoningTagHint = isReasoningTagProvider(params.provider);
+    const reasoningTagHint =
+      isReasoningTagProvider(params.provider) ||
+      (params.thinkLevel !== "off" && params.thinkLevel !== undefined);
     // Resolve channel-specific message actions for system prompt
     const channelActions = runtimeChannel
       ? listChannelSupportedActions({
