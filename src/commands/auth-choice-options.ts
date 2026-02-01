@@ -21,7 +21,9 @@ export type AuthChoiceGroupId =
   | "minimax"
   | "synthetic"
   | "venice"
-  | "qwen";
+  | "venice"
+  | "qwen"
+  | "custom";
 
 export type AuthChoiceGroup = {
   value: AuthChoiceGroupId;
@@ -120,6 +122,12 @@ const AUTH_CHOICE_GROUP_DEFS: {
     hint: "API key",
     choices: ["opencode-zen"],
   },
+  {
+    value: "custom",
+    label: "Custom / Local",
+    hint: "Ollama, DeepSeek, etc.",
+    choices: ["ollama", "custom-openai"],
+  },
 ];
 
 export function buildAuthChoiceOptions(params: {
@@ -193,6 +201,17 @@ export function buildAuthChoiceOptions(params: {
     value: "minimax-api-lightning",
     label: "MiniMax M2.1 Lightning",
     hint: "Faster, higher output cost",
+  });
+
+  options.push({
+    value: "ollama",
+    label: "Ollama",
+    hint: "Local inference (OpenAI compatible)",
+  });
+  options.push({
+    value: "custom-openai",
+    label: "Custom / OpenAI-Compatible",
+    hint: "Connect to any provider via Base URL",
   });
   if (params.includeSkip) {
     options.push({ value: "skip", label: "Skip for now" });

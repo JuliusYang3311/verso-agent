@@ -59,43 +59,56 @@ export function resolveModel(
   const resolvedAgentDir = agentDir ?? resolveVersoAgentDir();
   const authStorage = discoverAuthStorage(resolvedAgentDir);
   const modelRegistry = discoverModels(authStorage, resolvedAgentDir);
-  const model = modelRegistry.find(provider, modelId) as Model<Api> | null;
-  if (!model) {
-    const providers = cfg?.models?.providers ?? {};
+
+  // 1. Try to find in registry (built-in or dynamic providers)
+  let rawModel: Model<Api> | null = modelRegistry.find(provider, modelId) as Model<Api> | null;
+  const providers = cfg?.models?.providers ?? {};
+
+  if (!rawModel) {
+    // 2. Try to find in custom inline providers
     const inlineModels = buildInlineProviderModels(providers);
     const normalizedProvider = normalizeProviderId(provider);
     const inlineMatch = inlineModels.find(
       (entry) => normalizeProviderId(entry.provider) === normalizedProvider && entry.id === modelId,
     );
+
     if (inlineMatch) {
-      const normalized = normalizeModelCompat(inlineMatch as Model<Api>);
-      return {
-        model: normalized,
-        authStorage,
-        modelRegistry,
-      };
+      rawModel = normalizeModelCompat(inlineMatch as Model<Api>);
+    } else {
+      // 3. Fallback logic for generic providers or mocks
+      const providerCfg = providers[provider];
+      if (providerCfg || modelId.startsWith("mock-")) {
+        rawModel = normalizeModelCompat({
+          id: modelId,
+          name: modelId,
+          api: providerCfg?.api ?? "openai-responses",
+          provider,
+          baseUrl: providerCfg?.baseUrl,
+          reasoning: false,
+          input: ["text"],
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: providerCfg?.models?.[0]?.contextWindow ?? DEFAULT_CONTEXT_TOKENS,
+          maxTokens: providerCfg?.models?.[0]?.maxTokens ?? DEFAULT_CONTEXT_TOKENS,
+        } as Model<Api>);
+      }
     }
-    const providerCfg = providers[provider];
-    if (providerCfg || modelId.startsWith("mock-")) {
-      const fallbackModel: Model<Api> = normalizeModelCompat({
-        id: modelId,
-        name: modelId,
-        api: providerCfg?.api ?? "openai-responses",
-        provider,
-        baseUrl: providerCfg?.baseUrl,
-        reasoning: false,
-        input: ["text"],
-        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-        contextWindow: providerCfg?.models?.[0]?.contextWindow ?? DEFAULT_CONTEXT_TOKENS,
-        maxTokens: providerCfg?.models?.[0]?.maxTokens ?? DEFAULT_CONTEXT_TOKENS,
-      } as Model<Api>);
-      return { model: fallbackModel, authStorage, modelRegistry };
-    }
-    return {
-      error: `Unknown model: ${provider}/${modelId}`,
-      authStorage,
-      modelRegistry,
-    };
   }
-  return { model: normalizeModelCompat(model), authStorage, modelRegistry };
+
+  if (rawModel) {
+    // Apply effective context window logic: min(model.contextWindow, global.contextTokens)
+    // Clone to avoid mutating shared registry objects if they are cached
+    const finalModel = { ...rawModel };
+
+    const globalContextLimit = cfg?.agents?.defaults?.contextTokens;
+    if (globalContextLimit !== undefined && globalContextLimit < finalModel.contextWindow) {
+      finalModel.contextWindow = globalContextLimit;
+    }
+    return { model: normalizeModelCompat(finalModel), authStorage, modelRegistry };
+  }
+
+  return {
+    error: `Unknown model: ${provider}/${modelId}`,
+    authStorage,
+    modelRegistry,
+  };
 }

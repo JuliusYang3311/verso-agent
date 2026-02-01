@@ -37,6 +37,7 @@ export async function promptRouterConfig(
       "",
       "• Classifier: A fast model that analyzes your message",
       "• Task Models: Map task types (coding, writing, etc.) to specific models",
+      "• Fallback: Uses Primary Model if no specific task model matches",
       "",
       "Example: Use Claude Sonnet for coding, Gemini for general chat",
     ].join("\n"),
@@ -96,8 +97,8 @@ export async function promptRouterConfig(
 
   const defaultModel = guardCancel(
     await text({
-      message: "Global Default/Fallback model (used if router fails)",
-      initialValue: existingDefault ?? "anthropic/claude-3-5-sonnet",
+      message: "Primary Model (used as default and router fallback)",
+      initialValue: existingDefault ?? "anthropic/claude-3-7-sonnet",
       placeholder: "provider/model",
     }),
     runtime,
