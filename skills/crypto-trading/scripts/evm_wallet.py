@@ -6,9 +6,10 @@ import requests
 import time
 from decimal import Decimal
 import warnings
-
 # Suppress warnings from web3/pkg_resources
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*pkg_resources.*")
+warnings.filterwarnings("ignore", category=UserWarning, module='web3')
+warnings.filterwarnings("ignore", category=UserWarning, module='eth_utils')
 
 # Check for Web3
 try:
@@ -123,7 +124,7 @@ def get_quote(w3, token_in, token_out, amount_in_wei, fee=3000):
 
 # --- Actions ---
 
-def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000):
+def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000, slippage=0.5):
     """Executes a swap from token_in to token_out."""
     account = w3.eth.account.from_key(private_key)
     config = get_chain_config(w3.eth.chain_id)
@@ -150,8 +151,17 @@ def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000):
         print(f"❌ Failed: Insufficient {amount_val} for swap (Bal: {bal/10**dec})")
         return False
 
-    print(f"🔄 Swapping {amount_val} -> Output...")
+    # Get Quote for Min Output
+    print(f"🔄 Swapping {amount_val} -> Output (Slippage: {slippage}%)...")
+    quote = get_quote(w3, t_in_addr, t_out_addr, amount_wei, fee)
     
+    min_out = 0
+    if quote:
+        min_out = int(quote * (1 - slippage/100))
+        print(f"  Quote: {quote} -> Min Out: {min_out}")
+    else:
+        print("⚠️ Warning: Could not get quote for slippage, setting min_out=0")
+
     try:
         # Approve
         print("  Approving...")
@@ -170,7 +180,7 @@ def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000):
         router_abi = [{"inputs":[{"components":[{"internalType":"address","name":"tokenIn","type":"address"},{"internalType":"address","name":"tokenOut","type":"address"},{"internalType":"uint24","name":"fee","type":"uint24"},{"internalType":"address","name":"recipient","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMinimum","type":"uint256"},{"internalType":"uint160","name":"sqrtPriceLimitX96","type":"uint160"}],"internalType":"struct ISwapRouter.ExactInputSingleParams","name":"params","type":"tuple"}],"name":"exactInputSingle","outputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"}],"stateMutability":"payable","type":"function"}]
         router = w3.eth.contract(address=router_addr, abi=router_abi)
         
-        params = (t_in_addr, t_out_addr, fee, account.address, int(time.time())+300, amount_wei, 0, 0)
+        params = (t_in_addr, t_out_addr, fee, account.address, int(time.time())+300, amount_wei, min_out, 0)
         
         gas = calc_gas_fees(w3)
         tx_s = router.functions.exactInputSingle(params).build_transaction({
@@ -258,12 +268,12 @@ def monitor_arbitrage(w3, config, auto_trade, private_key, interval, target_toke
                     if diff > 2.0:
                         print(f"💰 SELL SIGNAL: {sym} Chain ${c_price:.2f} > Market ${m_price:.2f} (+{diff:.2f}%)")
                         if auto_trade:
-                            perform_swap(w3, private_key, addr, usdc, 0.1) # Sell 0.1 Unit
+                            perform_swap(w3, private_key, addr, usdc, 0.1, slippage=1.0) # Sell 0.1 Unit
                     elif diff < -2.0:
                         print(f"💰 BUY SIGNAL: {sym} Chain ${c_price:.2f} < Market ${m_price:.2f} ({diff:.2f}%)")
                         # Buy means: Sell USDC -> Buy Token
                         if auto_trade:
-                             perform_swap(w3, private_key, usdc, addr, 5.0) # Buy $5 worth
+                             perform_swap(w3, private_key, usdc, addr, 5.0, slippage=1.0) # Buy $5 worth
                     else:
                         print(f"{sym}: ${c_price:.3f} ({diff:+.2f}%)")
             
@@ -416,15 +426,74 @@ def main():
         
     elif args.action == 'swap':
         if not priv_key: print("Need Key"); sys.exit(1)
-        perform_swap(w3, priv_key, args.token_in, args.token_out, args.amount, args.fee)
+        if not (args.token_in and args.token_out and args.amount):
+             print("Error: --token-in, --token-out, and --amount required for swap")
+             sys.exit(1)
+        perform_swap(w3, priv_key, args.token_in, args.token_out, args.amount, args.fee, args.slippage)
         
     elif args.action == 'quote':
+        if not (args.token_in and args.token_out and args.amount):
+             print("Error: --token-in, --token-out, and --amount required for quote")
+             sys.exit(1)
         t_in = w3.to_checksum_address(args.token_in)
         t_out = w3.to_checksum_address(args.token_out)
         amt = int(args.amount * 10**18) # simplify assumptions for helper
         q = get_quote(w3, t_in, t_out, amt, args.fee)
         if q: print(f"Quote Out: {q}")
         else: print("Quote Failed")
+
+    elif args.action == 'explorer':
+        base = "https://polygonscan.com"
+        if w3.eth.chain_id == 1: base = "https://etherscan.io"
+        elif w3.eth.chain_id == 10: base = "https://optimistic.etherscan.io"
+        elif w3.eth.chain_id == 42161: base = "https://arbiscan.io"
+        print(f"Explorer: {base}/address/{my_addr}")
+
+    elif args.action == 'approve':
+        if not priv_key: print("Need Key"); sys.exit(1)
+        if not (args.token and args.amount):
+             print("Error: --token and --amount required for approve")
+             sys.exit(1)
+        
+        config = get_chain_config(w3.eth.chain_id)
+        router_addr = config.get('router')
+        
+        t_addr = w3.to_checksum_address(args.token)
+        abi = [{"constant":False,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"},
+               {"constant":True,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function"}]
+        
+        c = w3.eth.contract(address=t_addr, abi=abi)
+        try: dec = c.functions.decimals().call()
+        except: dec = 18
+        
+        amt_wei = int(args.amount * 10**dec)
+        
+        print(f"Approving {args.amount} to Router {router_addr}...")
+        gas = calc_gas_fees(w3)
+        tx = c.functions.approve(router_addr, amt_wei).build_transaction({
+            'from': account.address, 
+            'nonce': w3.eth.get_transaction_count(account.address),
+            'chainId': w3.eth.chain_id
+        })
+        tx.update(gas)
+        s = w3.eth.account.sign_transaction(tx, priv_key)
+        h = w3.eth.send_raw_transaction(s.rawTransaction)
+        print(f"✅ Approved: {w3.to_hex(h)}")
+
+    elif args.action == 'history':
+        url = f"{UNIFIED_API_URL}?chainid={w3.eth.chain_id}&module=account&action=txlist&address={my_addr}&startblock=0&endblock=99999999&sort=desc"
+        if args.api_key: url += f"&apikey={args.api_key}"
+        try:
+            r = requests.get(url, timeout=5).json()
+            if r['status'] == '1':
+                print(f"Last 5 Transactions for {my_addr}:")
+                for tx in r['result'][:5]:
+                    val = float(tx['value']) / 10**18
+                    print(f"- {tx['hash'][:10]}... : {val:.4f} {config['symbol']} (Block: {tx['blockNumber']})")
+            else:
+                print("No history found or API error")
+        except Exception as e:
+            print(f"History Error: {e}")
 
 if __name__ == "__main__":
     main()

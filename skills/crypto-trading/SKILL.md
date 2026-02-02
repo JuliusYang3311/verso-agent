@@ -59,6 +59,11 @@ python3 skills/crypto-trading/scripts/evm_wallet.py --action explorer
 python3 skills/crypto-trading/scripts/evm_wallet.py --action balance --token 0xA0b8...
 ```
 
+**Transfer:**
+```bash
+python3 skills/crypto-trading/scripts/evm_wallet.py --action transfer --to 0xRecipient... --amount 0.1
+```
+
 ### 3. DeFi Trading (Uniswap V3)
 
 Perform on-chain swaps directly via your wallet.
