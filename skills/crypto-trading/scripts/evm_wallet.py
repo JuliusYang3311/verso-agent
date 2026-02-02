@@ -5,6 +5,10 @@ import json
 import requests
 import time
 from decimal import Decimal
+import warnings
+
+# Suppress warnings from web3/pkg_resources
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # Check for Web3
 try:
@@ -192,7 +196,7 @@ def fetch_1inch_tokens(chain_id):
         return token_map
     except: return {}
 
-def monitor_arbitrage(w3, config, auto_trade, private_key, interval, target_tokens=None):
+def monitor_arbitrage(w3, config, auto_trade, private_key, interval, target_tokens=None, single_run=False):
     chain_id = w3.eth.chain_id
     print(f"🚀 Arbitrage Monitor running on {config['name']} (Interval: {interval}s)")
     if auto_trade: print("⚠️ AUTO-TRADE ENABLED: Will execute trades > 2.0% profit")
@@ -263,6 +267,9 @@ def monitor_arbitrage(w3, config, auto_trade, private_key, interval, target_toke
                     else:
                         print(f"{sym}: ${c_price:.3f} ({diff:+.2f}%)")
             
+            if single_run:
+                break
+
             print(f"Sleeping {interval}s...")
             time.sleep(interval)
         except KeyboardInterrupt: break
@@ -306,6 +313,8 @@ def main():
     parser.add_argument('--auto-trade', action='store_true')
     parser.add_argument('--interval', type=int, default=900)
 
+    parser.add_argument('--once', action='store_true', help='Run once and exit (for cron)')
+
     # Legacy
     parser.add_argument('--rpc'); parser.add_argument('--api-key')
     
@@ -348,7 +357,7 @@ def main():
     if args.action == 'monitor':
         if args.auto_trade and not priv_key:
             print("Error: Auto-Trade needs Private Key"); sys.exit(1)
-        monitor_arbitrage(w3, config, args.auto_trade, priv_key, args.interval, args.tokens)
+        monitor_arbitrage(w3, config, args.auto_trade, priv_key, args.interval, args.tokens, args.once)
         
     elif args.action == 'balance':
         if args.token:

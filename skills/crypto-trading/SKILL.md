@@ -86,8 +86,7 @@ Perform on-chain swaps directly via your wallet.
     python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
     ```
 
-    python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
-    ```
+
 
 ### 4. Arbitrage Monitor (Live)
 Real-time scanner comparing Market Price (CoinGecko) vs Chain Price (Uniswap V3).
@@ -106,6 +105,9 @@ python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --tokens PE
 
 # Auto-Trade Mode (Execute Swaps if Profit > 2%)
 python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --auto-trade --interval 300
+
+# Single Run Mode (Best for Cron Jobs)
+python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --once
 ```
 
 **Note:**

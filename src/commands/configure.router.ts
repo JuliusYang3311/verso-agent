@@ -11,7 +11,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { note } from "../terminal/note.js";
 
-const DEFAULT_CLASSIFIER_MODEL = "google/gemini-2.0-flash";
+const DEFAULT_CLASSIFIER_MODEL = "google/gemini-2.5-pro";
 
 const TASK_TYPE_OPTIONS = [
   { value: "coding", label: "Coding", hint: "Programming, debugging, code review" },
