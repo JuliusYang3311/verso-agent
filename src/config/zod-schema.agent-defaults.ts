@@ -108,6 +108,7 @@ export const AgentDefaultsSchema = z
         enabled: z.boolean().optional(),
         classifierModel: z.string().optional(),
         classificationTimeoutMs: z.number().int().positive().optional(),
+        thinking: z.boolean().optional(),
       })
       .strict()
       .optional(),
