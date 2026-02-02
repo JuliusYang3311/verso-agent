@@ -427,6 +427,14 @@ export function subscribeEmbeddedPiSession(params: SubscribeEmbeddedPiSessionPar
   };
 
   const resetForCompactionRetry = () => {
+    // If we have a valid assistant response, do NOT wipe it just because of compaction retry.
+    // The runner (attempt.ts) resolves on retry but does not loop to re-run the prompt,
+    // so wiping this results in an empty response (swallowed message).
+    if (assistantTexts.length > 0) {
+      log.debug("resetForCompactionRetry: preserving existing assistant response");
+      return;
+    }
+
     assistantTexts.length = 0;
     toolMetas.length = 0;
     toolMetaById.clear();
