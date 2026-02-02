@@ -80,9 +80,18 @@ export async function promptRouterConfig(
     runtime,
   );
 
+  const enableThinking = guardCancel(
+    await confirm({
+      message: "Enable thinking for classifier? (Improves accuracy, slightly slower)",
+      initialValue: existingRouter?.thinking ?? false,
+    }),
+    runtime,
+  );
+
   const routerConfig: RouterConfig = {
     enabled: true,
     classifierModel: String(classifierModel) || DEFAULT_CLASSIFIER_MODEL,
+    thinking: enableThinking,
   };
 
   runtime.log(`Router enabled for dynamic model selection`);

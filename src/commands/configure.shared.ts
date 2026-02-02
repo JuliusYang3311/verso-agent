@@ -15,6 +15,7 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "browser",
   "nodehost",
   "context",
+  "thinking",
   "web",
   "gateway",
   "daemon",
@@ -46,6 +47,7 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   { value: "browser", label: "Browser", hint: "Headless browser & snapshot settings" },
   { value: "nodehost", label: "Node Host", hint: "Browser proxy for remote agents" },
   { value: "context", label: "Context", hint: "Context window, compaction, memory flush" },
+  { value: "thinking", label: "Thinking", hint: "Internal thought process settings" },
   { value: "web", label: "Web tools", hint: "Configure Brave search + fetch" },
   { value: "gateway", label: "Gateway", hint: "Port, bind, auth, tailscale" },
   {

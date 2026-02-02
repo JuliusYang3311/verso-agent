@@ -11,6 +11,7 @@ import { createClackPrompter } from "../wizard/clack-prompter.js";
 import { WizardCancelledError } from "../wizard/prompts.js";
 import { removeChannelConfigWizard } from "./configure.channels.js";
 import { promptContextConfig } from "./configure.context.js";
+import { promptThinkingConfig } from "./configure.thinking.js";
 import { maybeInstallDaemon } from "./configure.daemon.js";
 import { promptGatewayConfig } from "./configure.gateway.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
@@ -329,6 +330,10 @@ export async function runConfigureWizard(
         nextConfig = await promptContextConfig(nextConfig, runtime);
       }
 
+      if (selected.includes("thinking")) {
+        nextConfig = await promptThinkingConfig(nextConfig, runtime);
+      }
+
       if (selected.includes("router")) {
         nextConfig = await promptRouterConfig(nextConfig, runtime);
       }
@@ -469,6 +474,11 @@ export async function runConfigureWizard(
 
         if (choice === "context") {
           nextConfig = await promptContextConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "thinking") {
+          nextConfig = await promptThinkingConfig(nextConfig, runtime);
           await persistConfig();
         }
 

@@ -7,6 +7,7 @@ import { completeSimple, getModel, type Api, type Model } from "@mariozechner/pi
 import type { VersoConfig } from "../config/config.js";
 import { resolveApiKeyForProvider } from "./model-auth.js";
 import { logVerbose } from "../globals.js";
+import { stripThinkingTagsFromText } from "./pi-embedded-utils.js";
 
 /**
  * Parameters for the classifier call.
@@ -16,6 +17,7 @@ export type ClassifierCallParams = {
   model: string;
   prompt: string;
   timeoutMs: number;
+  thinking?: boolean;
 };
 
 /**
@@ -27,7 +29,7 @@ export async function callTaskClassifier(
   cfg?: VersoConfig,
   agentDir?: string,
 ): Promise<string> {
-  const { provider, model, prompt, timeoutMs } = params;
+  const { provider, model, prompt, timeoutMs, thinking } = params;
 
   // Get API key for the classifier model's provider
   const auth = await resolveApiKeyForProvider({
@@ -64,6 +66,7 @@ export async function callTaskClassifier(
           maxTokens: 1024, // High limit to avoid truncation
           temperature: 0, // Deterministic selection
           signal: controller.signal,
+          ...(thinking ? { reasoning: "low" } : {}),
         },
       );
 
@@ -76,17 +79,17 @@ export async function callTaskClassifier(
       const content = result.content;
       if (typeof content === "string") {
         clearTimeout(timeoutId);
-        return content;
+        return stripThinkingTagsFromText(content).trim();
       }
       // Content is array of ContentPart - extract text
       for (const part of content) {
         if (typeof part === "string") {
           clearTimeout(timeoutId);
-          return part;
+          return stripThinkingTagsFromText(part).trim();
         }
         if (part && typeof part === "object" && "type" in part && part.type === "text") {
           clearTimeout(timeoutId);
-          return (part as { type: "text"; text: string }).text;
+          return stripThinkingTagsFromText((part as { type: "text"; text: string }).text).trim();
         }
       }
 
@@ -113,9 +116,12 @@ export function createClassifierFn(
   cfg: VersoConfig,
   agentDir?: string,
 ): (params: ClassifierCallParams) => Promise<string> {
+  const routerThinking = cfg.agents?.defaults?.router?.thinking ?? false;
   return async (params: ClassifierCallParams) => {
-    logVerbose(`Router classifying task with ${params.provider}/${params.model}`);
-    const result = await callTaskClassifier(params, cfg, agentDir);
+    logVerbose(
+      `Router classifying task with ${params.provider}/${params.model} (thinking: ${routerThinking})`,
+    );
+    const result = await callTaskClassifier({ ...params, thinking: routerThinking }, cfg, agentDir);
     logVerbose(`Router classification result: ${result.trim()}`);
     return result;
   };

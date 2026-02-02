@@ -26,4 +26,11 @@ export type RouterConfig = {
    * Default: 10000
    */
   classificationTimeoutMs?: number;
+
+  /**
+   * Enable thinking/reasoning for the classifier model.
+   * Ensure the model supports thinking (e.g., Gemini 2.0 Flash/Pro).
+   * Default: false
+   */
+  thinking?: boolean;
 };
