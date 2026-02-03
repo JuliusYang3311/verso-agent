@@ -70,7 +70,9 @@ def get_web3_with_fallback(primary_url):
             w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': 10}))
             w3.middleware_onion.inject(geth_poa_middleware, layer=0)
             if w3.is_connected(): return w3
-        except: continue
+        except Exception as e:
+            print(f"DEBUG: Connect failed to {url} -> {e}")
+            continue
     print("Error: Could not connect to RPC.")
     sys.exit(1)
 

@@ -73,11 +73,21 @@ export async function getReplyFromConfig(
     agentCfg?.typingIntervalSeconds ?? sessionCfg?.typingIntervalSeconds;
   const typingIntervalSeconds =
     typeof configuredTypingSeconds === "number" ? configuredTypingSeconds : 6;
+  const abortController = new AbortController();
+  if (opts?.abortSignal) {
+    opts.abortSignal.addEventListener("abort", () => abortController.abort());
+  }
+
   const typing = createTypingController({
     onReplyStart: opts?.onReplyStart,
     typingIntervalSeconds,
+    typingTtlMs: agentCfg?.typingTtlMs,
     silentToken: SILENT_REPLY_TOKEN,
     log: defaultRuntime.log,
+    onTimeout: () => {
+      defaultRuntime.log?.("Typing TTL reached -> Aborting execution");
+      abortController.abort();
+    },
   });
   opts?.onTypingController?.(typing);
 
@@ -254,49 +264,61 @@ export async function getReplyFromConfig(
     workspaceDir,
   });
 
-  return runPreparedReply({
-    ctx,
-    sessionCtx,
-    cfg,
-    agentId,
-    agentDir,
-    agentCfg,
-    sessionCfg,
-    commandAuthorized,
-    command,
-    commandSource,
-    allowTextCommands,
-    directives,
-    defaultActivation,
-    resolvedThinkLevel,
-    resolvedVerboseLevel,
-    resolvedReasoningLevel,
-    resolvedElevatedLevel,
-    execOverrides,
-    elevatedEnabled,
-    elevatedAllowed,
-    blockStreamingEnabled,
-    blockReplyChunking,
-    resolvedBlockStreamingBreak,
-    modelState,
-    provider,
-    model,
-    perMessageQueueMode,
-    perMessageQueueOptions,
-    typing,
-    opts,
-    defaultProvider,
-    defaultModel,
-    timeoutMs,
-    isNewSession,
-    resetTriggered,
-    systemSent,
-    sessionEntry,
-    sessionStore,
-    sessionKey,
-    sessionId,
-    storePath,
-    workspaceDir,
-    abortedLastRun,
-  });
+  try {
+    return await runPreparedReply({
+      ctx,
+      sessionCtx,
+      cfg,
+      agentId,
+      agentDir,
+      agentCfg,
+      sessionCfg,
+      commandAuthorized,
+      command,
+      commandSource,
+      allowTextCommands,
+      directives,
+      defaultActivation,
+      resolvedThinkLevel,
+      resolvedVerboseLevel,
+      resolvedReasoningLevel,
+      resolvedElevatedLevel,
+      execOverrides,
+      elevatedEnabled,
+      elevatedAllowed,
+      blockStreamingEnabled,
+      blockReplyChunking,
+      resolvedBlockStreamingBreak,
+      modelState,
+      provider,
+      model,
+      perMessageQueueMode,
+      perMessageQueueOptions,
+      typing,
+      opts: { ...opts, abortSignal: abortController.signal },
+      defaultProvider,
+      defaultModel,
+      timeoutMs,
+      isNewSession,
+      resetTriggered,
+      systemSent,
+      sessionEntry,
+      sessionStore,
+      sessionKey,
+      sessionId,
+      storePath,
+      workspaceDir,
+      abortedLastRun,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (abortController.signal.aborted || /abort/i.test(message)) {
+      return {
+        text: `⏱️ **Task Timed Out**\n\nThe operation took longer than expected (>${
+          (agentCfg?.typingTtlMs ?? 120000) / 1000 / 60
+        }m) and was stopped. This usually happens with complex tasks or connection issues.\n\n_Progress Report_: Execution was halted abruptly.`,
+      };
+    }
+    throw err;
+  }
 }

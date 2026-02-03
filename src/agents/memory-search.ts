@@ -4,7 +4,7 @@ import path from "node:path";
 import type { VersoConfig, MemorySearchConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import { clampInt, clampNumber, resolveUserPath } from "../utils.js";
-import { resolveAgentConfig } from "./agent-scope.js";
+import { resolveAgentConfig, resolveAgentModelPrimary } from "./agent-scope.js";
 
 export type ResolvedMemorySearchConfig = {
   enabled: boolean;
@@ -113,6 +113,7 @@ function mergeConfig(
   defaults: MemorySearchConfig | undefined,
   overrides: MemorySearchConfig | undefined,
   agentId: string,
+  cfg: VersoConfig,
 ): ResolvedMemorySearchConfig {
   const enabled = overrides?.enabled ?? defaults?.enabled ?? true;
   const sessionMemory =
@@ -279,13 +280,20 @@ function mergeConfig(
   };
 }
 
+function deriveProviderFromModel(model?: string): "openai" | "gemini" | undefined {
+  if (!model) return undefined;
+  if (model.startsWith("google/") || model.startsWith("gemini-")) return "gemini";
+  if (model.startsWith("openai/") || model.startsWith("gpt-")) return "openai";
+  return undefined;
+}
+
 export function resolveMemorySearchConfig(
   cfg: VersoConfig,
   agentId: string,
 ): ResolvedMemorySearchConfig | null {
   const defaults = cfg.agents?.defaults?.memorySearch;
   const overrides = resolveAgentConfig(cfg, agentId)?.memorySearch;
-  const resolved = mergeConfig(defaults, overrides, agentId);
+  const resolved = mergeConfig(defaults, overrides, agentId, cfg);
   if (!resolved.enabled) return null;
   return resolved;
 }
