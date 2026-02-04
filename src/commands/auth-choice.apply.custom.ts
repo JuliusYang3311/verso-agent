@@ -47,6 +47,11 @@ type Prompter = {
     message: string;
     options: { label: string; value: string }[];
   }) => Promise<string | symbol>;
+  multiselect: (opts: {
+    message: string;
+    options: { label: string; value: string }[];
+    initialValues?: string[];
+  }) => Promise<string[] | symbol>;
   note: (msg: string, title?: string) => Promise<void>;
 };
 
@@ -80,11 +85,30 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
     if (typeof maxTokensInput === "symbol") break;
     const maxTokens = Number(maxTokensInput);
 
+    const reasoning = await prompter.confirm({
+      message: `Does ${id} support reasoning/thinking?`,
+      initialValue: false,
+    });
+    if (typeof reasoning === "symbol") break;
+
+    const inputChoice = await prompter.multiselect({
+      message: `Supported inputs for ${id}`,
+      options: [
+        { label: "Text", value: "text" },
+        { label: "Image (Vision)", value: "image" },
+        { label: "Audio", value: "audio" },
+        { label: "Video", value: "video" },
+      ],
+      initialValues: ["text"],
+    });
+    if (typeof inputChoice === "symbol") break;
+    const input = inputChoice as string[];
+
     models.push({
       id,
       name: id,
-      reasoning: false,
-      input: ["text"],
+      reasoning: Boolean(reasoning),
+      input: (input.length > 0 ? input : ["text"]) as ModelDefinitionConfig["input"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow,
       maxTokens,
