@@ -63,11 +63,15 @@ export async function promptCryptoConfig(
     runtime,
   )) as string;
 
+  const defaultSolanaRpc = alchemyApiKey
+    ? `https://solana-mainnet.g.alchemy.com/v2/${alchemyApiKey}`
+    : "https://api.mainnet-beta.solana.com";
+
   const solanaRpcUrl = (await guardCancel(
     text({
       message: "Solana RPC URL",
       placeholder: "https://api.mainnet-beta.solana.com",
-      initialValue: existing?.solanaRpcUrl || "https://api.mainnet-beta.solana.com",
+      initialValue: existing?.solanaRpcUrl || defaultSolanaRpc,
     }),
     runtime,
   )) as string;

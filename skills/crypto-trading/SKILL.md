@@ -14,10 +14,10 @@ To use wallet features, run `verso configure`.
 
 ### Solana Configuration (Required)
 - `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
-- `SOLANA_RPC_URL`: Optional (Defaults to public mainnet).
+- `SOLANA_RPC_URL`: Optional. Defaults to public mainnet, or auto-configured to **Alchemy** if API Key is present.
 
 ### EVM Configuration (Legacy/Optional)
-- `ALCHEMY_API_KEY`: Required for private RPC on Polygon/Ethereum.
+- `ALCHEMY_API_KEY`: Key for Private RPC (Polygon/Eth/Solana).
 
 ## Capabilities
 
