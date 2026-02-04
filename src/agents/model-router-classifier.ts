@@ -44,6 +44,11 @@ export async function callTaskClassifier(
     throw new Error(`Failed to get model: ${provider}/${model}`);
   }
 
+  // Force baseUrl on the model object because pi-ai openai-responses only looks at model.baseUrl
+  if (auth.baseUrl) {
+    (modelObj as any).baseUrl = auth.baseUrl;
+  }
+
   // INTERNAL RETRY LOOP
   let attempts = 0;
   const maxRetries = 3;
