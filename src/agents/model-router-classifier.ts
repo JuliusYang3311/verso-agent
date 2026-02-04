@@ -63,6 +63,7 @@ export async function callTaskClassifier(
         },
         {
           apiKey: auth.apiKey,
+          baseUrl: auth.baseUrl,
           maxTokens: 1024, // High limit to avoid truncation
           temperature: 0, // Deterministic selection
           signal: controller.signal,
