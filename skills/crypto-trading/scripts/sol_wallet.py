@@ -324,7 +324,7 @@ def main():
     parser.add_argument("--token-out", help="Token to buy")
     parser.add_argument("--amount", help="Amount to swap/transfer")
     parser.add_argument("--to", help="Recipient address")
-    parser.add_argument("--slippage", type=float, default=0.5, help="Slippage % (default 0.5)")
+    parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %% (default 0.5)")
     parser.add_argument("--priority-fee", default="auto", help="Priority fee in lamports or 'auto'")
     parser.add_argument("--quote-only", action="store_true", help="Only show quote, do not execute")
     parser.add_argument("--interval", type=int, help="Monitor interval")
