@@ -14,7 +14,10 @@ warnings.filterwarnings("ignore", category=UserWarning, module='eth_utils')
 # Check for Web3
 try:
     from web3 import Web3
-    from web3.middleware import geth_poa_middleware
+    try:
+        from web3.middleware import ExtraDataToPOAMiddleware as geth_poa_middleware
+    except ImportError:
+        from web3.middleware import geth_poa_middleware
 except ImportError:
     print("Error: 'web3' library is not installed. Please install it with 'pip install web3'.")
     sys.exit(1)
@@ -169,11 +172,11 @@ def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000, sli
         print("  Approving...")
         gas = calc_gas_fees(w3)
         tx_app = ctr_in.functions.approve(router_addr, amount_wei).build_transaction({
-            'from': account.address, 'nonce': w3.eth.get_transaction_count(account.address), 'chainId': w3.eth.chain_id
+            'from': account.address, 'nonce': w3.eth.get_transaction_count(account.address, 'pending'), 'chainId': w3.eth.chain_id
         })
         tx_app.update(gas)
         s_app = w3.eth.account.sign_transaction(tx_app, private_key)
-        w3.eth.send_raw_transaction(s_app.rawTransaction)
+        w3.eth.send_raw_transaction(s_app.raw_transaction)
         
         # Simple wait loop
         time.sleep(5) 
@@ -186,11 +189,11 @@ def perform_swap(w3, private_key, token_in, token_out, amount_val, fee=3000, sli
         
         gas = calc_gas_fees(w3)
         tx_s = router.functions.exactInputSingle(params).build_transaction({
-            'from': account.address, 'nonce': w3.eth.get_transaction_count(account.address), 'chainId': w3.eth.chain_id
+            'from': account.address, 'nonce': w3.eth.get_transaction_count(account.address, 'pending'), 'chainId': w3.eth.chain_id
         })
         tx_s.update(gas)
         s_s = w3.eth.account.sign_transaction(tx_s, private_key)
-        h = w3.eth.send_raw_transaction(s_s.rawTransaction)
+        h = w3.eth.send_raw_transaction(s_s.raw_transaction)
         print(f"✅ Tx Sent: {w3.to_hex(h)}")
         return True
     except Exception as e:
@@ -417,13 +420,13 @@ def main():
         tx = {
             'to': w3.to_checksum_address(args.to),
             'value': w3.to_wei(args.amount, 'ether'),
-            'nonce': w3.eth.get_transaction_count(account.address),
+            'nonce': w3.eth.get_transaction_count(account.address, 'pending'),
             'chainId': w3.eth.chain_id,
             'gas': 21000
         }
         tx.update(gas)
         s = w3.eth.account.sign_transaction(tx, priv_key)
-        h = w3.eth.send_raw_transaction(s.rawTransaction)
+        h = w3.eth.send_raw_transaction(s.raw_transaction)
         print(f"Sent: {w3.to_hex(h)}")
         
     elif args.action == 'swap':
@@ -474,12 +477,12 @@ def main():
         gas = calc_gas_fees(w3)
         tx = c.functions.approve(router_addr, amt_wei).build_transaction({
             'from': account.address, 
-            'nonce': w3.eth.get_transaction_count(account.address),
+            'nonce': w3.eth.get_transaction_count(account.address, 'pending'),
             'chainId': w3.eth.chain_id
         })
         tx.update(gas)
         s = w3.eth.account.sign_transaction(tx, priv_key)
-        h = w3.eth.send_raw_transaction(s.rawTransaction)
+        h = w3.eth.send_raw_transaction(s.raw_transaction)
         print(f"✅ Approved: {w3.to_hex(h)}")
 
     elif args.action == 'history':

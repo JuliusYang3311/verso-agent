@@ -63,6 +63,24 @@ export async function promptCryptoConfig(
     runtime,
   )) as string;
 
+  const solanaRpcUrl = (await guardCancel(
+    text({
+      message: "Solana RPC URL",
+      placeholder: "https://api.mainnet-beta.solana.com",
+      initialValue: existing?.solanaRpcUrl || "https://api.mainnet-beta.solana.com",
+    }),
+    runtime,
+  )) as string;
+
+  const solanaPrivateKey = (await guardCancel(
+    text({
+      message: "Solana Private Key (Base58 string)",
+      placeholder: "Your Base58 Private Key",
+      initialValue: existing?.solanaPrivateKey,
+    }),
+    runtime,
+  )) as string;
+
   return {
     ...nextConfig,
     crypto: {
@@ -71,6 +89,8 @@ export async function promptCryptoConfig(
       alchemyApiKey: alchemyApiKey || undefined,
       privateKey: privateKey || undefined,
       explorerApiKey: explorerApiKey || undefined,
+      solanaRpcUrl,
+      solanaPrivateKey: solanaPrivateKey || undefined,
     },
   };
 }

@@ -1,125 +1,68 @@
 ---
 name: crypto-trading
-description: Monitor cryptocurrency prices and execute trades. Use when the user asks for crypto prices, market dat, or to buy/sell assets.
+description: Monitor cryptocurrency prices and execute trades on Solana (Primary) and EVM chains.
 ---
 
 # Crypto Trading Skill
 
 This skill allows you to check cryptocurrency prices and execute trades via on-chain DeFi protocols.
+**Primary Chain: Solana** (replacing previous default).
 
 ## Configuration
 
-To use wallet features, configure via `verso config` or set manually:
+To use wallet features, run `verso configure`.
 
-### On-Chain Configuration (Private RPC)
-To use on-chain wallet features, you **must** configure an Alchemy API Key for stability.
+### Solana Configuration (Required)
+- `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
+- `SOLANA_RPC_URL`: Optional (Defaults to public mainnet).
 
-- `WALLET_PRIVATE_KEY`: Your wallet private key.
-- `ALCHEMY_API_KEY`: Your Alchemy Project API Key.
-- `EXPLORER_API_KEY`: Etherscan Unified API Key (Optional).
-
-*Run `verso configure` to set these up interactively.*
+### EVM Configuration (Legacy/Optional)
+- `ALCHEMY_API_KEY`: Required for private RPC on Polygon/Ethereum.
 
 ## Capabilities
 
-### 1. Check Prices & History
-
-**Usage:**
-```bash
-# Wallet History (Polygon default)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action history
-
-# Check Ethereum History
-python3 skills/crypto-trading/scripts/evm_wallet.py --action history --network ethereum
-```
-
-### 2. On-Chain Wallet (EVM)
-Supports **Polygon**, **Ethereum**, **Optimism**, **Arbitrum**.
-Use `--network <name>` to switch chains (default: `polygon`).
+### 1. Solana Wallet (Primary)
+Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wallet.py`.
 
 **Balance:**
 ```bash
-python3 skills/crypto-trading/scripts/evm_wallet.py --action balance --network optimism
+# Check SOL Balance
+python3 skills/crypto-trading/scripts/sol_wallet.py --action balance
+
+# Check SPL Token Balance (e.g., USDC, BONK)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action balance --token USDC
 ```
 
-Use the `scripts/evm_wallet.py` script to interact with your wallet.
+**Swap (Jupiter Aggregator):**
+Execute swaps using Jupiter API (Best price routing).
+```bash
+# Quote only (Check rate)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action quote --token-in SOL --token-out USDC --amount 0.1
+
+# Execute Swap
+python3 skills/crypto-trading/scripts/sol_wallet.py --action swap --token-in SOL --token-out USDC --amount 0.1 --slippage 0.5
+```
+
+**Transfer:**
+```bash
+python3 skills/crypto-trading/scripts/sol_wallet.py --action transfer --to <RecipientAddr> --amount 0.5
+```
+
+### 2. EVM Wallet (Legacy)
+Scripts are located at `skills/crypto-trading/scripts/evm_wallet.py`.
+Supports Polygon, Ethereum, Optimism, Arbitrum.
 
 **Usage:**
 ```bash
 # Check Balance
 python3 skills/crypto-trading/scripts/evm_wallet.py --action balance
 
-# Check Portfolio (Scan all known tokens)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action portfolio
-
-# Get Explorer URL
-python3 skills/crypto-trading/scripts/evm_wallet.py --action explorer
-
-# Check ERC-20 Token Balance
-python3 skills/crypto-trading/scripts/evm_wallet.py --action balance --token 0xA0b8...
+# Swap (Uniswap V3)
+python3 skills/crypto-trading/scripts/evm_wallet.py --action swap ...
 ```
-
-**Transfer:**
-```bash
-python3 skills/crypto-trading/scripts/evm_wallet.py --action transfer --to 0xRecipient... --amount 0.1
-```
-
-### 3. DeFi Trading (Uniswap V3)
-
-Perform on-chain swaps directly via your wallet.
-
-**Commands:**
-
-*   **Quote Price (Check rate):**
-    ```bash
-    python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1
-    ```
-
-*   **Approve Token (One-time setup per token):**
-    ```bash
-    python3 skills/crypto-trading/scripts/evm_wallet.py --action approve --token <Addr> --amount 100
-    ```
-
-*   **Swap with Slippage Protection:**
-    # Default slippage is 0.5%
-    python3 skills/crypto-trading/scripts/evm_wallet.py --action swap --token-in <Addr> --token-out <Addr> --amount 10 --slippage 1.0
-    ```
-
-*   **Custom Fee Tier (For Low Liquidity / Stablecoins):**
-    ```bash
-    # Use 500 for Stablecoins (0.05%), 3000 for standard (0.3%), 10000 for exotic (1%)
-    python3 skills/crypto-trading/scripts/evm_wallet.py --action quote --token-in <Addr> --token-out <Addr> --amount 1 --fee 500
-    ```
-
-
-
-### 4. Arbitrage Monitor (Live)
-Real-time scanner comparing Market Price (CoinGecko) vs Chain Price (Uniswap V3).
-
-**Features:**
-- **Dynamic Hot List**: Automatically fetches Top tokens from 1inch if no args provided.
-- **Custom List**: Spy on specific assets with `--tokens`.
-
-**Usage:**
-```bash
-# Monitor "Hot" DeFi Blue Chips (Default)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor
-
-# Monitor Specific Tokens
-python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --tokens PEPE,SHIB,WETH
-
-# Auto-Trade Mode (Execute Swaps if Profit > 2%)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --auto-trade --interval 300
-
-# Single Run Mode (Best for Cron Jobs)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action monitor --once
-```
-
-**Note:**
-- `evm_wallet.py` requires `web3` library.
 
 ## Dependencies
 
 - Python 3
-- `pip install web3`
-- `pip install requests`
+- `pip install solana solders requests` (For Solana)
+- `pip install web3` (For EVM)

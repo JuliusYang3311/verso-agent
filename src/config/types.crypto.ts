@@ -4,4 +4,6 @@ export type CryptoConfig = {
   privateKey?: string;
   explorerApiKey?: string;
   alchemyApiKey?: string;
+  solanaRpcUrl?: string;
+  solanaPrivateKey?: string;
 };

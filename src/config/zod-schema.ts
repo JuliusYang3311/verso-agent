@@ -48,6 +48,8 @@ const CryptoConfigSchema = z
     privateKey: z.string().optional(),
     explorerApiKey: z.string().optional(),
     alchemyApiKey: z.string().optional(),
+    solanaRpcUrl: z.string().optional(),
+    solanaPrivateKey: z.string().optional(),
   })
   .strict()
   .optional();
