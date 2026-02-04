@@ -14,6 +14,8 @@ To use wallet features, run `verso configure`.
 
 ### Solana Configuration (Required)
 - `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
+- `JUPITER_API_KEY`: Required for fetching prices and quotes (from jup.ag).
+
 ### Advanced Configuration / RPC
 - `ALCHEMY_API_KEY`: Accelerate Solana transactions with private RPC.
 - `SOLANA_RPC_URL`: Custom RPC URL (Optional).

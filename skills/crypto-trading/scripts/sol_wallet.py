@@ -137,7 +137,6 @@ def action_balance(args, client: Client, keypair: Keypair):
         # Simplified: Use resolve logic but without complex SPL query yet
         pass
         
-    # List all non-zero accounts logic omitted for brevity in this task, focused on Swap/Portfolio
 
 def action_transfer(args, client: Client, keypair: Keypair):
     if not args.to or not args.amount:
@@ -221,7 +220,6 @@ def action_portfolio(args, client: Client, keypair: Keypair):
             usd = amt * p
             p_str = f"${p:.4f}"
         else:
-            # Simple fallback for stablecoins if price fails
             if sym in ["USDC", "USDT"]:
                 usd = amt
                 p_str = "$1.0000 (est)"
@@ -269,8 +267,6 @@ def action_swap(args, client: Client, keypair: Keypair):
     decimals = get_token_decimals(token_in)
     amount_in_atoms = int(float(args.amount) * (10**decimals))
     
-    # New Jupiter V6 Quote Endpoint (GET style params appended generally work, or use POST if docs strictly say so. User snippet used GET structure for v1 quote)
-    # User said: "https://api.jup.ag/swap/v1/quote?inputMint=..."
     quote_url = f"{JUPITER_QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amount_in_atoms}&slippageBps={int(args.slippage * 100)}"
     
     try:

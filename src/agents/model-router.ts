@@ -32,16 +32,16 @@ const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS
 
 ### EXAMPLES:
 Input: "hello"
-Response: <selected_model>custom-openai/gemini-3-flash-preview</selected_model>
+Response: <selected_model>google/gemini-3-flash-preview</selected_model>
 
 Input: "help me write a complex python script"
-Response: <selected_model>custom-openai/gemini-3-pro-preview</selected_model>
+Response: <selected_model>google/gemini-3-pro-preview</selected_model>
 
 Input: "use gemini 3 flash"
-Response: <selected_model>custom-openai/gemini-3-flash-preview</selected_model>
+Response: <selected_model>google/gemini-3-flash-preview</selected_model>
 
 Input: "Help me "
-Response: <selected_model>custom-openai/gemini-3-pro-preview</selected_model>
+Response: <selected_model>google/gemini-3-pro-preview</selected_model>
 
 ### TASK:
 USER INPUT: "{input}"
