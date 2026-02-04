@@ -39,9 +39,24 @@ export async function callTaskClassifier(
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const modelObj = getModel(provider as any, model);
+  let modelObj = getModel(provider as any, model);
   if (!modelObj) {
-    throw new Error(`Failed to get model: ${provider}/${model}`);
+    // Fallback: If pi-ai doesn't know the provider (e.g. custom-openai), construct it manually
+    // This supports custom models defined in verso.json that aren't in pi-ai's static registry
+    if (provider === "custom-openai" || (auth.baseUrl && auth.mode === "api-key")) {
+      const providerApi = cfg?.models?.providers?.[provider]?.api || "openai-completions";
+      modelObj = {
+        id: model,
+        provider: "openai", // Alias to openai for pi-ai internal logic
+        api: providerApi,
+        name: model,
+      } as any;
+      logVerbose(
+        `[RouterClassifier] Constructed fallback model object for ${provider}/${model} (api: ${providerApi})`,
+      );
+    } else {
+      throw new Error(`Failed to get model: ${provider}/${model}`);
+    }
   }
 
   // Force baseUrl on the model object because pi-ai openai-responses only looks at model.baseUrl
