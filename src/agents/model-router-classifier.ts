@@ -65,8 +65,8 @@ export async function callTaskClassifier(
       const options = {
         apiKey: auth.apiKey,
         baseUrl: auth.baseUrl,
-        // maxTokens: 1024, // Removed to avoid 500 errors on some custom providers
-        // temperature: 0, // Removed to avoid 500 errors
+        maxTokens: 1024, // Removed to avoid 500 errors on some custom providers
+        temperature: 0, // Removed to avoid 500 errors
         signal: controller.signal,
         ...(thinking ? { reasoning: "low" as const } : {}),
       };
