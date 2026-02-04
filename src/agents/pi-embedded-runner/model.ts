@@ -25,7 +25,9 @@ export function buildInlineProviderModels(
       ...model,
       provider: trimmed,
       baseUrl: entry?.baseUrl,
-      api: model.api ?? entry?.api,
+      // FIX: Default to "openai-responses" for custom providers if API is not specified.
+      // This prevents "Unhandled API" crashes in pi-ai.
+      api: model.api ?? entry?.api ?? "openai-responses",
     }));
   });
 }
