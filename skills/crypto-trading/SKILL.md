@@ -23,37 +23,39 @@ To use wallet features, run `verso configure`.
 ### 1. Solana Wallet (Primary)
 Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wallet.py`.
 
-**Balance:**
-```bash
-# Check SOL Balance
-python3 skills/crypto-trading/scripts/sol_wallet.py --action balance
+**Key Features:**
+- **Auto-Config**: Loads key/RPC from `~/.verso/verso.json`.
+- **Robust Keys**: Supports both **Base58** (Standard) and **Hex** (0x...) private keys.
 
-# Check SPL Token Balance (e.g., USDC, BONK)
+**Portfolio, Monitor & Balance:**
+```bash
+# View complete portfolio (SOL + SPL Tokens + USD Value)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action portfolio
+
+# Track SOL Price real-time
+python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor --interval 10
+
+# Check specific token balance
 python3 skills/crypto-trading/scripts/sol_wallet.py --action balance --token USDC
 ```
 
 **Swap (Jupiter Aggregator):**
-Execute swaps using Jupiter API (Best price routing).
 ```bash
-# Quote only (Check rate)
+# Quote only
 python3 skills/crypto-trading/scripts/sol_wallet.py --action quote --token-in SOL --token-out USDC --amount 0.1
 
-# Execute Swap
-python3 skills/crypto-trading/scripts/sol_wallet.py --action swap --token-in SOL --token-out USDC --amount 0.1 --slippage 0.5
+# Execute Swap with Priority Fee (for congestion)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action swap \
+  --token-in SOL --token-out USDC \
+  --amount 0.1 \
+  --slippage 0.5 \
+  --priority-fee 10000 
+  # or --priority-fee auto
 ```
 
 **Transfer:**
 ```bash
 python3 skills/crypto-trading/scripts/sol_wallet.py --action transfer --to <RecipientAddr> --amount 0.5
-```
-
-**Portfolio & Monitor:**
-```bash
-# View all holdings with USD value (Jupiter Price API)
-python3 skills/crypto-trading/scripts/sol_wallet.py --action portfolio
-
-# Track SOL Price real-time
-python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor --interval 10
 ```
 
 ## Dependencies
