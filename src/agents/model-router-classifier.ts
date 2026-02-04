@@ -80,10 +80,8 @@ export async function callTaskClassifier(
       );
 
       // DEBUG: Log the raw result to understand structure
-      if (cfg?.debug || true) {
-        // Force log for now
-        logVerbose(`[RouterDebug] Result: ${JSON.stringify(result, null, 2)}`);
-      }
+      // logVerbose respects the global verbose flag (-v)
+      logVerbose(`[RouterDebug] Result: ${JSON.stringify(result, null, 2)}`);
 
       // Extract text content from the result (AssistantMessage)
       if (!result.content) {
