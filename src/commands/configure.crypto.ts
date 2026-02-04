@@ -24,18 +24,6 @@ export async function promptCryptoConfig(
     };
   }
 
-  /* Public RPC Removed for Stability */
-  /*
-    const rpcUrl = (await guardCancel(
-      text({
-        message: "RPC URL (for EVM Wallet)",
-        placeholder: "https://polygon-rpc.com",
-        initialValue: existing?.rpcUrl || "https://polygon-rpc.com",
-      }),
-      runtime,
-    )) as string;
-    */
-
   const alchemyApiKey = (await guardCancel(
     text({
       message: "Alchemy API Key (Required for Private RPC)",
@@ -58,6 +46,15 @@ export async function promptCryptoConfig(
     runtime,
   )) as string;
 
+  const jupiterApiKey = (await guardCancel(
+    text({
+      message: "Jupiter API Key (Required for Price/Swap)",
+      placeholder: "Your x-api-key from jup.ag",
+      initialValue: existing?.jupiterApiKey || "",
+    }),
+    runtime,
+  )) as string;
+
   const solanaPrivateKey = (await guardCancel(
     text({
       message: "Solana Private Key (Base58 string)",
@@ -74,6 +71,7 @@ export async function promptCryptoConfig(
       alchemyApiKey: alchemyApiKey || undefined,
       solanaRpcUrl,
       solanaPrivateKey: solanaPrivateKey || undefined,
+      jupiterApiKey: jupiterApiKey || undefined,
     },
   };
 }
