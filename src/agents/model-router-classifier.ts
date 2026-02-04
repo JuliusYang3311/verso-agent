@@ -68,7 +68,7 @@ export async function callTaskClassifier(
           temperature: 0, // Deterministic selection
           signal: controller.signal,
           ...(thinking ? { reasoning: "low" } : {}),
-        },
+        } as any, // Cast to any to allow baseUrl which might not be in SimpleStreamOptions definition
       );
 
       // Extract text content from the result (AssistantMessage)
