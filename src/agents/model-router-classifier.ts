@@ -56,19 +56,22 @@ export async function callTaskClassifier(
 
     try {
       // Use the correct API: completeSimple(model, context, options)
+      // Extract options to a variable to allow 'baseUrl' (excess property check relaxation)
+      const options = {
+        apiKey: auth.apiKey,
+        baseUrl: auth.baseUrl,
+        // maxTokens: 1024, // Removed to avoid 500 errors on some custom providers
+        // temperature: 0, // Removed to avoid 500 errors
+        signal: controller.signal,
+        ...(thinking ? { reasoning: "low" } : {}),
+      };
+
       const result = await completeSimple(
         modelObj as Model<Api>,
         {
           messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
         },
-        {
-          apiKey: auth.apiKey,
-          baseUrl: auth.baseUrl,
-          maxTokens: 1024, // High limit to avoid truncation
-          temperature: 0, // Deterministic selection
-          signal: controller.signal,
-          ...(thinking ? { reasoning: "low" } : {}),
-        } as any, // Cast to any to allow baseUrl which might not be in SimpleStreamOptions definition
+        options,
       );
 
       // Extract text content from the result (AssistantMessage)
