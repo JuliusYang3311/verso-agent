@@ -161,8 +161,12 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
       lastInvalid = selected;
 
       continue;
-    } catch {
-      break; // Break on network/API errors to fallback immediately
+    } catch (err) {
+      logVerbose(`[RouterLoop] Error during classification attempt ${attempts}: ${err}`);
+      if (attempts >= maxAttempts) break; // Break only if max attempts reached? No, break immediately on unexpected error makes sense but we want to know why.
+      // actually, if it's a transient network error we might want to continue?
+      // But for now, let's just log it so we see it.
+      continue;
     }
   }
 
