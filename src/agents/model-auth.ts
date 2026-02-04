@@ -121,6 +121,7 @@ function resolveAwsSdkAuthInfo(): { mode: "aws-sdk"; source: string } {
 
 export type ResolvedProviderAuth = {
   apiKey?: string;
+  baseUrl?: string;
   profileId?: string;
   source: string;
   mode: "api-key" | "oauth" | "token" | "aws-sdk";
@@ -196,9 +197,17 @@ export async function resolveApiKeyForProvider(params: {
     };
   }
 
-  const customKey = getCustomProviderApiKey(cfg, provider);
+  const entry = resolveProviderConfig(cfg, provider);
+  const customKey = entry?.apiKey?.trim();
+  const customBaseUrl = entry?.baseUrl?.trim();
+
   if (customKey) {
-    return { apiKey: customKey, source: "models.json", mode: "api-key" };
+    return {
+      apiKey: customKey,
+      baseUrl: customBaseUrl || undefined,
+      source: "models.json",
+      mode: "api-key",
+    };
   }
 
   const normalized = normalizeProviderId(provider);
