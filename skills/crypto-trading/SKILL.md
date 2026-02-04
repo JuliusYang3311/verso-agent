@@ -48,6 +48,15 @@ python3 skills/crypto-trading/scripts/sol_wallet.py --action swap --token-in SOL
 python3 skills/crypto-trading/scripts/sol_wallet.py --action transfer --to <RecipientAddr> --amount 0.5
 ```
 
+**Portfolio & Monitor:**
+```bash
+# View all holdings with USD value (Jupiter Price API)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action portfolio
+
+# Track SOL Price real-time
+python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor --interval 10
+```
+
 ### 2. EVM Wallet (Legacy)
 Scripts are located at `skills/crypto-trading/scripts/evm_wallet.py`.
 Supports Polygon, Ethereum, Optimism, Arbitrum.

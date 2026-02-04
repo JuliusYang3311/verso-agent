@@ -11,8 +11,9 @@ from solders.system_program import TransferParams, transfer
 from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
-from solana.rpc.types import TxOpts
+from solana.rpc.types import TxOpts, TokenAccountOpts
 from solana.transaction import Transaction
+import functools
 
 # Constants
 JUPITER_QUOTE_API = "https://quote-api.jup.ag/v6/quote"
@@ -101,12 +102,124 @@ def action_balance(args, client: Client, keypair: Keypair):
     except Exception as e:
         print(f"Error fetching token accounts: {e}")
 
-def action_portfolio(args, keypair: Keypair):
-    # Use Jupiter Price API to value portfolio?
-    # Or just list held tokens.
-    # To list held tokens efficiently, we need to parse TokenAccounts.
-    # For MVP, let's stick to SOL balance.
-    pass
+def action_transfer(args, client: Client, keypair: Keypair):
+    if not args.to or not args.amount:
+        print("Error: --to and --amount required for transfer")
+        sys.exit(1)
+    
+    try:
+        dest_pubkey = Pubkey.from_string(args.to)
+        lamports = int(float(args.amount) * 1_000_000_000)
+        
+        print(f"Transferring {args.amount} SOL to {args.to}...")
+        
+        # System Program Transfer
+        ix = transfer(
+            TransferParams(
+                from_pubkey=keypair.pubkey(),
+                to_pubkey=dest_pubkey,
+                lamports=lamports
+            )
+        )
+        tx = Transaction().add(ix)
+        result = client.send_transaction(tx, keypair)
+        print(f"Transfer Sent: {result.value}")
+        
+    except Exception as e:
+        print(f"Transfer Error: {e}")
+
+def action_portfolio(args, client: Client, keypair: Keypair):
+    print(f"Scanning Portfolio for {keypair.pubkey()}...")
+    
+    # 1. SOL Balance
+    sol_bal = 0
+    try:
+        sol_bal = client.get_balance(keypair.pubkey()).value / 1_000_000_000
+    except: pass
+    
+    holdings = {"SOL": sol_bal}
+    
+    # 2. Token Accounts (Parsed)
+    try:
+        # standard Token Program
+        opts = TokenAccountOpts(program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), encoding="jsonParsed")
+        resp = client.get_token_accounts_by_owner(keypair.pubkey(), opts)
+        
+        for tx in resp.value:
+            data = tx.account.data.parsed['info']
+            mint = data['mint']
+            amount = data['tokenAmount']['uiAmount']
+            if amount and amount > 0:
+                # Resolve Symbol
+                sym = mint
+                for k,v in TOKENS.items():
+                    if v == mint: sym = k
+                holdings[sym] = amount
+    except Exception as e:
+        print(f"Token Scan Error: {e}")
+        
+    # 3. Price Feed (Jupiter)
+    # Map symbols back to mints for price query
+    ids = []
+    for sym in holdings.keys():
+        if sym == "SOL": ids.append(TOKENS["SOL"])
+        elif sym in TOKENS: ids.append(TOKENS[sym])
+        else: ids.append(sym) # Mint address
+        
+    price_url = f"{JUPITER_PRICE_API}?ids={','.join(ids)}"
+    prices = {}
+    try:
+        r = requests.get(price_url).json()
+        if 'data' in r:
+            prices = r['data']
+    except: pass
+    
+    total_usd = 0
+    print("Holdings:")
+    for sym, amt in holdings.items():
+        mint = TOKENS.get(sym, sym)
+        price_data = prices.get(mint)
+        usd = 0
+        p_str = "N/A"
+        if price_data:
+            p = float(price_data['price'])
+            usd = amt * p
+            p_str = f"${p:.4f}"
+            
+        total_usd += usd
+        print(f"- {amt:.4f} {sym} (@ {p_str}) = ${usd:.2f}")
+        
+    print(f"Total Portfolio Value: ${total_usd:.2f}")
+
+def monitor_arbitrage(args, client: Client, keypair: Keypair):
+    # Monitor SOL vs USDC prices via Jupiter
+    token_a = TOKENS["SOL"]
+    token_b = TOKENS["USDC"]
+    
+    interval = args.interval or 60
+    print(f"🚀 Starting Jupiter Monitor (SOL/USDC) - Interval {interval}s")
+    
+    while True:
+        try:
+            # 1. Get Price
+            price_url = f"{JUPITER_PRICE_API}?ids={token_a}"
+            p_resp = requests.get(price_url).json()
+            jw_price = float(p_resp['data'][token_a]['price'])
+            
+            # 2. Get Quote (Buy 1 SOL)
+            amt = 1 * 10**9
+            q_url = f"{JUPITER_QUOTE_API}?inputMint={token_b}&outputMint={token_a}&amount={int(jw_price * 10**6)}&slippageBps=50"
+            # Note: We are checking if buying 1 SOL with USDC is cheaper/expensive
+            # Simplified Monitor: Just Print Price
+            print(f"[{time.strftime('%H:%M:%S')}] SOL Price: ${jw_price:.2f}")
+            
+            if args.once: break
+            time.sleep(interval)
+        except KeyboardInterrupt: break
+        except Exception as e:
+            print(f"Monitor Err: {e}")
+            if args.once: break
+            time.sleep(5)
 
 def action_swap(args, client: Client, keypair: Keypair):
     if not args.token_in or not args.token_out or not args.amount:
@@ -201,6 +314,12 @@ def main():
     try:
         if args.action == "balance":
             action_balance(args, client, keypair)
+        elif args.action == "transfer":
+            action_transfer(args, client, keypair)
+        elif args.action == "portfolio":
+            action_portfolio(args, client, keypair)
+        elif args.action == "monitor":
+            monitor_arbitrage(args, client, keypair)
         elif args.action == "swap" or args.action == "quote":
             if args.action == "quote":
                 args.quote_only = True
