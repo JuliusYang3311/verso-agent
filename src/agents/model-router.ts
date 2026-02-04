@@ -8,7 +8,7 @@ import type { RouterConfig } from "../config/types.router.js";
 import { parseModelRef, type ModelRef } from "./model-selection.js";
 import { logVerbose } from "../globals.js";
 
-const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 30000;
+const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 10000;
 
 const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS list for the USER INPUT.
 
