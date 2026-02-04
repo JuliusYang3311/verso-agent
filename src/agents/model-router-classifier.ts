@@ -109,6 +109,7 @@ export async function callTaskClassifier(
       lastError = new Error("No text part in response");
       // Retry (loop continues)
     } catch (err) {
+      logVerbose(`[RouterClassifier] Attempt ${attempts} failed: ${err}`);
       lastError = err;
       // Retry on error
     } finally {
