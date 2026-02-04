@@ -211,15 +211,18 @@ export async function promptDefaultModel(
     // Skip internal router models that can't be directly called via API.
     if (HIDDEN_ROUTER_MODELS.has(key)) return;
     const hints: string[] = [];
-    if (entry.name && entry.name !== entry.id) hints.push(entry.name);
     if (entry.contextWindow) hints.push(`ctx ${formatTokenK(entry.contextWindow)}`);
     if (entry.reasoning) hints.push("reasoning");
     const aliases = aliasIndex.byKey.get(key);
     if (aliases?.length) hints.push(`alias: ${aliases.join(", ")}`);
     if (!hasAuth(entry.provider)) hints.push("auth missing");
+
+    // Revert to showing full Key as requested
+    const label = key;
+
     options.push({
       value: key,
-      label: key,
+      label,
       hint: hints.length > 0 ? hints.join(" · ") : undefined,
     });
     seen.add(key);

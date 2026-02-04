@@ -60,6 +60,17 @@ export function resolveModel(
   const authStorage = discoverAuthStorage(resolvedAgentDir);
   const modelRegistry = discoverModels(authStorage, resolvedAgentDir);
 
+  // Fix: If modelId incorrectly includes the provider prefix (e.g. "custom-openai/my-model"),
+  // strip it so we look up "my-model" instead. This ensures API calls use the clean ID.
+  // This happens if the caller passes the full key as the model ID.
+  // STRICT CHECK: Only apply this to custom-openai (enforced by config wizard) and ollama.
+  if (provider === "custom-openai" || provider === "ollama") {
+    const prefix = `${provider}/`;
+    if (modelId.startsWith(prefix)) {
+      modelId = modelId.slice(prefix.length);
+    }
+  }
+
   // 1. Try to find in registry (built-in or dynamic providers)
   let rawModel: Model<Api> | null = modelRegistry.find(provider, modelId) as Model<Api> | null;
   const providers = cfg?.models?.providers ?? {};

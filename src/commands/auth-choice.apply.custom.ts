@@ -183,11 +183,9 @@ export async function applyAuthChoiceCustom(
 
   if (choice === "custom-openai") {
     // ... (existing code: providerId, baseUrl, apiKey inputs) ...
-    const providerIdInput = await prompter.text({
-      message: "Provider ID (e.g., deepseek, localai)",
-      validate: (val) => (val.trim().length > 0 ? undefined : "Required"),
-    });
-    const providerId = normalizeProviderId(String(providerIdInput).trim());
+    // Enforce "custom-openai" as the provider ID to ensure consistent behavior
+    // and safe runtime prefix stripping.
+    const providerId = "custom-openai";
 
     const baseUrl = await prompter.text({
       message: "Base URL (API Endpoint)",

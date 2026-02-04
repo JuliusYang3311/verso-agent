@@ -12,7 +12,7 @@ from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
 from solana.rpc.types import TxOpts, TokenAccountOpts
-from solana.transaction import Transaction
+
 import functools
 
 # Constants
@@ -20,7 +20,7 @@ JUPITER_QUOTE_API = "https://quote-api.jup.ag/v6/quote"
 JUPITER_SWAP_API = "https://quote-api.jup.ag/v6/swap"
 JUPITER_PRICE_API = "https://api.jup.ag/price/v2"
 
-# Token Map (Solana) - Can be extended
+# Token Map (Solana) - Populated dynamically
 TOKENS = {
     "SOL": "So11111111111111111111111111111111111111112",
     "USDC": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
@@ -28,23 +28,83 @@ TOKENS = {
     "BONK": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
     "WIF": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLNYxdBY6Trd",
 }
+TOKEN_METADATA = {} # Mint -> {symbol, decimals}
+
+def fetch_token_list():
+    try:
+        # print("Fetching Jupiter Token List...")
+        # Strict list (verified tokens only)
+        url = "https://token.jup.ag/strict"
+        resp = requests.get(url, timeout=5)
+        tokens = resp.json()
+        
+        for t in tokens:
+            symbol = t.get('symbol')
+            address = t.get('address')
+            decimals = t.get('decimals', 6)
+            
+            if symbol and address:
+                # Update Maps
+                # Prefer existing keys if duplicate symbols exist (usually not an issue in strict list)
+                if symbol not in TOKENS:
+                    TOKENS[symbol] = address
+                
+                TOKEN_METADATA[address] = {
+                    "symbol": symbol,
+                    "decimals": decimals
+                }
+                
+                # Ensure hardcoded mints also have metadata
+                if symbol == "SOL":
+                     TOKEN_METADATA[address] = {"symbol": "SOL", "decimals": 9}
+
+    except Exception as e:
+        print(f"Warning: Failed to fetch token list ({e}). Using offline defaults.")
+
+# Initialize immediately? Or lazily? 
+# For CLI script, immediate is fine but might slow down simple Ops.
+# Let's call it in main if needed, or lazily.
+# For now, let's just populate it at module level or top of main actions.
 
 def get_keypair(private_key_b58: str) -> Keypair:
     try:
+        if private_key_b58.startswith("0x") or len(private_key_b58) == 64:
+             return Keypair.from_seed(bytes.fromhex(private_key_b58.replace("0x", "")))
         return Keypair.from_base58_string(private_key_b58)
     except Exception as e:
-        print(f"Error loading keypair: {e}")
-        sys.exit(1)
+        # Fallback for old hex format without 0x or different encoding
+        try:
+             return Keypair.from_seed(bytes.fromhex(private_key_b58))
+        except:
+             print(f"Error loading keypair: {e}")
+             sys.exit(1)
 
 def get_client(rpc_url: str) -> Client:
     return Client(rpc_url)
 
 def resolve_token_address(token_symbol_or_address: str) -> str:
-    # Check if it's in our map
+    # Check if known symbol
     upper = token_symbol_or_address.upper()
     if upper in TOKENS:
         return TOKENS[upper]
+        
+    # Check if valid Pubkey (mint address)
+    try:
+        Pubkey.from_string(token_symbol_or_address)
+        return token_symbol_or_address
+    except:
+        pass
+        
     return token_symbol_or_address
+
+def get_token_decimals(mint_address: str) -> int:
+    if mint_address in TOKEN_METADATA:
+        return TOKEN_METADATA[mint_address]['decimals']
+    # Defaults
+    if mint_address == TOKENS["SOL"]: return 9
+    if mint_address == TOKENS["USDC"]: return 6
+    if mint_address == TOKENS["USDT"]: return 6
+    return 6 # Fallback
 
 def action_balance(args, client: Client, keypair: Keypair):
     pubkey = keypair.pubkey()
@@ -150,10 +210,16 @@ def action_portfolio(args, client: Client, keypair: Keypair):
             mint = data['mint']
             amount = data['tokenAmount']['uiAmount']
             if amount and amount > 0:
+
                 # Resolve Symbol
                 sym = mint
-                for k,v in TOKENS.items():
-                    if v == mint: sym = k
+                if mint in TOKEN_METADATA:
+                    sym = TOKEN_METADATA[mint]['symbol']
+                else:
+                    # Fallback to known tokens if any
+                    for k,v in TOKENS.items():
+                        if v == mint: sym = k
+                
                 holdings[sym] = amount
     except Exception as e:
         print(f"Token Scan Error: {e}")
@@ -230,12 +296,8 @@ def action_swap(args, client: Client, keypair: Keypair):
     token_out = resolve_token_address(args.token_out)
     
     # 1. Get Quote
-    amount_in_atoms = int(float(args.amount) * (10**9)) # ASSUMES 9 decimals (SOL). If USDC (6 decimals), this is wrong.
-    # We need decimals. 
-    # Hardcode for common tokens? Or fetch decimals?
-    decimals = 9
-    if token_in == TOKENS["USDC"] or token_in == TOKENS["USDT"]:
-        decimals = 6
+    # Determine decimals
+    decimals = get_token_decimals(token_in)
     
     amount_in_atoms = int(float(args.amount) * (10**decimals))
     
@@ -300,6 +362,9 @@ def main():
     parser.add_argument("--quote-only", action="store_true", help="Only show quote, do not execute")
     
     args = parser.parse_args()
+    
+    # Initialize Token List
+    fetch_token_list()
     
     # Load Config from ~/.verso/verso.json if args missing
     import os

@@ -9,6 +9,7 @@ export type ModelCatalogEntry = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: Array<"text" | "image">;
+  api?: string;
 };
 
 type DiscoveredModel = {
@@ -18,6 +19,7 @@ type DiscoveredModel = {
   contextWindow?: number;
   reasoning?: boolean;
   input?: Array<"text" | "image">;
+  api?: string;
 };
 
 type PiSdkModule = typeof import("@mariozechner/pi-coding-agent");
@@ -85,7 +87,46 @@ export async function loadModelCatalog(params?: {
         const input = Array.isArray(entry?.input)
           ? (entry.input as Array<"text" | "image">)
           : undefined;
-        models.push({ id, name, provider, contextWindow, reasoning, input });
+        // Pass through the API type if discovered
+        const api = entry?.api;
+        models.push({ id, name, provider, contextWindow, reasoning, input, api });
+      }
+
+      // Inject models from Verso Config (custom providers)
+      const providers = (cfg.models?.providers ?? {}) as Record<
+        string,
+        { models?: Array<{ id: string }> }
+      >;
+      for (const [providerId, conf] of Object.entries(providers)) {
+        if (!conf?.models || !Array.isArray(conf.models)) continue;
+        const normalizedProvider = providerId.trim().toLowerCase();
+
+        for (const modelConf of conf.models) {
+          const id = String(modelConf.id ?? "").trim();
+          if (!id) continue;
+
+          // Avoid duplicates if SDK already found it
+          const existing = models.find(
+            (m) => m.provider === normalizedProvider && m.id.toLowerCase() === id.toLowerCase(),
+          );
+
+          if (!existing) {
+            models.push({
+              id,
+              name: id, // Custom models usually don't have separate display names unless we add that field
+              provider: normalizedProvider,
+              // FIX: Must provide an API type, otherwise pi-ai crashes with "Unhandled API".
+              // Use configured API or default to "openai-responses" (generic LLM).
+              // Since we are forcing custom-openai, this is the correct default.
+              // We cast as any because DiscoveredModel usually doesn't expose api in the public type,
+              // but it passes through to Model<Api> in the runner.
+              api: (conf as any).api ?? "openai-responses",
+              contextWindow: undefined, // Could assume default or unknown
+              reasoning: undefined,
+              input: undefined,
+            });
+          }
+        }
       }
 
       if (models.length === 0) {

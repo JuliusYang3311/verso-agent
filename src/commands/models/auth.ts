@@ -158,20 +158,13 @@ export async function modelsAuthAddCommand(_opts: Record<string, never>, runtime
     message: "Token provider",
     options: [
       { value: "anthropic", label: "anthropic" },
-      { value: "custom", label: "custom (type provider id)" },
+      { value: "custom", label: "custom (OpenAI compatible)" },
     ],
   })) as TokenProvider | "custom";
 
   const providerId =
     provider === "custom"
-      ? normalizeProviderId(
-          String(
-            await text({
-              message: "Provider id",
-              validate: (value) => (value?.trim() ? undefined : "Required"),
-            }),
-          ),
-        )
+      ? "custom-openai" // Enforced standard ID
       : provider;
 
   const method = (await select({
