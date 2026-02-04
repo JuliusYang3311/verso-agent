@@ -8,11 +8,10 @@ import requests
 from solders.keypair import Keypair # type: ignore
 from solders.pubkey import Pubkey # type: ignore
 from solders.system_program import TransferParams, transfer
-from solders.transaction import VersionedTransaction # type: ignore
-from solders.message import to_bytes_versioned # type: ignore
+from solders.transaction import VersionedTransaction, Transaction # type: ignore
+from solders.message import to_bytes_versioned, Message # type: ignore
 from solana.rpc.api import Client
 from solana.rpc.types import TxOpts, TokenAccountOpts
-from solana.transaction import Transaction
 import functools
 
 # Constants
@@ -113,6 +112,9 @@ def action_transfer(args, client: Client, keypair: Keypair):
         
         print(f"Transferring {args.amount} SOL to {args.to}...")
         
+        # Fetch Blockhash
+        blockhash = client.get_latest_blockhash().value.blockhash
+        
         # System Program Transfer
         ix = transfer(
             TransferParams(
@@ -121,8 +123,12 @@ def action_transfer(args, client: Client, keypair: Keypair):
                 lamports=lamports
             )
         )
-        tx = Transaction().add(ix)
-        result = client.send_transaction(tx, keypair)
+        
+        # Construct Transaction (Solders style)
+        msg = Message([ix], keypair.pubkey())
+        tx = Transaction([keypair], msg, blockhash)
+        
+        result = client.send_transaction(tx)
         print(f"Transfer Sent: {result.value}")
         
     except Exception as e:
