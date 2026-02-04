@@ -44,9 +44,6 @@ const GoogleConfigSchema = z
 const CryptoConfigSchema = z
   .object({
     enabled: z.boolean().optional(),
-    rpcUrl: z.string().optional(),
-    privateKey: z.string().optional(),
-    explorerApiKey: z.string().optional(),
     alchemyApiKey: z.string().optional(),
     solanaRpcUrl: z.string().optional(),
     solanaPrivateKey: z.string().optional(),

@@ -1,9 +1,6 @@
 export type CryptoConfig = {
   enabled?: boolean;
-  rpcUrl?: string;
-  privateKey?: string;
-  explorerApiKey?: string;
   alchemyApiKey?: string;
-  solanaRpcUrl?: string;
-  solanaPrivateKey?: string;
+  solanaRpcUrl?: string; // e.g. https://api.mainnet-beta.solana.com
+  solanaPrivateKey?: string; // Base58
 };

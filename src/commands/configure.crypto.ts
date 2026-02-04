@@ -45,24 +45,6 @@ export async function promptCryptoConfig(
     runtime,
   )) as string;
 
-  const privateKey = (await guardCancel(
-    text({
-      message: "Wallet Private Key (Address will be derived)",
-      placeholder: "0x...",
-      initialValue: existing?.privateKey,
-    }),
-    runtime,
-  )) as string;
-
-  const explorerApiKey = (await guardCancel(
-    text({
-      message: "Etherscan/Polygonscan API Key (Unified V2)",
-      placeholder: "Your API Key",
-      initialValue: existing?.explorerApiKey,
-    }),
-    runtime,
-  )) as string;
-
   const defaultSolanaRpc = alchemyApiKey
     ? `https://solana-mainnet.g.alchemy.com/v2/${alchemyApiKey}`
     : "https://api.mainnet-beta.solana.com";
@@ -89,10 +71,7 @@ export async function promptCryptoConfig(
     ...nextConfig,
     crypto: {
       enabled,
-      rpcUrl: undefined, // Cleared to enforce Alchemy
       alchemyApiKey: alchemyApiKey || undefined,
-      privateKey: privateKey || undefined,
-      explorerApiKey: explorerApiKey || undefined,
       solanaRpcUrl,
       solanaPrivateKey: solanaPrivateKey || undefined,
     },
