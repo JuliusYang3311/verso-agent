@@ -14,10 +14,9 @@ To use wallet features, run `verso configure`.
 
 ### Solana Configuration (Required)
 - `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
-- `SOLANA_RPC_URL`: Optional. Defaults to public mainnet, or auto-configured to **Alchemy** if API Key is present.
-
-### EVM Configuration (Legacy/Optional)
-- `ALCHEMY_API_KEY`: Key for Private RPC (Polygon/Eth/Solana).
+### Advanced Configuration / RPC
+- `ALCHEMY_API_KEY`: Accelerate Solana transactions with private RPC.
+- `SOLANA_RPC_URL`: Custom RPC URL (Optional).
 
 ## Capabilities
 
@@ -57,21 +56,8 @@ python3 skills/crypto-trading/scripts/sol_wallet.py --action portfolio
 python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor --interval 10
 ```
 
-### 2. EVM Wallet (Legacy)
-Scripts are located at `skills/crypto-trading/scripts/evm_wallet.py`.
-Supports Polygon, Ethereum, Optimism, Arbitrum.
-
-**Usage:**
-```bash
-# Check Balance
-python3 skills/crypto-trading/scripts/evm_wallet.py --action balance
-
-# Swap (Uniswap V3)
-python3 skills/crypto-trading/scripts/evm_wallet.py --action swap ...
-```
-
 ## Dependencies
 
 - Python 3
-- `pip install solana solders requests` (For Solana)
-- `pip install web3` (For EVM)
+- `pip install solana solders requests`
+

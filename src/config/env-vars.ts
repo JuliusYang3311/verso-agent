@@ -26,8 +26,8 @@ export function collectConfigEnvVars(cfg?: VersoConfig): Record<string, string> 
   if (cfg?.crypto?.alchemyApiKey) {
     entries.ALCHEMY_API_KEY = cfg.crypto.alchemyApiKey;
   }
-  if (cfg?.crypto?.privateKey) {
-    entries.WALLET_PRIVATE_KEY = cfg.crypto.privateKey;
+  if (cfg?.crypto?.solanaPrivateKey) {
+    entries.SOLANA_PRIVATE_KEY = cfg.crypto.solanaPrivateKey;
   }
 
   return entries;
