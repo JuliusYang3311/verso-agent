@@ -182,6 +182,7 @@ export async function applyAuthChoiceCustom(
   }
 
   if (choice === "custom-openai") {
+    // ... (existing code: providerId, baseUrl, apiKey inputs) ...
     const providerIdInput = await prompter.text({
       message: "Provider ID (e.g., deepseek, localai)",
       validate: (val) => (val.trim().length > 0 ? undefined : "Required"),
@@ -252,6 +253,44 @@ export async function applyAuthChoiceCustom(
     });
     nextConfig = applied.config;
     agentModelOverride = applied.agentModelOverride;
+
+    // --- Embeddings Configuration ---
+    const useForEmbeddings = await prompter.confirm({
+      message: "Use this provider for Memory Search embeddings?",
+      initialValue: true,
+    });
+
+    if (useForEmbeddings === true) {
+      const embeddingModel = await prompter.text({
+        message: "Embedding Model ID",
+        placeholder: "e.g. text-embedding-3-small",
+        validate: (val) => (val.trim().length > 0 ? undefined : "Required"),
+      });
+
+      if (typeof embeddingModel !== "symbol") {
+        nextConfig = {
+          ...nextConfig,
+          agents: {
+            ...nextConfig.agents,
+            defaults: {
+              ...nextConfig.agents?.defaults,
+              memorySearch: {
+                ...nextConfig.agents?.defaults?.memorySearch,
+                enabled: true,
+                provider: "openai", // Custom providers use OpenAI-compatible API
+                model: String(embeddingModel).trim(),
+                remote: {
+                  ...nextConfig.agents?.defaults?.memorySearch?.remote,
+                  baseUrl: String(baseUrl).trim(),
+                  apiKey: String(apiKey).trim(),
+                },
+              },
+            },
+          },
+        };
+        await prompter.note("Memory search configured to use custom provider.", "Embeddings");
+      }
+    }
 
     return { config: nextConfig, agentModelOverride };
   }
