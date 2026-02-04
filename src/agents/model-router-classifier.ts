@@ -79,6 +79,12 @@ export async function callTaskClassifier(
         options,
       );
 
+      // DEBUG: Log the raw result to understand structure
+      if (cfg?.debug || true) {
+        // Force log for now
+        logVerbose(`[RouterDebug] Result: ${JSON.stringify(result, null, 2)}`);
+      }
+
       // Extract text content from the result (AssistantMessage)
       if (!result.content) {
         lastError = new Error("Empty response from classifier");
