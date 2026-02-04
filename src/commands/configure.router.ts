@@ -39,6 +39,7 @@ export async function promptRouterConfig(
       "• Task Models: Map task types (coding, writing, etc.) to specific models",
       "• Fallback: Uses Primary Model if no specific task model matches",
       "",
+      "⚠️ Note: Classifier calls incur a small cost per message.",
       "Example: Use Claude Sonnet for coding, Gemini for general chat",
     ].join("\n"),
     "Smart Model Router",

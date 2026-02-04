@@ -24,12 +24,28 @@ export type ClassifierCallParams = {
  * Make a simple LLM call for task classification.
  * Uses completeSimple for fast, low-latency responses.
  */
+// Simple in-memory cache for classifier decisions
+const decisionCache = new Map<string, string>();
+
+/**
+ * Make a simple LLM call for task classification.
+ * Uses completeSimple for fast, low-latency responses.
+ */
 export async function callTaskClassifier(
   params: ClassifierCallParams,
   cfg?: VersoConfig,
   agentDir?: string,
 ): Promise<string> {
   const { provider, model, prompt, timeoutMs, thinking } = params;
+
+  // Check cache
+  const cacheKey = `${provider}:${model}:${thinking}:${prompt}`;
+  if (decisionCache.has(cacheKey)) {
+    logVerbose(`[RouterClassifier] Cache hit for prompt: ${prompt.slice(0, 50)}...`);
+    return decisionCache.get(cacheKey)!;
+  }
+
+  const startTime = Date.now();
 
   // Get API key for the classifier model's provider
   const auth = await resolveApiKeyForProvider({
@@ -104,20 +120,27 @@ export async function callTaskClassifier(
         continue; // Retry
       }
 
+      const finishAndCache = (text: string) => {
+        clearTimeout(timeoutId);
+        const final = stripThinkingTagsFromText(text).trim();
+        const duration = Date.now() - startTime;
+        logVerbose(`[RouterClassifier] Success (${duration}ms): ${final}`);
+        // Metrics: could log structured data here if needed
+        decisionCache.set(cacheKey, final);
+        return final;
+      };
+
       const content = result.content;
       if (typeof content === "string") {
-        clearTimeout(timeoutId);
-        return stripThinkingTagsFromText(content).trim();
+        return finishAndCache(content);
       }
       // Content is array of ContentPart - extract text
       for (const part of content) {
         if (typeof part === "string") {
-          clearTimeout(timeoutId);
-          return stripThinkingTagsFromText(part).trim();
+          return finishAndCache(part);
         }
         if (part && typeof part === "object" && "type" in part && part.type === "text") {
-          clearTimeout(timeoutId);
-          return stripThinkingTagsFromText((part as { type: "text"; text: string }).text).trim();
+          return finishAndCache((part as { type: "text"; text: string }).text);
         }
       }
 
@@ -133,7 +156,10 @@ export async function callTaskClassifier(
   }
 
   // Fallback if all retries failed
-  logVerbose(`Classifier failed after ${maxRetries} attempts: ${lastError}`);
+  const duration = Date.now() - startTime;
+  logVerbose(
+    `[RouterClassifier] Failed after ${maxRetries} attempts (${duration}ms): ${lastError}`,
+  );
   return "";
 }
 
@@ -147,11 +173,7 @@ export function createClassifierFn(
 ): (params: ClassifierCallParams) => Promise<string> {
   const routerThinking = cfg.agents?.defaults?.router?.thinking ?? false;
   return async (params: ClassifierCallParams) => {
-    logVerbose(
-      `Router classifying task with ${params.provider}/${params.model} (thinking: ${routerThinking})`,
-    );
-    const result = await callTaskClassifier({ ...params, thinking: routerThinking }, cfg, agentDir);
-    logVerbose(`Router classification result: ${result.trim()}`);
-    return result;
+    // Note: Logging moved inside callTaskClassifier for consistent timing including cache
+    return await callTaskClassifier({ ...params, thinking: routerThinking }, cfg, agentDir);
   };
 }
