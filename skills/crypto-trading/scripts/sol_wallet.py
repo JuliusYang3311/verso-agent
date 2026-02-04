@@ -295,18 +295,41 @@ def main():
     
     args = parser.parse_args()
     
-    # Load Config (Environment or Args)
-    # Ideally passed by caller, but we can check ENV variables or args.
-    # Typically verso passes args.
+    # Load Config from ~/.verso/verso.json if args missing
+    import os
+    config_path = os.path.expanduser("~/.verso/verso.json")
     
+    loaded_rpc = None
+    loaded_key = None
+    
+    if os.path.exists(config_path):
+        try:
+            with open(config_path) as f:
+                data = json.load(f)
+                crypto = data.get('crypto', {})
+                if crypto.get('enabled'):
+                    loaded_key = crypto.get('solanaPrivateKey')
+                    
+                    # Resolve RPC
+                    if crypto.get('solanaRpcUrl'):
+                        loaded_rpc = crypto.get('solanaRpcUrl')
+                    elif crypto.get('alchemyApiKey'):
+                        loaded_rpc = f"https://solana-mainnet.g.alchemy.com/v2/{crypto.get('alchemyApiKey')}"
+        except Exception as e:
+            # Silently fail config load, rely on args
+            pass
+
+    # Fallback to loaded config if args are missing
+    if not args.private_key and loaded_key:
+        args.private_key = loaded_key
+        
+    if args.rpc == "https://api.mainnet-beta.solana.com" and loaded_rpc:
+        # Override default if we found a better one (e.g. Alchemy) in config
+        args.rpc = loaded_rpc
+
     if not args.private_key:
-        # Check ~/.verso/verso.json if we want to be fancy, but simpler to rely on caller passing it?
-        # verso.json parsing is handled by typescript usually. 
-        # But wait, skill scripts usually get args passed from the Agent runtime.
-        # The agent should read verso.json and pass `--private-key`.
-        if not args.private_key:
-            print("Error: --private-key is required")
-            sys.exit(1)
+        print("Error: --private-key is required (or configure via 'verso configure')")
+        sys.exit(1)
 
     keypair = get_keypair(args.private_key)
     client = get_client(args.rpc)
