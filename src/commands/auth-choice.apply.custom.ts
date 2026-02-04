@@ -57,7 +57,7 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
   // Initial prompt
   while (addMore) {
     const idInput = await prompter.text({
-      message: "Model Name/ID",
+      message: "Chat Model Name/ID (Generative)",
       placeholder: "e.g. llama3, deepseek-coder",
       validate: (val: string) => (val.trim().length > 0 ? undefined : "Required"),
     });
