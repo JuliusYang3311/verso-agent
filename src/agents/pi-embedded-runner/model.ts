@@ -21,13 +21,28 @@ export function buildInlineProviderModels(
   return Object.entries(providers).flatMap(([providerId, entry]) => {
     const trimmed = providerId.trim();
     if (!trimmed) return [];
+    const resolveDefaultApi = (p: string) => {
+      switch (p) {
+        case "anthropic":
+          return "anthropic-messages";
+        case "google":
+          return "google-generative-ai";
+        case "bedrock":
+          return "bedrock-converse-stream";
+        case "copilot":
+          return "github-copilot";
+        default:
+          return "openai-responses";
+      }
+    };
+
     return (entry?.models ?? []).map((model) => ({
       ...model,
       provider: trimmed,
       baseUrl: entry?.baseUrl,
-      // FIX: Default to "openai-responses" for custom providers if API is not specified.
-      // This prevents "Unhandled API" crashes in pi-ai.
-      api: model.api ?? entry?.api ?? "openai-responses",
+      // FIX: Default to provider-specific API type or "openai-responses" if API is not specified.
+      // This prevents "Unhandled API" crashes while respecting known provider protocols.
+      api: model.api ?? entry?.api ?? resolveDefaultApi(trimmed),
     }));
   });
 }
