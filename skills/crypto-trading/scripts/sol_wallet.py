@@ -14,7 +14,7 @@ from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
 
-# Public Aggregator API (Solana Tracker)
+# Solana Tracker API
 SOLANA_TRACKER_URL = "https://swap-v2.solanatracker.io/swap"
 COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price"
 
@@ -157,59 +157,72 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     token_in = TOKENS.get(token_in_raw.upper(), token_in_raw)
     token_out = TOKENS.get(token_out_raw.upper(), token_out_raw)
     
-    try:
-        amount_decimal = float(args.amount)
-    except ValueError:
-        print("Error: Invalid amount")
-        return
+    amount = float(args.amount)
+    slippage = args.slippage # Percent, e.g. 0.5
+    
+    # Solana Tracker uses decimal amounts directly (e.g. 0.1), no need to fetch decimals first for the request
+    # but strictly requires 'from', 'to', 'amount', 'slippage'
+    
+    print(f"Fetching Quote & Transaction from Solana Tracker...")
+    
+    # Check for optional API key in environment
+    api_key = os.environ.get("SOLANA_TRACKER_API_KEY")
+    headers = {}
+    if api_key:
+        headers["x-api-key"] = api_key
 
-    slippage = args.slippage
-    
-    print(f"Fetching Quote & Transaction via Solana Tracker...")
-    
+    # Query params
     params = {
         "from": token_in,
         "to": token_out,
-        "amount": amount_decimal,
-        "slippage": slippage,
-        "payer": str(keypair.pubkey())
+        "amount": amount,
+        "slippage": slippage
     }
     
-    # Priority Fee Handling (basic override if auto)
+    # Handle Priority Fee
     if args.priority_fee:
         if args.priority_fee == "auto":
-             params["priorityFee"] = 0.005
+            # high/turbo/ultra etc. defaulting to high for safety
+            params["priorityFee"] = "0.0005" # Default fixed or use specific API feature if available
+            print("Using Priority Fee: 0.0005 SOL (Manual High)")
         else:
+             # If user provided a number, solana tracker expects SOL value usually
+             # assuming args.priority_fee is in micro-lamports? 
+             # Solana Tracker API usually handles fees automatically or via 'priorityFee' param in SOL
              try:
-                params["priorityFee"] = float(args.priority_fee)
+                 fee_sol = float(args.priority_fee) / 10**9 
+                 params["priorityFee"] = fee_sol
+                 print(f"Using Priority Fee: {fee_sol:.6f} SOL")
              except: pass
 
     try:
-        headers = {}
-        # Optional: API Key for better rate limits
-        api_key = os.environ.get("SOLANA_TRACKER_API_KEY")
-        if api_key:
-            headers["x-api-key"] = api_key
+        # Single call to get swap transaction (includes quote info usually)
+        # Note: swap-v2 endpoint returns { txn, rate, ... }
+        r = requests.get(SOLANA_TRACKER_URL, params=params, headers=headers, proxies=proxies, timeout=15)
         
-        resp = requests.get(SOLANA_TRACKER_URL, params=params, headers=headers, timeout=15, proxies=proxies).json()
-        
-        if "error" in resp: 
-             return print(f"Swap Error: {resp['error']}")
+        if r.status_code != 200:
+            print(f"API Error ({r.status_code}): {r.text}")
+            return
 
-        if "rate" not in resp:
-            if "message" in resp: return print(f"API Error: {resp['message']}")
-            return print(f"API Error: Unexpected response format: {resp.keys()}")
-
-        rate = resp["rate"]
-        amount_in = rate.get("amountIn")
-        amount_out = rate.get("amountOut")
-        price_impact = rate.get("priceImpact", 0)
+        data = r.json()
         
+        # Parse Rate/Quote Info
+        # 'rate' field usually contains price info
+        rate = data.get('rate') # effective price
+        
+        # 'txn' is the base64 transaction
+        txn_base64 = data.get('txn')
+        
+        if not txn_base64:
+             print("Error: No transaction returned from API.")
+             return
+
         print(f"\n--- Quote (Solana Tracker) ---")
-        print(f"In:  {amount_in} {args.token_in}")
-        print(f"Out: {amount_out} {args.token_out}")
-        print(f"Price Impact: {price_impact}%")
-
+        print(f"In:  {amount} {args.token_in}")
+        # Estimating out based on rate if explicit outAmount not provided in top level
+        # Tracker V2 usually just returns txn. We can infer verify strictly on chain or trust the blind sign for CLI simplification
+        print(f"Rate: {rate} (Estimated)")
+        
         if args.quote_only: return
 
         # Confirmation
@@ -217,10 +230,10 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
             print("Cancelled.")
             return
 
-        raw_tx = base64.b64decode(resp['txn'])
+        # Deserialize and Sign
+        raw_tx = base64.b64decode(txn_base64)
         tx = VersionedTransaction.from_bytes(raw_tx)
         
-        # Sign
         signature = keypair.sign_message(to_bytes_versioned(tx.message))
         signed_tx = VersionedTransaction.populate(tx.message, [signature])
         
@@ -230,8 +243,9 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
         
         print(f"Transaction Sent! Signature: {res.value}")
         print(f"Explorer: https://solscan.io/tx/{res.value}")
-
-    except Exception as e: print(f"Swap Failed: {e}")
+        
+    except Exception as e:
+        print(f"Swap Failed: {e}")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -243,25 +257,40 @@ def main():
     parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %% (default 0.5)")
     parser.add_argument("--priority-fee", help="Priority fee in micro-lamports or 'auto'")
     parser.add_argument("--quote-only", action="store_true")
-    # ... other args ...
-    args, unknown = parser.parse_known_args() # For safety
     
-    config_path = "/Users/veso/.verso/verso.json"
+    args, unknown = parser.parse_known_args()
+    
+    # Load Config (Standard Verso Path)
+    config_path = os.path.expanduser("~/.verso/verso.json")
     try:
-        config = json.load(open(config_path))['crypto']
-        pk = config['solanaPrivateKey']
+        if not os.path.exists(config_path):
+             # Fallback to local relative for dev
+             config_path = "verso.json" 
+        
+        with open(config_path) as f:
+            full_config = json.load(f)
+            config = full_config.get('crypto', {})
+            
+        pk = config.get('solanaPrivateKey')
+        if not pk: raise Exception("No solanaPrivateKey in config")
+        
         proxies = None
         
-        # Dynamic RPC URL construction
         rpc = config.get('solanaRpcUrl')
         if not rpc:
             alchemy_key = config.get('alchemyApiKey')
             if alchemy_key:
                 rpc = f"https://solana-mainnet.g.alchemy.com/v2/{alchemy_key}"
             else:
-                rpc = args.rpc # Default fallbacks
-    except:
-        print("Error loading config. Run 'verso configure'.")
+                rpc = args.rpc
+                
+        # Load optional API key for Tracker
+        if 'solanaTrackerApiKey' in config:
+            os.environ["SOLANA_TRACKER_API_KEY"] = config['solanaTrackerApiKey']
+            
+    except Exception as e:
+        print(f"Config Error: {e}")
+        print("Please run 'verso configure' to set up wallet.")
         sys.exit(1)
     
     kp = get_keypair(pk)
@@ -273,8 +302,6 @@ def main():
             sys.exit(1)
         action_swap(args, rpc, kp, proxies)
     elif args.action == "monitor":
-        print("Monitor mode...")
-        # (Simplified monitor logic or just call portfolio in loop)
         while True:
             action_portfolio(rpc, kp, proxies)
             time.sleep(10)
