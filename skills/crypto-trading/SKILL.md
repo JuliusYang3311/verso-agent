@@ -61,6 +61,21 @@ python3 skills/crypto-trading/scripts/sol_wallet.py --action balance
 python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor
 ```
 
+### 2. Generic Price Check
+Check the price of any cryptocurrency via CoinGecko using `skills/crypto-trading/scripts/get_price.py`.
+
+**Usage:**
+```bash
+# Get price in USD (Default)
+python3 skills/crypto-trading/scripts/get_price.py solana
+
+# Get price in a specific currency (e.g., EUR)
+python3 skills/crypto-trading/scripts/get_price.py bitcoin eur
+```
+
+> [!TIP]
+> This tool uses **CoinGecko IDs** (e.g., `solana`, `ethereum`, `tether`) for queries.
+
 ## Dependencies
 
 - Python 3
