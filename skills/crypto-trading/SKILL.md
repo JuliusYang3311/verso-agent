@@ -18,6 +18,7 @@ To use wallet features, run `verso configure`.
 ### Advanced Configuration / RPC
 - `ALCHEMY_API_KEY`: Accelerate Solana transactions with private RPC.
 - `SOLANA_RPC_URL`: Custom RPC URL (Optional).
+- `SOLANA_TRACKER_API_KEY`: Optional API key for Solana Tracker (better rate limits).
 
 ## Capabilities
 
@@ -30,8 +31,8 @@ Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wal
 - **Price Source**: **CoinGecko** (Primary) with DexScreener (Fallback).
 - **Dynamic Discovery**: Automatically identifies unknown tokens.
 
-**Swap (Jupiter Aggregator - Public API):**
-> **Note**: Uses Jupiter V6 Public API. No API Key or Proxy required (Direct Access).
+**Swap (Solana Tracker API):**
+> **Note**: Uses Solana Tracker V2 API (`swap-v2.solanatracker.io`). Supports optional API key for high volume.
 
 ```bash
 # Quote only

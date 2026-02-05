@@ -3,8 +3,10 @@ import argparse
 import base64
 import json
 import sys
+import os
 import time
 import requests
+from typing import Dict, Any, Optional
 from solders.keypair import Keypair # type: ignore
 from solders.pubkey import Pubkey # type: ignore
 from solders.system_program import TransferParams, transfer
@@ -12,9 +14,8 @@ from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
 
-# Public Aggregator API (No Auth Required)
-QUOTE_API = "https://quote-api.jup.ag/v6/quote"
-SWAP_API = "https://quote-api.jup.ag/v6/swap"
+# Public Aggregator API (Solana Tracker)
+SOLANA_TRACKER_URL = "https://swap-v2.solanatracker.io/swap"
 COINGECKO_API = "https://api.coingecko.com/api/v3/simple/price"
 
 # Robust Offline Token List
@@ -60,7 +61,7 @@ def action_portfolio(rpc_url, keypair, proxies=None):
         r = requests.post(rpc_url, json=payload, proxies=proxies).json()
         sol_bal = int(r['result']['value']) / 10**9
     except: pass
-    holdings = {"SOL": sol_bal}
+    holdings: Dict[str, float] = {"SOL": sol_bal}
     
     payload = {
         "jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
@@ -78,8 +79,8 @@ def action_portfolio(rpc_url, keypair, proxies=None):
                     holdings[sym] = amt
     except: pass
     
-    prices = {}
-    sym_to_data = {}
+    prices: Dict[str, float] = {}
+    sym_to_data: Dict[str, Dict[str, Optional[str]]] = {}
     cg_ids = []
     
     for sym in holdings.keys():
@@ -156,40 +157,59 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     token_in = TOKENS.get(token_in_raw.upper(), token_in_raw)
     token_out = TOKENS.get(token_out_raw.upper(), token_out_raw)
     
-    # Try to find decimals from metadata or on-chain
-    dict_in = TOKEN_METADATA.get(token_in, {})
-    dec = dict_in.get('decimals')
-    if dec is None:
-        print(f"Warning: Decimals for {args.token_in} unknown, assuming 6. Use generic mints at own risk.")
-        dec = 6
-        
-    amt_atoms = int(float(args.amount) * (10**dec))
-    slippage_bps = int(args.slippage * 100)
-    
-    print(f"Fetching Quote via DEX Aggregator...")
-    q_url = f"{QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={slippage_bps}"
     try:
-        headers = {} 
-        # Public API does not need API key headers
-        quote = requests.get(q_url, timeout=10, proxies=proxies).json()
-        if "error" in quote: return print(f"Quote Error: {quote['error']}")
+        amount_decimal = float(args.amount)
+    except ValueError:
+        print("Error: Invalid amount")
+        return
+
+    slippage = args.slippage
+    
+    print(f"Fetching Quote & Transaction via Solana Tracker...")
+    
+    params = {
+        "from": token_in,
+        "to": token_out,
+        "amount": amount_decimal,
+        "slippage": slippage,
+        "payer": str(keypair.pubkey())
+    }
+    
+    # Priority Fee Handling (basic override if auto)
+    if args.priority_fee:
+        if args.priority_fee == "auto":
+             params["priorityFee"] = 0.005
+        else:
+             try:
+                params["priorityFee"] = float(args.priority_fee)
+             except: pass
+
+    try:
+        headers = {}
+        # Optional: API Key for better rate limits
+        api_key = os.environ.get("SOLANA_TRACKER_API_KEY")
+        if api_key:
+            headers["x-api-key"] = api_key
         
-        if 'inAmount' not in quote:
-            print(f"API Error: {quote}")
-            return
-            
-        in_amt = int(quote['inAmount']) / (10**dec)
-        out_amt_raw = int(quote['outAmount'])
+        resp = requests.get(SOLANA_TRACKER_URL, params=params, headers=headers, timeout=15, proxies=proxies).json()
         
-        dict_out = TOKEN_METADATA.get(token_out, {})
-        out_dec = dict_out.get('decimals', 6)
-        out_amt = out_amt_raw / (10**out_dec)
+        if "error" in resp: 
+             return print(f"Swap Error: {resp['error']}")
+
+        if "rate" not in resp:
+            if "message" in resp: return print(f"API Error: {resp['message']}")
+            return print(f"API Error: Unexpected response format: {resp.keys()}")
+
+        rate = resp["rate"]
+        amount_in = rate.get("amountIn")
+        amount_out = rate.get("amountOut")
+        price_impact = rate.get("priceImpact", 0)
         
-        print(f"\n--- Quote ---")
-        print(f"In:  {in_amt} {args.token_in}")
-        print(f"Out: {out_amt} {args.token_out}")
-        print(f"Price Impact: {quote.get('priceImpactPct', '0')}%")
-        
+        print(f"\n--- Quote (Solana Tracker) ---")
+        print(f"In:  {amount_in} {args.token_in}")
+        print(f"Out: {amount_out} {args.token_out}")
+        print(f"Price Impact: {price_impact}%")
+
         if args.quote_only: return
 
         # Confirmation
@@ -197,27 +217,7 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
             print("Cancelled.")
             return
 
-        # Prepare Swap Request
-        body = {
-            "userPublicKey": str(keypair.pubkey()),
-            "quoteResponse": quote,
-            "wrapAndUnwrapSol": True
-        }
-        
-        # Priority Fee
-        if args.priority_fee:
-            if args.priority_fee == "auto":
-                body["computeUnitPriceMicroLamports"] = "auto"
-                print("Using Dynamic Priority Fee (Auto)")
-            else:
-                  body["computeUnitPriceMicroLamports"] = int(args.priority_fee)
-                  print(f"Using Priority Fee: {args.priority_fee} micro-lamports")
-
-        swap_resp = requests.post(SWAP_API, json=body, timeout=15, proxies=proxies).json()
-        
-        if "error" in swap_resp: return print(f"Swap Build Error: {swap_resp['error']}")
-        
-        raw_tx = base64.b64decode(swap_resp['swapTransaction'])
+        raw_tx = base64.b64decode(resp['txn'])
         tx = VersionedTransaction.from_bytes(raw_tx)
         
         # Sign
@@ -226,12 +226,11 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
         
         # Send
         print("Sending transaction...")
-        opts =  {"skipPreflight": True}
-        res = Client(rpc_url).send_transaction(signed_tx, opts=opts)
+        res = Client(rpc_url).send_raw_transaction(bytes(signed_tx))
         
         print(f"Transaction Sent! Signature: {res.value}")
         print(f"Explorer: https://solscan.io/tx/{res.value}")
-        
+
     except Exception as e: print(f"Swap Failed: {e}")
 
 def main():
