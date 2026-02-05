@@ -47,7 +47,7 @@ def get_token_map():
         }
     return t_map
 
-def action_portfolio(rpc_url, keypair: Keypair):
+def action_portfolio(rpc_url, keypair, proxies=None):
     pubkey = keypair.pubkey()
     print(f"Scanning Portfolio for {pubkey}...")
     
@@ -57,7 +57,7 @@ def action_portfolio(rpc_url, keypair: Keypair):
     sol_bal = 0.0
     try:
         payload = {"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [str(pubkey)]}
-        r = requests.post(rpc_url, json=payload).json()
+        r = requests.post(rpc_url, json=payload, proxies=proxies).json()
         sol_bal = int(r['result']['value']) / 10**9
     except: pass
     holdings = {"SOL": sol_bal}
@@ -67,7 +67,7 @@ def action_portfolio(rpc_url, keypair: Keypair):
         "params": [str(pubkey), {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}, {"encoding": "jsonParsed"}]
     }
     try:
-        r = requests.post(rpc_url, json=payload).json()
+        r = requests.post(rpc_url, json=payload, proxies=proxies).json()
         if 'result' in r:
             for item in r['result']['value']:
                 info = item['account']['data']['parsed']['info']
@@ -97,7 +97,7 @@ def action_portfolio(rpc_url, keypair: Keypair):
     if cg_ids:
         try:
             ids_str = ",".join(cg_ids)
-            r = requests.get(f"{COINGECKO_API}?ids={ids_str}&vs_currencies=usd", timeout=5).json()
+            r = requests.get(f"{COINGECKO_API}?ids={ids_str}&vs_currencies=usd", timeout=5, proxies=proxies).json()
             for cid, data in r.items():
                 for m, meta in TOKEN_METADATA.items():
                     if meta.get('cg_id') == cid: prices[m] = float(data['usd'])
@@ -113,7 +113,7 @@ def action_portfolio(rpc_url, keypair: Keypair):
             chunks = [missing_mints[i:i + 30] for i in range(0, len(missing_mints), 30)]
             for chunk in chunks:
                 ds_url = f"https://api.dexscreener.com/latest/dex/tokens/{','.join(chunk)}"
-                r = requests.get(ds_url, timeout=5).json()
+                r = requests.get(ds_url, timeout=5, proxies=proxies).json()
                 if 'pairs' in r:
                     for pair in r['pairs']:
                         m = pair['baseToken']['address']
@@ -149,7 +149,7 @@ def action_portfolio(rpc_url, keypair: Keypair):
         print(f"- {amt:.6f} {sym} (@ ${p:.4f}) = ${usd:.2f}")
     print(f"\nTotal Portfolio Value: ${total_usd:.2f}")
 
-def action_swap(args, rpc_url, keypair: Keypair):
+def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     token_in_raw = args.token_in
     token_out_raw = args.token_out
     
@@ -169,7 +169,7 @@ def action_swap(args, rpc_url, keypair: Keypair):
     print(f"Fetching Quote via DEX Aggregator...")
     q_url = f"{QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={slippage_bps}"
     try:
-        quote = requests.get(q_url, timeout=10).json()
+        quote = requests.get(q_url, timeout=10, proxies=proxies).json()
         if "error" in quote: return print(f"Quote Error: {quote['error']}")
         
         in_amt = int(quote['inAmount']) / (10**dec)
@@ -204,10 +204,10 @@ def action_swap(args, rpc_url, keypair: Keypair):
                 body["computeUnitPriceMicroLamports"] = "auto"
                 print("Using Dynamic Priority Fee (Auto)")
             else:
-                 body["computeUnitPriceMicroLamports"] = int(args.priority_fee)
-                 print(f"Using Priority Fee: {args.priority_fee} micro-lamports")
+                  body["computeUnitPriceMicroLamports"] = int(args.priority_fee)
+                  print(f"Using Priority Fee: {args.priority_fee} micro-lamports")
 
-        swap_resp = requests.post(SWAP_API, json=body, timeout=15).json()
+        swap_resp = requests.post(SWAP_API, json=body, timeout=15, proxies=proxies).json()
         
         if "error" in swap_resp: return print(f"Swap Build Error: {swap_resp['error']}")
         
@@ -246,6 +246,10 @@ def main():
         config = json.load(open(config_path))['crypto']
         pk = config['solanaPrivateKey']
         
+        # Proxy Configuration
+        proxy_url = config.get('proxy')
+        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+        
         # Dynamic RPC URL construction
         rpc = config.get('solanaRpcUrl')
         if not rpc:
@@ -260,12 +264,12 @@ def main():
     
     kp = get_keypair(pk)
     
-    if args.action == "portfolio": action_portfolio(rpc, kp)
+    if args.action == "portfolio": action_portfolio(rpc, kp, proxies)
     elif args.action in ["swap", "quote"]: 
         if not args.token_in or not args.token_out or not args.amount:
             print("Error: --token-in, --token-out, and --amount required for swap/quote")
             sys.exit(1)
-        action_swap(args, rpc, kp)
+        action_swap(args, rpc, kp, proxies)
     elif args.action == "monitor":
         print("Monitor mode...")
         # (Simplified monitor logic or just call portfolio in loop)

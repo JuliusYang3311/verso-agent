@@ -46,6 +46,7 @@ const CryptoConfigSchema = z
     enabled: z.boolean().optional(),
     alchemyApiKey: z.string().optional(),
     solanaRpcUrl: z.string().optional(),
+    proxy: z.string().optional(),
     solanaPrivateKey: z.string().optional(),
   })
   .strict()
