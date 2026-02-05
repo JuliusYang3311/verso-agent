@@ -62,14 +62,15 @@ def action_portfolio(rpc_url, keypair, proxies=None):
         payload = {"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [str(pubkey)]}
         r = requests.post(rpc_url, json=payload, proxies=proxies).json()
         sol_bal = int(r['result']['value']) / 10**9
-    except: pass
+    except Exception as e:
+        print(f"Error fetching SOL balance: {e}")
     holdings: Dict[str, float] = {"SOL": sol_bal}
     
-    payload = {
-        "jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
-        "params": [str(pubkey), {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}, {"encoding": "jsonParsed"}]
-    }
     try:
+        payload = {
+            "jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
+            "params": [str(pubkey), {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}, {"encoding": "jsonParsed"}]
+        }
         r = requests.post(rpc_url, json=payload, proxies=proxies).json()
         if 'result' in r:
             for item in r['result']['value']:
@@ -79,7 +80,8 @@ def action_portfolio(rpc_url, keypair, proxies=None):
                     data = TOKEN_METADATA.get(mint, {})
                     sym = data.get('symbol', mint)
                     holdings[sym] = amt
-    except: pass
+    except Exception as e:
+        print(f"Error fetching token accounts: {e}")
     
     prices: Dict[str, float] = {}
     sym_to_data: Dict[str, Dict[str, Optional[str]]] = {}
@@ -167,6 +169,11 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     
     print(f"Fetching Quote & Transaction from Solana Tracker...")
     
+    # Check for optional API key in environment
+    api_key = os.environ.get("SOLANA_TRACKER_API_KEY")
+    headers = {}
+    if api_key:
+        headers["x-api-key"] = api_key
 
     # Query params
     params = {
@@ -271,15 +278,6 @@ def action_transfer(args, rpc_url, keypair: Keypair, proxies=None):
             lamports=amount_lamports
         )
         
-        # In solders, we create a message then sign it
-        # However, solders.transaction.Transaction is legacy, using VersionedTransaction
-        # For a simple transfer, we can use the helper from solders.message or similar
-        # But here we'll stick to basic pattern used in the script
-        
-        from solders.instruction import Instruction as SolderInstruction
-        # Re-using knowledge of Solana structure
-        # Transfer is program 11111111111111111111111111111111, index 2
-        # But solders.system_program.transfer is a helper
         
         instr = transfer(tx_params)
         
