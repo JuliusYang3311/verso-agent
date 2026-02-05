@@ -167,8 +167,10 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     slippage_bps = int(args.slippage * 100)
     
     print(f"Fetching Quote via DEX Aggregator...")
+    # Public V6 API uses slightly different params if needed, but standard quote is same
     q_url = f"{QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={slippage_bps}"
     try:
+        # No headers needed for Public API
         quote = requests.get(q_url, timeout=10, proxies=proxies).json()
         if "error" in quote: return print(f"Quote Error: {quote['error']}")
         
@@ -235,7 +237,7 @@ def main():
     parser.add_argument("--token-in")
     parser.add_argument("--token-out")
     parser.add_argument("--amount")
-    parser.add_argument("--slippage", type=float, default=0.5, help="Slippage % (default 0.5)")
+    parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %% (default 0.5)")
     parser.add_argument("--priority-fee", help="Priority fee in micro-lamports or 'auto'")
     parser.add_argument("--quote-only", action="store_true")
     # ... other args ...
@@ -274,5 +276,8 @@ def main():
         print("Monitor mode...")
         # (Simplified monitor logic or just call portfolio in loop)
         while True:
-            action_portfolio(rpc, kp)
+            action_portfolio(rpc, kp, proxies)
             time.sleep(10)
+
+if __name__ == "__main__":
+    main()
