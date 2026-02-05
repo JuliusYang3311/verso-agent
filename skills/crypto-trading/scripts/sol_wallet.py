@@ -167,13 +167,16 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     slippage_bps = int(args.slippage * 100)
     
     print(f"Fetching Quote via DEX Aggregator...")
-    # Public V6 API uses slightly different params if needed, but standard quote is same
     q_url = f"{QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={slippage_bps}"
     try:
         # No headers needed for Public API
         quote = requests.get(q_url, timeout=10, proxies=proxies).json()
         if "error" in quote: return print(f"Quote Error: {quote['error']}")
         
+        if 'inAmount' not in quote:
+            print(f"API Error: {quote}")
+            return
+            
         in_amt = int(quote['inAmount']) / (10**dec)
         out_amt_raw = int(quote['outAmount'])
         
