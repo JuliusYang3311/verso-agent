@@ -30,6 +30,7 @@ Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wal
 - **Robust Keys**: Supports both **Base58** and **Hex** keys.
 - **Price Source**: **CoinGecko** (Primary) with DexScreener (Fallback).
 - **Dynamic Discovery**: Automatically identifies unknown tokens.
+- **Portfolio Tracking**: View SOL and token holdings with real-time pricing.
 
 **Swap (Solana Tracker API):**
 > **Note**: Uses Solana Tracker V2 API (`swap-v2.solanatracker.io`). Supports optional API key for high volume.
