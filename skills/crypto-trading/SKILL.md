@@ -14,7 +14,7 @@ To use wallet features, run `verso configure`.
 
 ### Solana Configuration (Required)
 - `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
-- `JUPITER_API_KEY`: Required for fetching prices and quotes (from jup.ag).
+- `JUPITER_API_KEY`: Recommended for optimized swaps (jup.ag). **Optional** for Portfolio/Prices (falls back to DexScreener).
 
 ### Advanced Configuration / RPC
 - `ALCHEMY_API_KEY`: Accelerate Solana transactions with private RPC.
@@ -28,6 +28,8 @@ Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wal
 **Key Features:**
 - **Auto-Config**: Loads key/RPC from `~/.verso/verso.json`.
 - **Robust Keys**: Supports both **Base58** (Standard) and **Hex** (0x...) private keys.
+- **Dynamic Discovery**: Automatically identifies unknown tokens via DexScreener.
+- **Fault Tolerant**: Silently handles DNS failures (e.g., `token.jup.ag`) and RPC parsing issues.
 
 **Portfolio, Monitor & Balance:**
 ```bash
