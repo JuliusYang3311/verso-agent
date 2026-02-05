@@ -30,7 +30,9 @@ Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wal
 - **Price Source**: **CoinGecko** (Primary) with DexScreener (Fallback).
 - **Dynamic Discovery**: Automatically identifies unknown tokens.
 
-**Swap (DEX Aggregator):**
+**Swap (Jupiter Aggregator - Public API):**
+> **Note**: Uses Jupiter V6 Public API. No API Key or Proxy required (Direct Access).
+
 ```bash
 # Quote only
 python3 skills/crypto-trading/scripts/sol_wallet.py --action quote --token-in SOL --token-out USDC --amount 0.1
