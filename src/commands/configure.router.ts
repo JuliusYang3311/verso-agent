@@ -10,6 +10,7 @@ import { guardCancel } from "./onboard-helpers.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { note } from "../terminal/note.js";
+import { syncEmbeddingProviderWithModel } from "./auth-choice.default-model.js";
 
 const DEFAULT_CLASSIFIER_MODEL = "google/gemini-2.5-pro";
 
@@ -114,7 +115,7 @@ export async function promptRouterConfig(
     runtime,
   );
 
-  return {
+  const finalConfig: VersoConfig = {
     ...cfg,
     agents: {
       ...cfg.agents,
@@ -128,4 +129,6 @@ export async function promptRouterConfig(
       },
     },
   };
+
+  return syncEmbeddingProviderWithModel(finalConfig, String(defaultModel).trim());
 }
