@@ -13,6 +13,8 @@ from solders.system_program import TransferParams, transfer
 from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
+from solders.instruction import Instruction as SolderInstruction
+from solders.message import MessageV0
 
 # Solana Tracker API
 SOLANA_TRACKER_URL = "https://swap-v2.solanatracker.io/swap"
@@ -111,7 +113,7 @@ def action_portfolio(rpc_url, keypair, proxies=None):
 
     if missing_mints:
         try:
-            chunks = [missing_mints[i:i + 30] for i in range(0, len(missing_mints), 30)]
+            chunks = [missing_mints[i : i + 30] for i in range(0, len(missing_mints), 30)]
             for chunk in chunks:
                 ds_url = f"https://api.dexscreener.com/latest/dex/tokens/{','.join(chunk)}"
                 r = requests.get(ds_url, timeout=5, proxies=proxies).json()
@@ -165,11 +167,6 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     
     print(f"Fetching Quote & Transaction from Solana Tracker...")
     
-    # Check for optional API key in environment
-    api_key = os.environ.get("SOLANA_TRACKER_API_KEY")
-    headers = {}
-    if api_key:
-        headers["x-api-key"] = api_key
 
     # Query params
     params = {
@@ -247,6 +244,63 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     except Exception as e:
         print(f"Swap Failed: {e}")
 
+def action_transfer(args, rpc_url, keypair: Keypair, proxies=None):
+    if not args.to or not args.amount:
+        print("Error: --to and --amount required for transfer")
+        return
+
+    try:
+        dest_pubkey = Pubkey.from_string(args.to)
+        amount_lamports = int(float(args.amount) * 10**9)
+        
+        print(f"Transferring {args.amount} SOL to {dest_pubkey}...")
+        
+        # Confirmation
+        if input(f"Confirm TRANSFER? (y/n): ").lower() != 'y':
+            print("Cancelled.")
+            return
+
+        client = Client(rpc_url)
+        recent_blockhash_res = client.get_latest_blockhash()
+        recent_blockhash = recent_blockhash_res.value.blockhash
+
+        # Simple transfer instruction
+        tx_params = TransferParams(
+            from_pubkey=keypair.pubkey(),
+            to_pubkey=dest_pubkey,
+            lamports=amount_lamports
+        )
+        
+        # In solders, we create a message then sign it
+        # However, solders.transaction.Transaction is legacy, using VersionedTransaction
+        # For a simple transfer, we can use the helper from solders.message or similar
+        # But here we'll stick to basic pattern used in the script
+        
+        from solders.instruction import Instruction as SolderInstruction
+        # Re-using knowledge of Solana structure
+        # Transfer is program 11111111111111111111111111111111, index 2
+        # But solders.system_program.transfer is a helper
+        
+        instr = transfer(tx_params)
+        
+        msg = MessageV0.try_compile(
+            payer=keypair.pubkey(),
+            instructions=[instr],
+            address_lookup_table_accounts=[],
+            recent_blockhash=recent_blockhash
+        )
+        
+        tx = VersionedTransaction(msg, [keypair])
+        
+        print("Sending transaction...")
+        res = client.send_raw_transaction(bytes(tx))
+        
+        print(f"Transaction Sent! Signature: {res.value}")
+        print(f"Explorer: https://solscan.io/tx/{res.value}")
+
+    except Exception as e:
+        print(f"Transfer Failed: {e}")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--action", required=True, choices=["portfolio", "monitor", "balance", "swap", "quote", "transfer"])
@@ -254,6 +308,7 @@ def main():
     parser.add_argument("--token-in")
     parser.add_argument("--token-out")
     parser.add_argument("--amount")
+    parser.add_argument("--to", help="Recipient address for transfer")
     parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %% (default 0.5)")
     parser.add_argument("--priority-fee", help="Priority fee in micro-lamports or 'auto'")
     parser.add_argument("--quote-only", action="store_true")
@@ -295,12 +350,14 @@ def main():
     
     kp = get_keypair(pk)
     
-    if args.action == "portfolio": action_portfolio(rpc, kp, proxies)
+    if args.action in ["portfolio", "balance"]: action_portfolio(rpc, kp, proxies)
     elif args.action in ["swap", "quote"]: 
         if not args.token_in or not args.token_out or not args.amount:
             print("Error: --token-in, --token-out, and --amount required for swap/quote")
             sys.exit(1)
         action_swap(args, rpc, kp, proxies)
+    elif args.action == "transfer":
+        action_transfer(args, rpc, kp, proxies)
     elif args.action == "monitor":
         while True:
             action_portfolio(rpc, kp, proxies)

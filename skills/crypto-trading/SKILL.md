@@ -51,6 +51,15 @@ python3 skills/crypto-trading/scripts/sol_wallet.py --action swap \
 python3 skills/crypto-trading/scripts/sol_wallet.py --action transfer --to <RecipientAddr> --amount 0.5
 ```
 
+**Portfolio / Balance:**
+```bash
+# Check SOL and token holdings
+python3 skills/crypto-trading/scripts/sol_wallet.py --action balance
+
+# Monitor portfolio continuously (every 10s)
+python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor
+```
+
 ## Dependencies
 
 - Python 3
