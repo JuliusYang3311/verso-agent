@@ -11,384 +11,205 @@ from solders.system_program import TransferParams, transfer
 from solders.transaction import VersionedTransaction # type: ignore
 from solders.message import to_bytes_versioned # type: ignore
 from solana.rpc.api import Client
-from solana.rpc.types import TxOpts, TokenAccountOpts
 
-import functools
-
-# Constants (Jupiter V6+ Authentication Required)
+# Constants
 JUPITER_QUOTE_API = "https://api.jup.ag/swap/v1/quote"
 JUPITER_SWAP_API = "https://api.jup.ag/swap/v1/swap"
 JUPITER_PRICE_API = "https://api.jup.ag/price/v2"
-JUPITER_TOKEN_API = "https://api.jup.ag/tokens/v1/strict"
 
-# Validated Token List (Fallback)
+# Robust Offline Token List
 FALLBACK_TOKENS = [
     {"symbol": "SOL", "address": "So11111111111111111111111111111111111111112", "decimals": 9},
     {"symbol": "USDC", "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "decimals": 6},
     {"symbol": "USDT", "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", "decimals": 6},
     {"symbol": "JUP", "address": "JUPyiwrYJFskUPiHa7hkeR8VZKJw32U4Ag5g6Nxbyh6", "decimals": 6},
     {"symbol": "BONK", "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "decimals": 5},
-    {"symbol": "WIF", "address": "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLNYxdBY6Trd", "decimals": 6},
-    {"symbol": "RAY", "address": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", "decimals": 6},
-    {"symbol": "RENDER", "address": "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof", "decimals": 8},
-    {"symbol": "POPCAT", "address": "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr", "decimals": 9},
-    {"symbol": "MEW", "address": "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREqczveZ5c", "decimals": 6},
-    {"symbol": "PYTH", "address": "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", "decimals": 6},
-    {"symbol": "JTO", "address": "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL", "decimals": 9},
-    {"symbol": "WEN", "address": "WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p3LCpk", "decimals": 5},
-    {"symbol": "BOME", "address": "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82", "decimals": 6},
-    {"symbol": "SLERF", "address": "7BgBvyjr2HDURj8w04EpJmVgtqWkMmq5vq5GqgJsS3o", "decimals": 9},
-    {"symbol": "SAMO", "address": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA6wbSHx9LXc6L", "decimals": 9},
-    {"symbol": "DUST", "address": "DUSTawucrTsGU8hcqRdHDCbuYhCPADMLM2VcCb8VnFnQ", "decimals": 9},
-    {"symbol": "NOS", "address": "nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7", "decimals": 6}
 ]
 
-# Token Map (Solana) - Populated dynamically
 TOKENS = { t['symbol']: t['address'] for t in FALLBACK_TOKENS }
 TOKEN_METADATA = { t['address']: {'symbol': t['symbol'], 'decimals': t['decimals']} for t in FALLBACK_TOKENS }
-
 JUP_KEY_HEADER = {}
 
-def fetch_token_list(api_key=None):
-    headers = {"x-api-key": api_key} if api_key else {}
-    if not api_key:
-         print("Warning: No Jupiter API Key provided. Token list/Price/Swap might fail (401).")
-         # We already populated TOKENS with FALLBACK_TOKENS, so just return
-         return
-
-    tokens_to_load = []
+def get_keypair(pk_str: str) -> Keypair:
     try:
-        resp = requests.get(JUPITER_TOKEN_API, headers=headers, timeout=5)
-        if resp.status_code == 200:
-            tokens_to_load = resp.json()
-            # print("Successfully loaded online token list.")
-        else:
-            print(f"Warning: Failed to fetch token list (HTTPS {resp.status_code}). Using offline fallback list.")
-            return
-
-    except Exception as e:
-        print(f"Warning: Failed to fetch token list ({e}). Using robust offline fallback list.")
-        return
-
-    for t in tokens_to_load:
-        symbol = t.get('symbol')
-        address = t.get('address')
-        decimals = t.get('decimals', 6)
-        
-        if symbol and address:
-            if symbol not in TOKENS:
-                TOKENS[symbol] = address
-            
-            TOKEN_METADATA[address] = {
-                "symbol": symbol,
-                "decimals": decimals
-            }
-                
-            if symbol == "SOL":
-                    TOKEN_METADATA[address] = {"symbol": "SOL", "decimals": 9}
-
-def get_keypair(private_key_b58: str) -> Keypair:
-    try:
-        if private_key_b58.startswith("0x") or len(private_key_b58) == 64:
-             return Keypair.from_seed(bytes.fromhex(private_key_b58.replace("0x", "")))
-        return Keypair.from_base58_string(private_key_b58)
-    except Exception as e:
-        try:
-             return Keypair.from_seed(bytes.fromhex(private_key_b58))
-        except:
-             print(f"Error loading keypair: {e}")
-             sys.exit(1)
-
-def get_client(rpc_url: str) -> Client:
-    return Client(rpc_url)
-
-def resolve_token_address(token_symbol_or_address: str) -> str:
-    upper = token_symbol_or_address.upper()
-    if upper in TOKENS:
-        return TOKENS[upper]
-    try:
-        Pubkey.from_string(token_symbol_or_address)
-        return token_symbol_or_address
+        return Keypair.from_base58_string(pk_str)
     except:
-        pass
-    return token_symbol_or_address
+        try: return Keypair.from_seed(bytes.fromhex(pk_str.replace("0x", "")))
+        except: sys.exit(1)
 
-def get_token_decimals(mint_address: str) -> int:
-    if mint_address in TOKEN_METADATA:
-        return TOKEN_METADATA[mint_address]['decimals']
-    if mint_address == TOKENS["SOL"]: return 9
-    if mint_address == TOKENS["USDC"]: return 6
-    if mint_address == TOKENS["USDT"]: return 6
-    return 6
+# Helper: Dynamic Token Map
+def get_token_map():
+    # Start with fallback
+    t_map = { t['address']: {'symbol': t['symbol'], 'decimals': t['decimals']} for t in FALLBACK_TOKENS }
+    
+    # Try fetching full list
+    try:
+        r = requests.get("https://token.jup.ag/strict", timeout=3)
+        if r.status_code == 200:
+            for item in r.json():
+                t_map[item['address']] = {'symbol': item['symbol'], 'decimals': item['decimals']}
+    except:
+        # DNS failure or timeout - ignore (Fix 1: Silence "Fake Alarm")
+        pass 
+    return t_map
 
-def action_balance(args, client: Client, keypair: Keypair):
+def action_portfolio(rpc_url, keypair: Keypair):
     pubkey = keypair.pubkey()
-    print(f"Wallet Address: {pubkey}")
+    print(f"Scanning Portfolio for {pubkey}...")
     
-    try:
-        resp = client.get_balance(pubkey)
-        lamports = resp.value
-        sol_balance = lamports / 1_000_000_000
-        print(f"SOL Balance: {sol_balance:.4f} SOL")
-    except Exception as e:
-        print(f"Error fetching SOL balance: {e}")
-
-    if args.token:
-        # Simplified: Use resolve logic but without complex SPL query yet
-        pass
-        
-
-def action_transfer(args, client: Client, keypair: Keypair):
-    if not args.to or not args.amount:
-        print("Error: --to and --amount required for transfer")
-        sys.exit(1)
+    # Reload metadata dynamically
+    global TOKEN_METADATA
+    TOKEN_METADATA = get_token_map()
     
-    try:
-        dest_pubkey = Pubkey.from_string(args.to)
-        lamports = int(float(args.amount) * 1_000_000_000)
-        
-        print(f"Transferring {args.amount} SOL to {args.to}...")
-        
-        ix = transfer(
-            TransferParams(
-                from_pubkey=keypair.pubkey(),
-                to_pubkey=dest_pubkey,
-                lamports=lamports
-            )
-        )
-        tx = Transaction().add(ix)
-        result = client.send_transaction(tx, keypair)
-        print(f"Transfer Sent: {result.value}")
-        
-    except Exception as e:
-        print(f"Transfer Error: {e}")
-
-def action_portfolio(args, client: Client, keypair: Keypair):
-    print(f"Scanning Portfolio for {keypair.pubkey()}...")
-    
+    # 1. Native SOL (Fix 2: Raw RPC to avoid "data did not match" errors)
     sol_bal = 0
     try:
-        sol_bal = client.get_balance(keypair.pubkey()).value / 1_000_000_000
+        payload = {"jsonrpc": "2.0", "id": 1, "method": "getBalance", "params": [str(pubkey)]}
+        r = requests.post(rpc_url, json=payload).json()
+        sol_bal = int(r['result']['value']) / 10**9
     except: pass
-    
     holdings = {"SOL": sol_bal}
     
+    # 2. Tokens via direct JSON-RPC
+    payload = {
+        "jsonrpc": "2.0", "id": 1, "method": "getTokenAccountsByOwner",
+        "params": [str(pubkey), {"programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"}, {"encoding": "jsonParsed"}]
+    }
     try:
-        opts = TokenAccountOpts(program_id=Pubkey.from_string("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), encoding="jsonParsed")
-        resp = client.get_token_accounts_by_owner(keypair.pubkey(), opts)
-        
-        for tx in resp.value:
-            data = tx.account.data.parsed['info']
-            mint = data['mint']
-            amount = data['tokenAmount']['uiAmount']
-            if amount and amount > 0:
-                sym = mint
-                if mint in TOKEN_METADATA:
-                    sym = TOKEN_METADATA[mint]['symbol']
-                else:
-                    for k,v in TOKENS.items():
-                        if v == mint: sym = k
-                holdings[sym] = amount
-    except Exception as e:
-        print(f"Token Scan Error: {e}")
-        
-    ids = []
-    for sym in holdings.keys():
-        if sym == "SOL": ids.append(TOKENS["SOL"])
-        elif sym in TOKENS: ids.append(TOKENS[sym])
-        else: ids.append(sym)
-        
-    price_url = f"{JUPITER_PRICE_API}?ids={','.join(ids)}"
-    prices = {}
-    try:
-        r = requests.get(price_url, headers=JUP_KEY_HEADER).json()
-        if 'data' in r:
-            prices = r['data']
-        elif 'code' in r and r['code'] == 401:
-            print("Warning: Unauthorized (401) fetching prices. Check Jupiter API Key.")
+        r = requests.post(rpc_url, json=payload).json()
+        if 'result' in r:
+            for item in r['result']['value']:
+                info = item['account']['data']['parsed']['info']
+                mint, amt = info['mint'], info['tokenAmount']['uiAmount']
+                if amt > 0:
+                    sym = TOKEN_METADATA.get(mint, {}).get('symbol', mint)
+                    holdings[sym] = amt
     except: pass
     
-    total_usd = 0
-    print("Holdings:")
-    for sym, amt in holdings.items():
-        mint = TOKENS.get(sym, sym)
-        price_data = prices.get(mint)
-        usd = 0
-        p_str = "N/A"
-        if price_data:
-            p = float(price_data['price'])
-            usd = amt * p
-            p_str = f"${p:.4f}"
-        else:
-            if sym in ["USDC", "USDT"]:
-                usd = amt
-                p_str = "$1.0000 (est)"
-            
-        total_usd += usd
-        print(f"- {amt:.4f} {sym} (@ {p_str}) = ${usd:.2f}")
-        
-    print(f"Total Portfolio Value: ${total_usd:.2f}")
+    # 3. Prices via Jupiter V2 -> DexScreener Fallback (Fix 3: Navigation Jam)
+    prices = {}
+    mints = []
+    
+    # Resolve symbols back to mints for price fetching
+    sym_to_mint = {}
+    for sym in holdings.keys():
+        # Find mint in fallback or map
+        found_mint = None
+        for m, data in TOKEN_METADATA.items():
+            if data['symbol'] == sym:
+                found_mint = m
+                break
+        if not found_mint: found_mint = TOKENS.get(sym) 
+        if found_mint:
+            mints.append(found_mint)
+            sym_to_mint[sym] = found_mint
 
-def monitor_arbitrage(args, client: Client, keypair: Keypair):
-    token_a = TOKENS["SOL"]
-    token_b = TOKENS["USDC"]
-    interval = args.interval or 60
-    print(f"🚀 Starting Jupiter Monitor (SOL/USDC) - Interval {interval}s")
-    
-    while True:
-        try:
-            price_url = f"{JUPITER_PRICE_API}?ids={token_a}"
-            p_resp = requests.get(price_url, headers=JUP_KEY_HEADER).json()
-            if 'data' not in p_resp:
-                print("Error fetching price (Auth?)")
-                if args.once: break
-                time.sleep(5)
-                continue
-
-            jw_price = float(p_resp['data'][token_a]['price'])
-            print(f"[{time.strftime('%H:%M:%S')}] SOL Price: ${jw_price:.2f}")
-            
-            if args.once: break
-            time.sleep(interval)
-        except KeyboardInterrupt: break
-        except Exception as e:
-            print(f"Monitor Err: {e}")
-            if args.once: break
-            time.sleep(5)
-
-def action_swap(args, client: Client, keypair: Keypair):
-    if not args.token_in or not args.token_out or not args.amount:
-        print("Error: --token-in, --token-out, and --amount are required for swap")
-        sys.exit(1)
-        
-    token_in = resolve_token_address(args.token_in)
-    token_out = resolve_token_address(args.token_out)
-    
-    decimals = get_token_decimals(token_in)
-    amount_in_atoms = int(float(args.amount) * (10**decimals))
-    
-    quote_url = f"{JUPITER_QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amount_in_atoms}&slippageBps={int(args.slippage * 100)}"
-    
+    # Try Jupiter first
     try:
-        quote_resp = requests.get(quote_url, headers=JUP_KEY_HEADER).json()
-        if "errorCode" in quote_resp or "error" in quote_resp:
-             err = quote_resp.get('error', quote_resp.get('errorCode'))
-             print(f"Quote Error: {err}")
-             return
-            
-        print(f"Quote received: In={quote_resp['inAmount']} Out={quote_resp['outAmount']}")
-        
-        if args.quote_only:
-            return
+        if mints:
+            ids_str = ",".join(mints)
+            r = requests.get(f"{JUPITER_PRICE_API}?ids={ids_str}", headers=JUP_KEY_HEADER, timeout=5).json()
+            if 'data' in r: 
+                for m, data in r['data'].items():
+                    if data: prices[m] = float(data['price'])
+    except: pass
+    
+    # Fallback: DexScreener (if prices missing)
+    missing_mints = [m for m in mints if m not in prices]
+    if missing_mints:
+        try:
+            # Chunking for DexScreener (max 30 addresses usually safe)
+            chunks = [missing_mints[i:i + 30] for i in range(0, len(missing_mints), 30)]
+            for chunk in chunks:
+                ds_url = f"https://api.dexscreener.com/latest/dex/tokens/{','.join(chunk)}"
+                r = requests.get(ds_url, timeout=5).json()
+                if 'pairs' in r:
+                    for pair in r['pairs']:
+                        m = pair['baseToken']['address']
+                        # Backfill Price
+                        if m not in prices: 
+                            prices[m] = float(pair['priceUsd'])
+                        # Backfill Metadata (Symbol) specifically for dynamic discovery
+                        if m not in TOKEN_METADATA:
+                            sym = pair['baseToken']['symbol']
+                            TOKEN_METADATA[m] = {'symbol': sym, 'decimals': 0} # Decimals unknown but not needed for display
+                            # Update holdings key from Mint -> Symbol if it was waiting
+                            if m in holdings:
+                                holdings[sym] = holdings.pop(m)
+                                sym_to_mint[sym] = m
+        except: pass
 
-        payload = {
-            "userPublicKey": str(keypair.pubkey()),
-            "quoteResponse": quote_resp,
-            "prioritizationFeeLamports": int(args.priority_fee) if args.priority_fee and args.priority_fee != "auto" else "auto"
-        }
-        
-        if args.priority_fee and args.priority_fee != "auto":
-             print(f"Using Custom Priority Fee: {args.priority_fee} lamports")
+    total_usd = 0
+    print("\nHoldings:")
+    # Re-sort to show valuable assets first
+    def get_val(item):
+        s, a = item
+        m = sym_to_mint.get(s, s) # Handle case where s is mint
+        p = prices.get(m, 0.0)
+        return a * p
 
-        swap_resp = requests.post(JUPITER_SWAP_API, json=payload, headers=JUP_KEY_HEADER).json()
-        if "error" in swap_resp:
-            print(f"Swap Error: {swap_resp['error']}")
-            return
-            
-        swap_transaction = swap_resp['swapTransaction']
-        raw_tx = base64.b64decode(swap_transaction)
+    sorted_holdings = sorted(holdings.items(), key=get_val, reverse=True)
+
+    for sym, amt in sorted_holdings:
+        mint = sym_to_mint.get(sym, sym) # Fallback to sym if it is the mint
+        p = prices.get(mint, 0.0)
+        
+        # Hardcoded stablecoin assumption if price fails
+        if p == 0:
+             if sym in ["USDC", "USDT"]: p = 1.0
+             elif sym == "SOL": p = 0 # Don't assume SOL price if API fails completely to avoid confusion
+
+        usd = amt * p
+        total_usd += usd
+        print(f"- {amt:.6f} {sym} (@ ${p:.4f}) = ${usd:.2f}")
+    print(f"\nTotal Portfolio Value: ${total_usd:.2f}")
+
+def action_swap(args, rpc_url, keypair: Keypair):
+    token_in = TOKENS.get(args.token_in.upper(), args.token_in)
+    token_out = TOKENS.get(args.token_out.upper(), args.token_out)
+    dec = TOKEN_METADATA.get(token_in, {}).get('decimals', 6)
+    amt_atoms = int(float(args.amount) * (10**dec))
+    
+    q_url = f"{JUPITER_QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={int(args.slippage*100)}"
+    try:
+        quote = requests.get(q_url, headers=JUP_KEY_HEADER).json()
+        if "error" in quote: return print(f"Quote Error: {quote['error']}")
+        print(f"Quote received: In={quote['inAmount']} Out={quote['outAmount']}")
+        if args.quote_only: return
+        
+        # Swap
+        swap_resp = requests.post(JUPITER_SWAP_API, headers=JUP_KEY_HEADER, json={"userPublicKey": str(keypair.pubkey()), "quoteResponse": quote}).json()
+        raw_tx = base64.b64decode(swap_resp['swapTransaction'])
         tx = VersionedTransaction.from_bytes(raw_tx)
-        
         signature = keypair.sign_message(to_bytes_versioned(tx.message))
         signed_tx = VersionedTransaction.populate(tx.message, [signature])
-        
-        print("Sending transaction...")
-        result = client.send_transaction(signed_tx)
-        print(f"Swap executed! Signature: {result.value}")
-        
-    except Exception as e:
-        print(f"Swap failed: {e}")
+        res = Client(rpc_url).send_transaction(signed_tx)
+        print(f"Executed! Sig: {res.value}")
+    except Exception as e: print(f"Swap Failed: {e}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Solana Wallet Manager")
-    parser.add_argument("--action", choices=["balance", "transfer", "swap", "quote", "portfolio", "monitor"], required=True)
-    parser.add_argument("--rpc", default="https://api.mainnet-beta.solana.com", help="RPC URL")
-    parser.add_argument("--private-key", help="Base58 Private Key")
-    parser.add_argument("--jup-key", help="Jupiter API Key (x-api-key)")
-    parser.add_argument("--token", help="Token symbol or address (for balance)")
-    parser.add_argument("--token-in", help="Token to sell")
-    parser.add_argument("--token-out", help="Token to buy")
-    parser.add_argument("--amount", help="Amount to swap/transfer")
-    parser.add_argument("--to", help="Recipient address")
-    parser.add_argument("--slippage", type=float, default=0.5, help="Slippage %% (default 0.5)")
-    parser.add_argument("--priority-fee", default="auto", help="Priority fee in lamports or 'auto'")
-    parser.add_argument("--quote-only", action="store_true", help="Only show quote, do not execute")
-    parser.add_argument("--interval", type=int, help="Monitor interval")
-    parser.add_argument("--once", action="store_true", help="Monitor run once")
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--action", required=True)
+    parser.add_argument("--rpc", default="https://api.mainnet-beta.solana.com")
+    parser.add_argument("--token-in")
+    parser.add_argument("--token-out")
+    parser.add_argument("--amount")
+    parser.add_argument("--slippage", type=float, default=0.5)
+    parser.add_argument("--quote-only", action="store_true")
     args = parser.parse_args()
     
-    # Load Config
-    import os
-    config_path = os.path.expanduser("~/.verso/verso.json")
+    config_path = "/Users/veso/.verso/verso.json"
+    config = json.load(open(config_path))['crypto']
+    pk = config['solanaPrivateKey']
+    rpc = config.get('solanaRpcUrl', args.rpc)
     
-    loaded_rpc = None
-    loaded_key = None
-    loaded_jup_key = None
-    
-    if os.path.exists(config_path):
-        try:
-            with open(config_path) as f:
-                data = json.load(f)
-                crypto = data.get('crypto', {})
-                if crypto.get('enabled'):
-                    loaded_key = crypto.get('solanaPrivateKey')
-                    loaded_jup_key = crypto.get('jupiterApiKey')
-                    
-                    if crypto.get('solanaRpcUrl'):
-                        loaded_rpc = crypto.get('solanaRpcUrl')
-                    elif crypto.get('alchemyApiKey'):
-                        loaded_rpc = f"https://solana-mainnet.g.alchemy.com/v2/{crypto.get('alchemyApiKey')}"
-        except Exception: pass
-
-    # Apply Config
-    if not args.private_key and loaded_key: args.private_key = loaded_key
-    if not args.jup_key and loaded_jup_key: args.jup_key = loaded_jup_key
-    if args.rpc == "https://api.mainnet-beta.solana.com" and loaded_rpc: args.rpc = loaded_rpc
-
-    if not args.private_key:
-        print("Error: --private-key is required")
-        sys.exit(1)
-        
-    # Set Global Header
     global JUP_KEY_HEADER
-    if args.jup_key:
-        JUP_KEY_HEADER = {"x-api-key": args.jup_key}
+    if config.get('jupiterApiKey'):
+        JUP_KEY_HEADER = {"x-api-key": config['jupiterApiKey']}
     
-    # Initialize Lists
-    fetch_token_list(args.jup_key)
-
-    keypair = get_keypair(args.private_key)
-    client = get_client(args.rpc)
-    
-    try:
-        if args.action == "balance":
-            action_balance(args, client, keypair)
-        elif args.action == "transfer":
-            action_transfer(args, client, keypair)
-        elif args.action == "portfolio":
-            action_portfolio(args, client, keypair)
-        elif args.action == "monitor":
-            monitor_arbitrage(args, client, keypair)
-        elif args.action == "swap" or args.action == "quote":
-            if args.action == "quote": args.quote_only = True
-            action_swap(args, client, keypair)
-        else:
-            print(f"Action {args.action} not fully implemented yet.")
-    except KeyboardInterrupt:
-        print("\nOperation cancelled.")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+    kp = get_keypair(pk)
+    if args.action == "portfolio": action_portfolio(rpc, kp)
+    elif args.action in ["swap", "quote"]: action_swap(args, rpc, kp)
 
 if __name__ == "__main__":
     main()
