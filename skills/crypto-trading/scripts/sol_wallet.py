@@ -247,10 +247,7 @@ def main():
     try:
         config = json.load(open(config_path))['crypto']
         pk = config['solanaPrivateKey']
-        
-        # Proxy Configuration
-        proxy_url = config.get('proxy')
-        proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+        proxies = None
         
         # Dynamic RPC URL construction
         rpc = config.get('solanaRpcUrl')
