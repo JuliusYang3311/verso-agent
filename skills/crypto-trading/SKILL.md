@@ -14,7 +14,6 @@ To use wallet features, run `verso configure`.
 
 ### Solana Configuration (Required)
 - `SOLANA_PRIVATE_KEY`: Your Base58 Wallet Private Key.
-- `JUPITER_API_KEY`: Recommended for optimized swaps (jup.ag). **Optional** for Portfolio/Prices (falls back to DexScreener).
 
 ### Advanced Configuration / RPC
 - `ALCHEMY_API_KEY`: Accelerate Solana transactions with private RPC.
@@ -27,23 +26,11 @@ Interact with the Solana blockchain using `skills/crypto-trading/scripts/sol_wal
 
 **Key Features:**
 - **Auto-Config**: Loads key/RPC from `~/.verso/verso.json`.
-- **Robust Keys**: Supports both **Base58** (Standard) and **Hex** (0x...) private keys.
-- **Dynamic Discovery**: Automatically identifies unknown tokens via DexScreener.
-- **Fault Tolerant**: Silently handles DNS failures (e.g., `token.jup.ag`) and RPC parsing issues.
+- **Robust Keys**: Supports both **Base58** and **Hex** keys.
+- **Price Source**: **CoinGecko** (Primary) with DexScreener (Fallback).
+- **Dynamic Discovery**: Automatically identifies unknown tokens.
 
-**Portfolio, Monitor & Balance:**
-```bash
-# View complete portfolio (SOL + SPL Tokens + USD Value)
-python3 skills/crypto-trading/scripts/sol_wallet.py --action portfolio
-
-# Track SOL Price real-time
-python3 skills/crypto-trading/scripts/sol_wallet.py --action monitor --interval 10
-
-# Check specific token balance
-python3 skills/crypto-trading/scripts/sol_wallet.py --action balance --token USDC
-```
-
-**Swap (Jupiter Aggregator):**
+**Swap (DEX Aggregator):**
 ```bash
 # Quote only
 python3 skills/crypto-trading/scripts/sol_wallet.py --action quote --token-in SOL --token-out USDC --amount 0.1
@@ -53,8 +40,7 @@ python3 skills/crypto-trading/scripts/sol_wallet.py --action swap \
   --token-in SOL --token-out USDC \
   --amount 0.1 \
   --slippage 0.5 \
-  --priority-fee 10000 
-  # or --priority-fee auto
+  --priority-fee auto 
 ```
 
 **Transfer:**

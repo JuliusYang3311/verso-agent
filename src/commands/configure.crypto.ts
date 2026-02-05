@@ -37,23 +37,8 @@ export async function promptCryptoConfig(
     ? `https://solana-mainnet.g.alchemy.com/v2/${alchemyApiKey}`
     : "https://api.mainnet-beta.solana.com";
 
-  const solanaRpcUrl = (await guardCancel(
-    text({
-      message: "Solana RPC URL",
-      placeholder: "https://api.mainnet-beta.solana.com",
-      initialValue: existing?.solanaRpcUrl || defaultSolanaRpc,
-    }),
-    runtime,
-  )) as string;
-
-  const jupiterApiKey = (await guardCancel(
-    text({
-      message: "Jupiter API Key (Required for Price/Swap)",
-      placeholder: "Your x-api-key from jup.ag",
-      initialValue: existing?.jupiterApiKey || "",
-    }),
-    runtime,
-  )) as string;
+  /* RPC URL is now auto-configured (Public or Alchemy) to simplify UX */
+  const solanaRpcUrl = defaultSolanaRpc;
 
   const solanaPrivateKey = (await guardCancel(
     text({
@@ -69,9 +54,7 @@ export async function promptCryptoConfig(
     crypto: {
       enabled,
       alchemyApiKey: alchemyApiKey || undefined,
-      solanaRpcUrl,
       solanaPrivateKey: solanaPrivateKey || undefined,
-      jupiterApiKey: jupiterApiKey || undefined,
     },
   };
 }
