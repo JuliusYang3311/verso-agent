@@ -42,19 +42,21 @@ export async function dispatchInboundMessageWithBufferedDispatcher(params: {
     params.dispatcherOptions,
   );
 
-  const result = await dispatchInboundMessage({
-    ctx: params.ctx,
-    cfg: params.cfg,
-    dispatcher,
-    replyResolver: params.replyResolver,
-    replyOptions: {
-      ...params.replyOptions,
-      ...replyOptions,
-    },
-  });
-
-  markDispatchIdle();
-  return result;
+  try {
+    const result = await dispatchInboundMessage({
+      ctx: params.ctx,
+      cfg: params.cfg,
+      dispatcher,
+      replyResolver: params.replyResolver,
+      replyOptions: {
+        ...params.replyOptions,
+        ...replyOptions,
+      },
+    });
+    return result;
+  } finally {
+    markDispatchIdle();
+  }
 }
 
 export async function dispatchInboundMessageWithDispatcher(params: {

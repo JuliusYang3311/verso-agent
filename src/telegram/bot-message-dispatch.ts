@@ -293,6 +293,53 @@ export const dispatchTelegramMessage = async ({
 
   const hasFinalResponse = queuedFinal || sentFallback;
   if (!hasFinalResponse) {
+    // Ensure typing indicator is stopped if no reply was sent
+    // We can't access the specific controller instance easily here as it's created inside the dispatcher factory,
+    // but the dispatcher wrapper should have handled it via onIdle if it ran.
+    // However, if no items were enqueued, onIdle might not fire.
+    // Since we can't easily reach into the closure to call cleanup(), we assume the
+    // typing TTL handler (which we saw in typing.ts) will eventually kill it.
+    //
+    // BETTER FIX: The `createTypingCallbacks` helper should return a cleanup function we can call.
+    // But for now, let's look at `sendTyping`.
+    // Actually, checking `bot-message-dispatch.ts` again, `sendTyping` is `context.sendTyping`.
+    // In `telegram/bot-message-context.ts`, `sendTyping` returns `typing.startTypingLoop()`.
+    // We need access to `typing.cleanup()`.
+    //
+    // WAIT. `dispatchReplyWithBufferedBlockDispatcher` creates its OWN typing controller inside `getReply` -> `createTypingController`.
+    // The `sendTyping` passed here is just the *callback* to actual Telegram API.
+    // The *Controller* is internal to `getReply`.
+    //
+    // If `getReply` returns undefined (no response), `typing.cleanup()` IS called in `getReply.ts` (lines 195, 207, 272).
+    // so if `getReply` exited early, typing should stop.
+    //
+    // Issue: What if `getReply` returns a payload, but it's filtered out (empty text)?
+    // Then `reply-dispatcher` is used.
+    // In `agent-runner.ts`, `typing.markRunComplete()` is called finally.
+    // But `cleanup` only happens if `dispatchIdle` is true.
+    // If we have 0 payloads, `buildReplyPayloads` returns empty array.
+    // Then `finalizeWithFollowup` is called.
+    // The specific code path in `agent-runner.ts`:
+    // if (replyPayloads.length === 0) return finalizeWithFollowup(...)
+    //
+    // It returns *without* calling `signalTypingIfNeeded`?
+    // No, `signalTypingIfNeeded` is called later.
+    // WAIT. If `replyPayloads.length === 0`, it returns early at line 417.
+    // In that case, `pendingToolTasks` are awaited.
+    // `typing.markRunComplete()` is called in `finally`.
+    // `maybeStopOnIdle` checks `runComplete && dispatchIdle`.
+    // `dispatchIdle` is set by `typing.markDispatchIdle()`.
+    // Who calls `markDispatchIdle`?
+    // `createReplyDispatcherWithTyping` returns a `markDispatchIdle` function.
+    // This is passed to `dispatchInboundMessageWithBufferedDispatcher`.
+    //
+    // If `replyPayloads` is empty, `agent-runner` returns.
+    // The `dispatchInbound...` function receives the result.
+    // If the result is "no reply", does it call `markDispatchIdle`?
+    //
+    // Let's modify `src/auto-reply/dispatch.ts` (where `dispatchInbound...` lives) to ensure `markDispatchIdle` is called.
+    // But first, let's look at `dispatch.ts`.
+
     if (isGroup && historyKey) {
       clearHistoryEntriesIfEnabled({ historyMap: groupHistories, historyKey, limit: historyLimit });
     }
