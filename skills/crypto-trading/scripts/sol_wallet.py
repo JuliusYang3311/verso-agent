@@ -180,7 +180,8 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
         "from": token_in,
         "to": token_out,
         "amount": amount,
-        "slippage": slippage
+        "slippage": slippage,
+        "payer": str(keypair.pubkey())
     }
     
     # Handle Priority Fee
