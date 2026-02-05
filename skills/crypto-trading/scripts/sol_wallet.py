@@ -169,7 +169,8 @@ def action_swap(args, rpc_url, keypair: Keypair, proxies=None):
     print(f"Fetching Quote via DEX Aggregator...")
     q_url = f"{QUOTE_API}?inputMint={token_in}&outputMint={token_out}&amount={amt_atoms}&slippageBps={slippage_bps}"
     try:
-        # No headers needed for Public API
+        headers = {} 
+        # Public API does not need API key headers
         quote = requests.get(q_url, timeout=10, proxies=proxies).json()
         if "error" in quote: return print(f"Quote Error: {quote['error']}")
         
