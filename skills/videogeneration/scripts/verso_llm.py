@@ -54,7 +54,7 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
             [
                 "pnpm", "verso", "agent",
                 "-m", prompt,
-                "--agent", "main",
+                "--agent", "utility",
                 "--session-id", session_id,
                 "--local",
                 "--json"
