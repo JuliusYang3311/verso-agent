@@ -90,7 +90,7 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
 def generate_script(
     video_subject: str,
     language: str = "en",
-    paragraph_number: int = 1
+    paragraph_number: int = 5
 ) -> str:
     """
     Generate a video script for the given subject using Verso LLM.
@@ -103,28 +103,45 @@ def generate_script(
     Returns:
         Generated script text
     """
-    lang_hint = f"in {language}" if language and language != "en" else ""
+    # Determine language for the prompt
+    if language and language.startswith("zh"):
+        lang_instruction = "用中文写作"
+        word_count = "400-600字"
+    else:
+        lang_instruction = f"Write in {language}" if language else ""
+        word_count = "300-500 words"
     
-    prompt = f"""Write a short video narration script about: {video_subject}
+    prompt = f"""You are a professional video scriptwriter. Expand and write a detailed, engaging video narration script about: {video_subject}
 
-Requirements:
-- Write exactly {paragraph_number} paragraph(s) {lang_hint}
-- Get straight to the main content immediately
-- No greetings like "welcome" or "in this video"
-- No markdown formatting, plain text only
-- No speaker labels like "voiceover:" or "narrator:"
-- Just the script text, nothing else
+Instructions:
+1. {lang_instruction}
+2. Write {paragraph_number} rich, detailed paragraphs totaling {word_count}
+3. Start with an attention-grabbing opening that hooks the viewer
+4. Expand on the topic with interesting facts, insights, or perspectives
+5. Include specific details, examples, or scenarios to make it vivid
+6. End with a memorable conclusion or call-to-action
+7. Use a conversational, engaging tone suitable for voiceover
+8. NO greetings like "welcome" or "in this video"
+9. NO markdown formatting, plain text only
+10. NO speaker labels, just the script text
 
-Return only the script:"""
+Write the complete script now:"""
 
-    result = call_verso_agent(prompt)
+    result = call_verso_agent(prompt, timeout=180)
     
-    if not result:
-        # Fallback placeholder
-        result = f"This is a video about {video_subject}. "
-        result += "It explores the topic in an engaging and informative way."
+    if not result or len(result) < 100:
+        # Fallback with more content
+        if language and language.startswith("zh"):
+            result = f"{video_subject}是一个非常重要的话题。让我们一起来探索它的方方面面。"
+            result += f"无论是在日常生活还是在专业领域，{video_subject}都发挥着重要的作用。"
+            result += "通过深入了解这个主题，我们可以获得新的见解和启发。"
+        else:
+            result = f"{video_subject} is a fascinating topic that deserves our attention. "
+            result += "Let's explore what makes it so important and how it impacts our world. "
+            result += "Understanding this topic opens up new perspectives and opportunities for everyone."
     
     return result.strip()
+
 
 
 def generate_terms(

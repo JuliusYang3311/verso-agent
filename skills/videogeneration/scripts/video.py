@@ -4,7 +4,7 @@ import os
 import random
 import gc
 import shutil
-from typing import List
+from typing import List, Union
 from loguru import logger
 from moviepy import (
     AudioFileClip,
@@ -88,7 +88,7 @@ def close_clip(clip):
     del clip
     gc.collect()
 
-def delete_files(files: List[str] | str):
+def delete_files(files: Union[List[str], str]):
     if isinstance(files, str):
         files = [files]
         
@@ -194,7 +194,7 @@ def combine_videos(
                     clip = CompositeVideoClip([background, clip_resized])
                     
             shuffle_side = random.choice(["left", "right", "top", "bottom"])
-            if video_transition_mode.value == VideoTransitionMode.none.value:
+            if video_transition_mode is None or video_transition_mode.value == VideoTransitionMode.none.value:
                 clip = clip
             elif video_transition_mode.value == VideoTransitionMode.fade_in.value:
                 clip = video_effects.fadein_transition(clip, 1)
@@ -384,8 +384,19 @@ def generate_video(
     font_path = ""
     if params.subtitle_enabled:
         if not params.font_name:
-            params.font_name = "STHeitiMedium.ttc"
+            params.font_name = "Arial Unicode.ttf"
+        
+        # Check if font exists in our resource dir
         font_path = os.path.join(utils.font_dir(), params.font_name)
+        if not os.path.exists(font_path):
+            # Try system path on macOS
+            system_font = os.path.join("/System/Library/Fonts/Supplemental/", params.font_name)
+            if os.path.exists(system_font):
+                font_path = system_font
+            else:
+                # Fallback to just name and hope pillow finds it
+                font_path = params.font_name
+
         if os.name == "nt":
             font_path = font_path.replace("\\", "/")
 

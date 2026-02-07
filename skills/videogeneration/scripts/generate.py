@@ -202,14 +202,12 @@ def generate_video_from_params(params: VideoParams, task_dir: str, config: dict)
             if pexels_key and params.video_source != "pixabay":
                 videos = material.search_videos_pexels(
                     search_term=term,
-                    api_key=pexels_key,
                     minimum_duration=5,
                     video_aspect=params.video_aspect,
                 )
             elif pixabay_key:
                 videos = material.search_videos_pixabay(
                     search_term=term,
-                    api_key=pixabay_key,
                     minimum_duration=5,
                     video_aspect=params.video_aspect,
                 )
@@ -311,6 +309,7 @@ Examples:
     parser.add_argument("--cleanup", action="store_true", help="Run cleanup of old videos")
     parser.add_argument("--bgm", type=str, default=None, help="Background music file path")
     parser.add_argument("--no-subtitle", action="store_true", help="Disable subtitles")
+    parser.add_argument("--font", type=str, default=None, help="Font name or path")
     
     args = parser.parse_args()
     
@@ -383,6 +382,7 @@ Examples:
         video_materials=video_materials,
         subtitle_enabled=not args.no_subtitle,
         bgm_file=args.bgm,
+        font_name=args.font,
     )
     
     # Generate video

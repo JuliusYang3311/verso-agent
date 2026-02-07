@@ -13,11 +13,21 @@ from xml.sax.saxutils import unescape
 
 import edge_tts
 from edge_tts import SubMaker, submaker
-from edge_tts.submaker import mktimestamp
+# from edge_tts.submaker import mktimestamp
 from loguru import logger
 from moviepy.audio.io.AudioFileClip import AudioFileClip
 
 from . import utils
+
+def mktimestamp(microseconds: int) -> str:
+    """Replicate edge-tts mktimestamp for older compatibility."""
+    from datetime import timedelta
+    td = timedelta(microseconds=microseconds / 10)
+    hrs, secs_remainder = divmod(td.seconds, 3600)
+    hrs += td.days * 24
+    mins, secs = divmod(secs_remainder, 60)
+    msecs = td.microseconds // 1000
+    return f"{int(hrs):02}:{int(mins):02}:{int(secs):02}.{int(msecs):03}"
 
 
 def get_all_azure_voices(filter_locals=None):
@@ -152,14 +162,12 @@ def tts(
                     async for chunk in communicate.stream():
                         if chunk["type"] == "audio":
                             file.write(chunk["data"])
-                        elif chunk["type"] == "WordBoundary":
-                            sub_maker.create_sub(
-                                (chunk["offset"], chunk["duration"]), chunk["text"]
-                            )
+                        elif chunk["type"] in ("WordBoundary", "SentenceBoundary"):
+                            sub_maker.feed(chunk)
                 return sub_maker
 
             sub_maker = asyncio.run(_do())
-            if not sub_maker or not sub_maker.subs:
+            if not sub_maker or not sub_maker.cues:
                 logger.warning("TTS returned empty subtitles, retrying...")
                 continue
 
@@ -226,12 +234,15 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
     sub_line = ""
 
     try:
-        for _, (offset, sub) in enumerate(zip(sub_maker.offset, sub_maker.subs)):
-            _start_time, end_time = offset
+        for cue in sub_maker.cues:
+            # cue.start and cue.end are timedelta objects
+            start_time_micro = cue.start.total_seconds() * 10000000
+            end_time_micro = cue.end.total_seconds() * 10000000
+            
             if start_time < 0:
-                start_time = _start_time
+                start_time = start_time_micro
 
-            sub = unescape(sub)
+            sub = unescape(cue.content)
             sub_line += sub
             sub_text = match_line(sub_line, sub_index)
             if sub_text:
@@ -239,7 +250,7 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
                 line = formatter(
                     idx=sub_index,
                     start_time=start_time,
-                    end_time=end_time,
+                    end_time=end_time_micro,
                     sub_text=sub_text,
                 )
                 sub_items.append(line)
@@ -259,9 +270,9 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
 
 def _get_audio_duration_from_submaker(sub_maker: submaker.SubMaker) -> float:
     """Get audio duration from SubMaker timing data."""
-    if not sub_maker.offset:
+    if not sub_maker.cues:
         return 0.0
-    return sub_maker.offset[-1][1] / 10000000
+    return sub_maker.cues[-1].end.total_seconds()
 
 
 def _get_audio_duration_from_mp3(mp3_file: str) -> float:
