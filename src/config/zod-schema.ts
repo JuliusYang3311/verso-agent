@@ -52,6 +52,19 @@ const CryptoConfigSchema = z
   .strict()
   .optional();
 
+const VideoGenerationConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    moneyPrinterPath: z.string().optional(),
+    outputPath: z.string().optional(),
+    retentionDays: z.number().int().positive().optional(),
+    pexelsApiKey: z.string().optional(),
+    pixabayApiKey: z.string().optional(),
+    pythonPath: z.string().optional(),
+  })
+  .strict()
+  .optional();
+
 export const VersoSchema = z
   .object({
     meta: z
@@ -563,6 +576,7 @@ export const VersoSchema = z
       })
       .strict()
       .optional(),
+    videoGeneration: VideoGenerationConfigSchema,
   })
   .strict()
   .superRefine((cfg, ctx) => {

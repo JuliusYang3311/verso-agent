@@ -25,6 +25,7 @@ import type { NodeHostConfig } from "./types.node-host.js";
 import type { PluginsConfig } from "./types.plugins.js";
 import type { SkillsConfig } from "./types.skills.js";
 import type { ToolsConfig } from "./types.tools.js";
+import type { VideoGenerationConfig } from "./types.video-generation.js";
 
 export type VersoConfig = {
   meta?: {
@@ -100,6 +101,7 @@ export type VersoConfig = {
   gateway?: GatewayConfig;
   google?: GoogleConfig;
   moltbook?: MoltbookConfig;
+  videoGeneration?: VideoGenerationConfig;
 };
 
 export type MoltbookConfig = {
