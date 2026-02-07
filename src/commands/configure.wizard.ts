@@ -21,6 +21,7 @@ import { promptNodeHostConfig } from "./configure.nodehost.js";
 import { promptCryptoConfig } from "./configure.crypto.js";
 import { promptGoogleConfig } from "./configure.google.js";
 import { promptMoltbookConfig } from "./configure.moltbook.js";
+import { promptVideoGenerationConfig } from "./configure.videogeneration.js";
 import type {
   ChannelsWizardMode,
   ConfigureWizardParams,
@@ -385,6 +386,10 @@ export async function runConfigureWizard(
         nextConfig = await promptCryptoConfig(nextConfig, runtime);
       }
 
+      if (selected.includes("videogeneration")) {
+        nextConfig = await promptVideoGenerationConfig(nextConfig, runtime);
+      }
+
       await persistConfig();
 
       if (selected.includes("daemon")) {
@@ -545,6 +550,11 @@ export async function runConfigureWizard(
 
         if (choice === "moltbook") {
           nextConfig = await promptMoltbookConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "videogeneration") {
+          nextConfig = await promptVideoGenerationConfig(nextConfig, runtime);
           await persistConfig();
         }
 

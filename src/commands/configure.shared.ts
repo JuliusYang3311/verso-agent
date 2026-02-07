@@ -24,6 +24,7 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "crypto",
   "moltbook",
   "google",
+  "videogeneration",
   "health",
 ] as const;
 
@@ -64,6 +65,11 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   { value: "crypto", label: "Crypto", hint: "Wallet & Exchange keys" },
   { value: "moltbook", label: "Moltbook", hint: "Connect to the Agent Social Network" },
   { value: "google", label: "Google Workspace", hint: "Gmail, Docs, Calendar, OAuth" },
+  {
+    value: "videogeneration",
+    label: "Video Generation",
+    hint: "Pexels/Pixabay API keys for stock video",
+  },
   {
     value: "health",
     label: "Health check",
