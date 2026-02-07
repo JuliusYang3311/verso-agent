@@ -11,7 +11,7 @@ Generate short videos based on a topic or keyword. Powered by [MoneyPrinterTurbo
 
 ## Configuration
 
-Run `verso configure` to set up video generation settings, or add to `~/.verso/verso.json`:
+Add to `~/.verso/verso.json`:
 
 ```json
 {
@@ -21,8 +21,7 @@ Run `verso configure` to set up video generation settings, or add to `~/.verso/v
     "outputPath": "~/Projects/tmp",
     "retentionDays": 7,
     "pexelsApiKey": "your-pexels-api-key",
-    "pixabayApiKey": "your-pixabay-api-key",
-    "pythonPath": "python3.11"
+    "pixabayApiKey": "your-pixabay-api-key"
   }
 }
 ```
@@ -30,33 +29,47 @@ Run `verso configure` to set up video generation settings, or add to `~/.verso/v
 ### Required Setup
 
 1. **Python 3.10+**: `brew install python@3.11`
-2. **MoneyPrinterTurbo**: Clone and install dependencies:
+2. **MoneyPrinterTurbo**: Clone and install:
    ```bash
    git clone https://github.com/harry0703/MoneyPrinterTurbo.git
-   cd MoneyPrinterTurbo
-   pip3.11 install -r requirements.txt
+   cd MoneyPrinterTurbo && pip3.11 install -r requirements.txt
    ```
 3. **ImageMagick**: `brew install imagemagick`
-4. **API Keys**: Get free API keys from [Pexels](https://www.pexels.com/api/) and/or [Pixabay](https://pixabay.com/api/docs/)
+4. **API Keys**: [Pexels](https://www.pexels.com/api/) and/or [Pixabay](https://pixabay.com/api/docs/)
 
-## Usage
+## Usage Examples
 
 ```bash
-# Basic - generate a video about a topic
+# Basic - AI generates script
 python3.11 {baseDir}/scripts/generate.py --topic "The future of AI"
 
-# Custom voice and aspect
-python3.11 {baseDir}/scripts/generate.py --topic "Life hacks" --voice "en-US-GuyNeural" --aspect landscape
+# Custom script text (bypasses AI)
+python3.11 {baseDir}/scripts/generate.py --topic "AI" \
+  --script "AI正在改变世界。从手机到汽车，无处不在。未来充满无限可能。"
 
-# Chinese video
-python3.11 {baseDir}/scripts/generate.py --topic "人工智能的未来" --language zh-CN --voice "zh-CN-XiaoxiaoNeural"
+# Script from file
+python3.11 {baseDir}/scripts/generate.py --topic "旅行" --script-file ~/scripts/travel.txt
 
-# Force cleanup of old files
-python3.11 {baseDir}/scripts/generate.py --topic "test" --cleanup
+# Custom search terms for video materials
+python3.11 {baseDir}/scripts/generate.py --topic "Technology" \
+  --terms "robot,computer,innovation,future,science"
+
+# Use local video/image materials
+python3.11 {baseDir}/scripts/generate.py --topic "My Trip" \
+  --source local --materials "~/videos/*.mp4,~/images/*.jpg"
+
+# Chinese video with custom voice
+python3.11 {baseDir}/scripts/generate.py --topic "人工智能" \
+  --language zh-CN --voice "zh-CN-YunxiNeural"
+
+# Landscape video with background music
+python3.11 {baseDir}/scripts/generate.py --topic "Nature" \
+  --aspect landscape --bgm ~/music/ambient.mp3
 ```
 
 ## Options
 
+### Basic Options
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--topic` | Video topic (required) | - |
@@ -64,15 +77,39 @@ python3.11 {baseDir}/scripts/generate.py --topic "test" --cleanup
 | `--voice` | TTS voice name | `en-US-JennyNeural` |
 | `--aspect` | `portrait` or `landscape` | `portrait` |
 | `--out-dir` | Output directory | from config |
-| `--cleanup` | Force cleanup old files | false |
+| `--count` | Number of videos | 1 |
 
-## Auto-Cleanup
+### Content Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--script` | Custom script text | AI-generated |
+| `--script-file` | Path to script file | - |
+| `--terms` | Comma-separated search terms | AI-generated |
+| `--source` | `pexels`, `pixabay`, or `local` | `pexels` |
+| `--materials` | Local material paths (with --source local) | - |
 
-Old video directories are automatically deleted based on `retentionDays` config (default: 7 days).
+### Other Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--bgm` | Background music file | none |
+| `--no-subtitle` | Disable subtitles | false |
+| `--cleanup` | Force cleanup old files | auto |
+
+## Popular Voices
+
+**English**:
+- `en-US-JennyNeural` (Female)
+- `en-US-GuyNeural` (Male)
+- `en-US-AriaNeural` (Female)
+
+**Chinese**:
+- `zh-CN-XiaoxiaoNeural` (Female)
+- `zh-CN-YunxiNeural` (Male)
+- `zh-CN-XiaoyiNeural` (Female)
 
 ## Output Files
 
-- `video-1.mp4` - Generated video
+- `video-{n}.mp4` - Generated video(s)
 - `audio.mp3` - Voiceover
 - `subtitle.srt` - Subtitles
 - `script.json` - Script metadata
