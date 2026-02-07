@@ -109,6 +109,8 @@ def get_bgm_file(bgm_type: str = "random", bgm_file: str = ""):
         suffix = "*.mp3"
         song_dir = utils.song_dir()
         files = glob.glob(os.path.join(song_dir, suffix))
+        if not files:
+            return ""
         return random.choice(files)
 
     return ""

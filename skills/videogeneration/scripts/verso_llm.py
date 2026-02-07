@@ -8,6 +8,7 @@ import json
 import os
 import re
 import subprocess
+import uuid
 from typing import List, Optional
 
 
@@ -33,8 +34,8 @@ def get_verso_dir() -> str:
 
 def call_verso_agent(prompt: str, timeout: int = 120) -> str:
     """
-    Call Verso agent CLI for LLM response.
-    Uses `verso agent -m "prompt" --local --json` to invoke with configured provider.
+    Call Verso agent CLI for LLM response with isolated session.
+    Uses `verso agent -m "prompt" --session-id <uuid> --local --json`.
     
     Args:
         prompt: The prompt to send to the LLM
@@ -45,9 +46,19 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
     """
     verso_dir = get_verso_dir()
     
+    # Generate isolated session ID for each call
+    session_id = str(uuid.uuid4())
+    
     try:
         result = subprocess.run(
-            ["pnpm", "verso", "agent", "-m", prompt, "--local", "--json"],
+            [
+                "pnpm", "verso", "agent",
+                "-m", prompt,
+                "--agent", "main",
+                "--session-id", session_id,
+                "--local",
+                "--json"
+            ],
             cwd=verso_dir,
             capture_output=True,
             text=True,
@@ -160,7 +171,7 @@ def generate_terms(
     Returns:
         List of search terms
     """
-    script_preview = video_script[:500] if video_script else video_subject
+    script_preview = video_script if video_script else video_subject
     
     prompt = f"""Generate {amount} search terms for stock video footage.
 
