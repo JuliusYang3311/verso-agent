@@ -46,26 +46,26 @@ brew install ffmpeg
 
 ```bash
 # Basic - AI generates script
-python3 {baseDir}/scripts/generate.py --topic "The future of AI"
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "The future of AI"
 
 # Custom script text
-python3 {baseDir}/scripts/generate.py --topic "AI" \
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "AI" \
   --script "AI正在改变世界。未来充满无限可能。"
 
 # Custom search terms
-python3 {baseDir}/scripts/generate.py --topic "Technology" \
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "Technology" \
   --terms "robot,computer,future"
 
 # Use local video materials
-python3 {baseDir}/scripts/generate.py --topic "My Trip" \
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "My Trip" \
   --source local --materials "~/videos/*.mp4"
 
 # Chinese video
-python3 {baseDir}/scripts/generate.py --topic "人工智能" \
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "人工智能" \
   --language zh-CN --voice "zh-CN-YunxiNeural"
 
 # Landscape format
-python3 {baseDir}/scripts/generate.py --topic "Nature" \
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "Nature" \
   --aspect landscape
 ```
 
