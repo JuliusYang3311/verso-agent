@@ -1,13 +1,20 @@
 ---
 name: videogeneration
-description: Generate short videos from topics or keywords using MoneyPrinterTurbo. Automatically creates script, audio, subtitles, and video.
-homepage: https://github.com/harry0703/MoneyPrinterTurbo
-metadata: {"verso":{"emoji":"🎬","requires":{"bins":["python3"]}}}
+description: Generate short videos from topics or keywords. Automatically creates script, audio, subtitles, and video using Verso LLM and free TTS.
+metadata: {"verso":{"emoji":"🎬","requires":{"bins":["python3","ffmpeg"]}}}
 ---
 
 # Video Generation
 
-Generate short videos based on a topic or keyword. Powered by [MoneyPrinterTurbo](https://github.com/harry0703/MoneyPrinterTurbo).
+Generate short videos from a topic using Verso's integrated LLM and free edge-tts for narration.
+
+## Features
+
+- **Verso LLM Integration**: Uses your configured Verso model provider for script/terms generation
+- **Free TTS**: Uses edge-tts (Microsoft Edge voices) - no API key required
+- **Stock Video**: Downloads from Pexels/Pixabay (API keys needed)
+- **Local Materials**: Use your own video/image files
+- **Automatic Subtitles**: SRT subtitle generation
 
 ## Configuration
 
@@ -17,7 +24,6 @@ Add to `~/.verso/verso.json`:
 {
   "videoGeneration": {
     "enabled": true,
-    "moneyPrinterPath": "/path/to/MoneyPrinterTurbo",
     "outputPath": "~/Projects/tmp",
     "retentionDays": 7,
     "pexelsApiKey": "your-pexels-api-key",
@@ -26,90 +32,72 @@ Add to `~/.verso/verso.json`:
 }
 ```
 
-### Required Setup
+## Setup
 
-1. **Python 3.10+**: `brew install python@3.11`
-2. **MoneyPrinterTurbo**: Clone and install:
-   ```bash
-   git clone https://github.com/harry0703/MoneyPrinterTurbo.git
-   cd MoneyPrinterTurbo && pip3.11 install -r requirements.txt
-   ```
-3. **ImageMagick**: `brew install imagemagick`
-4. **API Keys**: [Pexels](https://www.pexels.com/api/) and/or [Pixabay](https://pixabay.com/api/docs/)
+```bash
+# Install Python dependencies
+cd {baseDir} && pip3 install -r requirements.txt
 
-## Usage Examples
+# Install ffmpeg (required for video processing)
+brew install ffmpeg
+```
+
+## Usage
 
 ```bash
 # Basic - AI generates script
-python3.11 {baseDir}/scripts/generate.py --topic "The future of AI"
+python3 {baseDir}/scripts/generate.py --topic "The future of AI"
 
-# Custom script text (bypasses AI)
-python3.11 {baseDir}/scripts/generate.py --topic "AI" \
-  --script "AI正在改变世界。从手机到汽车，无处不在。未来充满无限可能。"
+# Custom script text
+python3 {baseDir}/scripts/generate.py --topic "AI" \
+  --script "AI正在改变世界。未来充满无限可能。"
 
-# Script from file
-python3.11 {baseDir}/scripts/generate.py --topic "旅行" --script-file ~/scripts/travel.txt
+# Custom search terms
+python3 {baseDir}/scripts/generate.py --topic "Technology" \
+  --terms "robot,computer,future"
 
-# Custom search terms for video materials
-python3.11 {baseDir}/scripts/generate.py --topic "Technology" \
-  --terms "robot,computer,innovation,future,science"
+# Use local video materials
+python3 {baseDir}/scripts/generate.py --topic "My Trip" \
+  --source local --materials "~/videos/*.mp4"
 
-# Use local video/image materials
-python3.11 {baseDir}/scripts/generate.py --topic "My Trip" \
-  --source local --materials "~/videos/*.mp4,~/images/*.jpg"
-
-# Chinese video with custom voice
-python3.11 {baseDir}/scripts/generate.py --topic "人工智能" \
+# Chinese video
+python3 {baseDir}/scripts/generate.py --topic "人工智能" \
   --language zh-CN --voice "zh-CN-YunxiNeural"
 
-# Landscape video with background music
-python3.11 {baseDir}/scripts/generate.py --topic "Nature" \
-  --aspect landscape --bgm ~/music/ambient.mp3
+# Landscape format
+python3 {baseDir}/scripts/generate.py --topic "Nature" \
+  --aspect landscape
 ```
 
 ## Options
 
-### Basic Options
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--topic` | Video topic (required) | - |
 | `--language` | Language code | `en-US` |
 | `--voice` | TTS voice name | `en-US-JennyNeural` |
-| `--aspect` | `portrait` or `landscape` | `portrait` |
+| `--aspect` | `portrait` (9:16) or `landscape` (16:9) | `portrait` |
 | `--out-dir` | Output directory | from config |
-| `--count` | Number of videos | 1 |
-
-### Content Options
-| Option | Description | Default |
-|--------|-------------|---------|
 | `--script` | Custom script text | AI-generated |
 | `--script-file` | Path to script file | - |
 | `--terms` | Comma-separated search terms | AI-generated |
 | `--source` | `pexels`, `pixabay`, or `local` | `pexels` |
-| `--materials` | Local material paths (with --source local) | - |
-
-### Other Options
-| Option | Description | Default |
-|--------|-------------|---------|
+| `--materials` | Local material paths (for --source local) | - |
 | `--bgm` | Background music file | none |
 | `--no-subtitle` | Disable subtitles | false |
-| `--cleanup` | Force cleanup old files | auto |
 
 ## Popular Voices
 
-**English**:
-- `en-US-JennyNeural` (Female)
-- `en-US-GuyNeural` (Male)
-- `en-US-AriaNeural` (Female)
+**English**: `en-US-JennyNeural`, `en-US-GuyNeural`, `en-US-AriaNeural`
 
-**Chinese**:
-- `zh-CN-XiaoxiaoNeural` (Female)
-- `zh-CN-YunxiNeural` (Male)
-- `zh-CN-XiaoyiNeural` (Female)
+**Chinese**: `zh-CN-XiaoxiaoNeural`, `zh-CN-YunxiNeural`, `zh-CN-XiaoyiNeural`
 
-## Output Files
+## Output
 
-- `video-{n}.mp4` - Generated video(s)
-- `audio.mp3` - Voiceover
-- `subtitle.srt` - Subtitles
-- `script.json` - Script metadata
+```
+output-dir/
+├── video-1.mp4     # Final video
+├── audio.mp3       # Voice narration  
+├── subtitle.srt    # Subtitles
+└── metadata.json   # Script and metadata
+```
