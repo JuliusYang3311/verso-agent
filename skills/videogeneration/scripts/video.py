@@ -361,14 +361,22 @@ def wrap_text(text, max_width, font="Arial", fontsize=60):
     chars = list(text)
     _txt_ = ""
     for word in chars:
+        _before = _txt_
         _txt_ += word
         _width, _height = get_text_size(_txt_)
         if _width <= max_width:
             continue
         else:
-            _wrapped_lines_.append(_txt_)
-            _txt_ = ""
-    _wrapped_lines_.append(_txt_)
+            if _before:
+                _wrapped_lines_.append(_before)
+                _txt_ = word
+            else:
+                # If a single character is wider than max_width,
+                # we have to take it as a line though it will clip.
+                _wrapped_lines_.append(_txt_)
+                _txt_ = ""
+    if _txt_:
+        _wrapped_lines_.append(_txt_)
     result = "\n".join(_wrapped_lines_).strip()
     height = len(_wrapped_lines_) * height
     return result, height
@@ -420,15 +428,21 @@ def generate_video(
         params.font_size = int(params.font_size)
         params.stroke_width = int(params.stroke_width)
         phrase = subtitle_item[1]
-        max_width = video_width * 0.9
+        # Use 0.85 instead of 0.9 to give more margin on sides
+        max_width = video_width * 0.85
         wrapped_txt, txt_height = wrap_text(
             phrase, max_width=max_width, font=font_path, fontsize=params.font_size
         )
         # Add extra vertical padding to prevent character clipping
-        # Especially important for Chinese characters and descenders
-        vertical_padding = params.font_size * 0.5  # 50% of font size as padding
+        vertical_padding = params.font_size * 0.5
+        # Add extra horizontal padding to prevent side clipping (especially for stroke)
+        horizontal_padding = params.font_size * 0.5
         interline = int(params.font_size * 0.25)
-        size=(int(max_width), int(txt_height + vertical_padding + (interline * (wrapped_txt.count("\n") + 1))))
+        
+        size = (
+            int(max_width + horizontal_padding), 
+            int(txt_height + vertical_padding + (interline * (wrapped_txt.count("\n") + 1)))
+        )
 
         _clip = TextClip(
             text=wrapped_txt,

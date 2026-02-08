@@ -52,33 +52,33 @@ brew install ffmpeg
 
 ```bash
 # Basic - AI generates script
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "The future of AI"
+python3 {baseDir}/scripts/generate.py --topic "The future of AI"
 
 # Enhanced with cinematic style (recommended for best quality)
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py \
+python3 {baseDir}/scripts/generate.py \
   --topic "Studying in a cozy library" \
   --cinematic-style \
   --quality-filter \
   --diversity-threshold 0.4
 
 # Custom script text
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "AI" \
+python3 {baseDir}/scripts/generate.py --topic "AI" \
   --script "AI正在改变世界。未来充满无限可能。"
 
 # Custom search terms
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "Technology" \
+python3 {baseDir}/scripts/generate.py --topic "Technology" \
   --terms "robot,computer,future"
 
 # Use local video materials
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "My Trip" \
+python3 {baseDir}/scripts/generate.py --topic "My Trip" \
   --source local --materials "~/videos/*.mp4"
 
 # Chinese video
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "人工智能" \
+python3 {baseDir}/scripts/generate.py --topic "人工智能" \
   --language zh-CN --voice "zh-CN-YunxiNeural"
 
 # Landscape format
-/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "Nature" \
+python3 {baseDir}/scripts/generate.py --topic "Nature" \
   --aspect landscape
 ```
 
@@ -131,4 +131,3 @@ The generated files are organized for clarity:
 - **Set `--min-clip-duration`** higher (10-15s) for more professional footage
 - Provide specific, descriptive topics for better material matching
 - Use custom scripts to control pacing and content precisely
-
