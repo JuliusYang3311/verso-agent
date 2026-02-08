@@ -8,6 +8,7 @@ import type { VersoConfig } from "../config/config.js";
 import { resolveApiKeyForProvider } from "./model-auth.js";
 import { logVerbose } from "../globals.js";
 import { stripThinkingTagsFromText } from "./pi-embedded-utils.js";
+import { resolveAgentDir } from "./agent-scope.js";
 
 /**
  * Parameters for the classifier call.
@@ -173,8 +174,11 @@ export function createClassifierFn(
   agentDir?: string,
 ): (params: ClassifierCallParams) => Promise<string> {
   const routerThinking = cfg.agents?.defaults?.router?.thinking ?? false;
+  // Use utility agent for routing/classification as requested
+  const utilityAgentDir = resolveAgentDir(cfg, "utility");
+
   return async (params: ClassifierCallParams) => {
     // Note: Logging moved inside callTaskClassifier for consistent timing including cache
-    return await callTaskClassifier({ ...params, thinking: routerThinking }, cfg, agentDir);
+    return await callTaskClassifier({ ...params, thinking: routerThinking }, cfg, utilityAgentDir);
   };
 }
