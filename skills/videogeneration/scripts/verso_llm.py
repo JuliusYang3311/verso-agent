@@ -66,23 +66,23 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
         )
         
         if result.returncode == 0:
-            # Parse JSON output
-            try:
-                output = result.stdout.strip()
-                # Find JSON in output (skip non-JSON lines)
-                for line in output.split('\n'):
-                    line = line.strip()
-                    if line.startswith('{'):
-                        data = json.loads(line)
-                        # Extract response text from payloads
-                        payloads = data.get('payloads', [])
-                        texts = [p.get('text', '') for p in payloads if isinstance(p, dict)]
-                        return '\n'.join(texts).strip()
-                # Fallback: return raw output
-                return output
-            except json.JSONDecodeError:
-                # Return raw stdout if not JSON
-                return result.stdout.strip()
+            output = result.stdout.strip()
+            
+            # Find JSON block in output
+            # Look for the last matching pair of curly braces that forms a valid JSON object
+            json_match = re.search(r'(\{.*\})', output, re.DOTALL)
+            if json_match:
+                try:
+                    data = json.loads(json_match.group(1))
+                    # Extract response text from payloads
+                    payloads = data.get('payloads', [])
+                    texts = [p.get('text', '') for p in payloads if isinstance(p, dict)]
+                    return '\n'.join(texts).strip()
+                except json.JSONDecodeError:
+                    pass
+            
+            # Fallback for non-JSON output
+            return output
         else:
             print(f"⚠️  Verso agent error: {result.stderr}")
             return ""
