@@ -362,11 +362,17 @@ def download_videos(
             if saved_video_path:
                 logger.info(f"video saved: {saved_video_path}")
                 video_paths.append(saved_video_path)
-                seconds = min(max_clip_duration, item.duration)
-                total_duration += seconds
-                if total_duration > audio_duration:
+                
+                # Calculate usable duration: since we only use ONE segment per video,
+                # count only max_clip_duration toward total, not full video duration
+                usable_duration = min(max_clip_duration, item.duration)
+                total_duration += usable_duration
+                
+                # Add 20% buffer to account for potential download failures
+                required_duration = audio_duration * 1.2
+                if total_duration >= required_duration:
                     logger.info(
-                        f"total duration of downloaded videos: {total_duration} seconds, skip downloading more"
+                        f"downloaded sufficient videos: {total_duration:.2f}s >= {required_duration:.2f}s (audio: {audio_duration:.2f}s)"
                     )
                     break
         except Exception as e:

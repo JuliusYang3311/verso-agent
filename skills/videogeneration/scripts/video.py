@@ -244,7 +244,8 @@ def combine_videos(
     
     # loop processed clips until the video duration matches or exceeds the audio duration.
     if video_duration < audio_duration:
-        logger.warning(f"video duration ({video_duration:.2f}s) is shorter than audio duration ({audio_duration:.2f}s), looping clips to match audio length.")
+        logger.warning(f"⚠️  INSUFFICIENT VIDEOS: video duration ({video_duration:.2f}s) is shorter than audio duration ({audio_duration:.2f}s)")
+        logger.warning(f"⚠️  FALLBACK: looping existing clips to match audio length - this may cause repetition!")
         base_clips = processed_clips.copy()
         for clip in itertools.cycle(base_clips):
             if video_duration >= audio_duration:
