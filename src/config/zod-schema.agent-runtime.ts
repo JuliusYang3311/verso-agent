@@ -422,11 +422,11 @@ export const AgentEntrySchema = z
     workspace: z.string().optional(),
     agentDir: z.string().optional(),
     model: AgentModelSchema.optional(),
-    memorySearch: MemorySearchSchema,
+    memorySearch: MemorySearchSchema.optional(),
     humanDelay: HumanDelaySchema.optional(),
-    heartbeat: HeartbeatSchema,
-    identity: IdentitySchema,
-    groupChat: GroupChatSchema,
+    heartbeat: HeartbeatSchema.optional(),
+    identity: IdentitySchema.optional(),
+    groupChat: GroupChatSchema.optional(),
     subagents: z
       .object({
         allowAgents: z.array(z.string()).optional(),
@@ -444,8 +444,8 @@ export const AgentEntrySchema = z
       })
       .strict()
       .optional(),
-    sandbox: AgentSandboxSchema,
-    tools: AgentToolsSchema,
+    sandbox: AgentSandboxSchema.optional(),
+    tools: AgentToolsSchema.optional(),
     compaction: z
       .object({
         mode: z.union([z.literal("default"), z.literal("safeguard")]).optional(),
