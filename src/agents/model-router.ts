@@ -100,13 +100,14 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
   if (candidates.length === 1) return candidates[0];
 
   // Determine the classifier model to use.
-  // If not explicitly provided, we'll try to find a suitable "flash" model from candidates.
+  // If not explicitly provided or invalid, select from the candidates list (already filtered to allowed models).
   let effectiveClassifier = classifierModel;
   const classifierRef = parseModelRef(effectiveClassifier, "google");
 
   if (!classifierRef) {
     // Attempt to pick the first "flash" model from candidates as a fallback.
     // Favor "google-gemini-cli" provider as requested.
+    // IMPORTANT: Only select from candidates, which are already filtered to allowed models.
     const flashFallback =
       candidates.find(
         (m) =>
@@ -119,10 +120,12 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
     if (flashFallback) {
       effectiveClassifier = flashFallback;
     } else {
-      // Last resort fallback
+      // Last resort fallback: use the first candidate
       effectiveClassifier = candidates[0];
     }
-    logVerbose(`Router: No valid classifierModel configured. Auto-selected ${effectiveClassifier}`);
+    logVerbose(
+      `Router: No valid classifierModel configured. Auto-selected ${effectiveClassifier} from allowed models`,
+    );
   }
 
   const parsed = parseModelRef(effectiveClassifier, "google");
