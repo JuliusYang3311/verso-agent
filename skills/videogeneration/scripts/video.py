@@ -142,31 +142,30 @@ def combine_videos(
     subclipped_items = []
     video_duration = 0
     for video_path in video_paths:
-        clip = VideoFileClip(video_path)
-        clip_duration = clip.duration
-        clip_w, clip_h = clip.size
-        close_clip(clip)
+        try:
+            clip = VideoFileClip(video_path)
+            clip_duration = clip.duration
+            clip_w, clip_h = clip.size
+            close_clip(clip)
+        except Exception as e:
+            logger.error(f"failed to load video {video_path}: {str(e)}")
+            continue
         
-        # Use each source video only ONCE - select one random segment
-        # This prevents material reuse within the same final video
-        if clip_duration >= max_clip_duration:
-            # Select random start time for variety
-            max_start = clip_duration - max_clip_duration
-            start_time = random.uniform(0, max_start)
-            end_time = start_time + max_clip_duration
-        else:
-            # Use entire clip if shorter than max duration
-            start_time = 0
-            end_time = clip_duration
-        
-        # Create only ONE subclip per source video
-        subclipped_items.append(SubClippedVideoClip(
-            file_path=video_path, 
-            start_time=start_time, 
-            end_time=end_time, 
-            width=clip_w, 
-            height=clip_h
-        ))
+        # Extract ALL possible segments from each source video (squeezing)
+        # This ensures every second of downloaded material is utilized.
+        start_time = 0
+        while start_time < clip_duration:
+            end_time = min(start_time + max_clip_duration, clip_duration)
+            # Only take segments that are at least 1 second long to avoid micro-clips
+            if end_time - start_time >= 1.0:
+                subclipped_items.append(SubClippedVideoClip(
+                    file_path=video_path, 
+                    start_time=start_time, 
+                    end_time=end_time, 
+                    width=clip_w, 
+                    height=clip_h
+                ))
+            start_time = end_time
 
     # random subclipped_items order
     if video_concat_mode.value == VideoConcatMode.random.value:
@@ -189,7 +188,6 @@ def combine_videos(
             if clip_w != video_width or clip_h != video_height:
                 clip_ratio = clip.w / clip.h
                 video_ratio = video_width / video_height
-                logger.debug(f"resizing clip, source: {clip_w}x{clip_h}, ratio: {clip_ratio:.2f}, target: {video_width}x{video_height}, ratio: {video_ratio:.2f}")
                 
                 if clip_ratio == video_ratio:
                     clip = clip.resized(new_size=(video_width, video_height))

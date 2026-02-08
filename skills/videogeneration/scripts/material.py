@@ -54,8 +54,13 @@ def filter_by_quality(
     # Sort by score (highest first)
     scored_items.sort(key=lambda x: x[0], reverse=True)
     
-    # Return top 70% of results
-    cutoff = max(1, int(len(scored_items) * 0.7))
+    # If we have few results, keep them all to ensure enough material for long videos.
+    # Discarding 30% of 3 videos leaves only 2, which is often not enough.
+    if len(scored_items) <= 10:
+        return [item for score, item in scored_items]
+    
+    # For larger result sets, filter out the bottom 20% to keep quality high.
+    cutoff = max(10, int(len(scored_items) * 0.8))
     return [item for score, item in scored_items[:cutoff]]
 
 
@@ -154,6 +159,7 @@ def search_videos_pexels(
             logger.error(f"search videos failed: {response}")
             return video_items
         videos = response["videos"]
+        logger.info(f"Pexels search for '{search_term}' returned {len(videos)} raw videos")
         # loop through each video in the result
         for v in videos:
             duration = v["duration"]
@@ -165,6 +171,8 @@ def search_videos_pexels(
             for video in video_files:
                 w = int(video["width"])
                 h = int(video["height"])
+                
+                # Exact resolution match as per user request to ensure visual consistency
                 if w == video_width and h == video_height:
                     item = MaterialInfo()
                     item.provider = "pexels"
@@ -226,8 +234,10 @@ def search_videos_pixabay(
             for video_type in video_files:
                 video = video_files[video_type]
                 w = int(video["width"])
-                # h = int(video["height"])
-                if w >= video_width:
+                h = int(video["height"])
+                
+                # Exact resolution match as per user request to ensure visual consistency
+                if w == video_width and h == video_height:
                     item = MaterialInfo()
                     item.provider = "pixabay"
                     item.url = video["url"]
@@ -306,6 +316,7 @@ def download_videos(
     max_clip_duration: int = 5,
     quality_filter: bool = True,
     diversity_threshold: float = 0.3,
+    video_subject: str = "",
 ) -> List[str]:
     valid_video_items = []
     valid_video_urls = []
@@ -314,6 +325,7 @@ def download_videos(
     if source == "pixabay":
         search_videos = search_videos_pixabay
 
+    # 1. Primary search using generated terms
     for search_term in search_terms:
         video_items = search_videos(
             search_term=search_term,
@@ -337,6 +349,26 @@ def download_videos(
                 valid_video_items.append(item)
                 valid_video_urls.append(item.url)
                 found_duration += item.duration
+
+    # 2. Fallback search using video_subject if we don't have enough potential material
+    # We check if found_duration (total raw length) is at least 3x the required audio duration
+    # to ensure we have enough "room" for high-quality variety.
+    required_raw_duration = audio_duration * 3.0
+    if video_subject and found_duration < required_raw_duration:
+        logger.info(f"insufficient material found ({found_duration:.2f}s < {required_raw_duration:.2f}s), performing fallback search with subject: '{video_subject}'")
+        fallback_items = search_videos(
+            search_term=video_subject,
+            minimum_duration=max_clip_duration,
+            video_aspect=video_aspect,
+            quality_filter=quality_filter,
+        )
+        for item in fallback_items:
+            if item.url not in valid_video_urls:
+                valid_video_items.append(item)
+                valid_video_urls.append(item.url)
+                found_duration += item.duration
+                if found_duration >= required_raw_duration * 2: # Stop if we found plenty
+                    break
 
     logger.info(
         f"found total videos: {len(valid_video_items)}, required duration: {audio_duration} seconds, found duration: {found_duration} seconds"
@@ -363,16 +395,20 @@ def download_videos(
                 logger.info(f"video saved: {saved_video_path}")
                 video_paths.append(saved_video_path)
                 
-                # Calculate usable duration: since we only use ONE segment per video,
-                # count only max_clip_duration toward total, not full video duration
-                usable_duration = min(max_clip_duration, item.duration)
-                total_duration += usable_duration
+                # Now we count the FULL duration since we utilize ALL segments
+                # of the video in the final render.
+                total_duration += item.duration
                 
-                # Add 20% buffer to account for potential download failures
-                required_duration = audio_duration * 1.2
-                if total_duration >= required_duration:
+                # Increase redundancy to 200% (2.0x) to ensure variety
+                required_duration = audio_duration * 2.0
+                
+                # Also ensure we have at least a decent number of unique sources
+                # (e.g., 10) if the API has them, to avoid relying on too few videos.
+                min_unique_sources = 10
+                
+                if total_duration >= required_duration and len(video_paths) >= min_unique_sources:
                     logger.info(
-                        f"downloaded sufficient videos: {total_duration:.2f}s >= {required_duration:.2f}s (audio: {audio_duration:.2f}s)"
+                        f"downloaded sufficient videos: {total_duration:.2f}s >= {required_duration:.2f}s and {len(video_paths)} unique sources (audio: {audio_duration:.2f}s)"
                     )
                     break
         except Exception as e:
