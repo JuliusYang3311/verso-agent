@@ -219,32 +219,17 @@ def generate_video_from_params(params: VideoParams, task_dir: str, config: dict)
                 video_files.append(mat.url)
     else:
         # Download from stock video APIs
-        pexels_key = config.get("pexelsApiKey") or os.environ.get("PEXELS_API_KEY", "")
-        pixabay_key = config.get("pixabayApiKey") or os.environ.get("PIXABAY_API_KEY", "")
-        
-        for term in params.video_terms[:3]:  # Limit to first 3 terms
-            videos = []
-            
-            if pexels_key and params.video_source != "pixabay":
-                videos = material.search_videos_pexels(
-                    search_term=term,
-                    minimum_duration=config.get('_min_clip_duration', 5),
-                    video_aspect=params.video_aspect,
-                    quality_filter=config.get('_quality_filter', True),
-                )
-            elif pixabay_key:
-                videos = material.search_videos_pixabay(
-                    search_term=term,
-                    minimum_duration=config.get('_min_clip_duration', 5),
-                    video_aspect=params.video_aspect,
-                    quality_filter=config.get('_quality_filter', True),
-                )
-            
-            # Download first matching video
-            if videos:
-                saved = material.save_video(videos[0].url, task_dir)
-                if saved:
-                    video_files.append(saved)
+        video_files = material.download_videos(
+            task_id=os.path.basename(task_dir),
+            search_terms=params.video_terms,
+            source=params.video_source,
+            video_aspect=params.video_aspect,
+            video_contact_mode=params.video_concat_mode,
+            audio_duration=audio_duration,
+            max_clip_duration=config.get('_min_clip_duration', 5),
+            quality_filter=config.get('_quality_filter', True),
+            diversity_threshold=config.get('_diversity_threshold', 0.3),
+        )
     
     if not video_files:
         print("❌ No video materials found")
