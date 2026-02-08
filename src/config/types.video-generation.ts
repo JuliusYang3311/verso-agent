@@ -12,4 +12,10 @@ export type VideoGenerationConfig = {
   pixabayApiKey?: string;
   /** Path to Python 3.10+ executable */
   pythonPath?: string;
+  /** Enable enhanced quality filtering (default: true) */
+  qualityFilter?: boolean;
+  /** Diversity threshold 0-1 (default: 0.3, higher = more different videos) */
+  diversityThreshold?: number;
+  /** Minimum clip duration in seconds (default: 8) */
+  minClipDuration?: number;
 };

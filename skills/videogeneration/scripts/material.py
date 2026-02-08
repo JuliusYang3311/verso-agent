@@ -14,6 +14,96 @@ from . import utils
 requested_count = 0
 
 
+def filter_by_quality(
+    video_items: List[MaterialInfo],
+    minimum_duration: int
+) -> List[MaterialInfo]:
+    """
+    Filter and sort videos by quality metrics.
+    Prefers longer, higher-quality clips.
+    
+    Args:
+        video_items: List of video materials
+        minimum_duration: Minimum acceptable duration
+    
+    Returns:
+        Filtered and sorted list of materials
+    """
+    if not video_items:
+        return []
+    
+    # Score each video
+    scored_items = []
+    for item in video_items:
+        score = 0.0
+        
+        # Prefer videos between 10-30 seconds (ideal for b-roll)
+        if 10 <= item.duration <= 30:
+            score += 10
+        elif 8 <= item.duration <= 40:
+            score += 5
+        elif item.duration >= minimum_duration:
+            score += 2
+        
+        # Bonus for longer clips (more flexibility in editing)
+        if item.duration >= 15:
+            score += 3
+        
+        scored_items.append((score, item))
+    
+    # Sort by score (highest first)
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+    
+    # Return top 70% of results
+    cutoff = max(1, int(len(scored_items) * 0.7))
+    return [item for score, item in scored_items[:cutoff]]
+
+
+def calculate_diversity_score(
+    existing_videos: List[MaterialInfo],
+    new_video: MaterialInfo,
+    threshold: float = 0.3
+) -> float:
+    """
+    Calculate how different a new video is from existing selections.
+    
+    Args:
+        existing_videos: Already selected videos
+        new_video: Candidate video to evaluate
+        threshold: Minimum diversity score to consider (0-1)
+    
+    Returns:
+        Diversity score (0-1, higher = more different)
+    """
+    if not existing_videos:
+        return 1.0
+    
+    diversity_scores = []
+    
+    for existing in existing_videos:
+        score = 0.0
+        
+        # Different duration ranges suggest different content
+        duration_diff = abs(existing.duration - new_video.duration)
+        if duration_diff > 10:
+            score += 0.4
+        elif duration_diff > 5:
+            score += 0.2
+        
+        # Different providers might have different content
+        if existing.provider != new_video.provider:
+            score += 0.3
+        
+        # Different URLs are obviously different videos
+        if existing.url != new_video.url:
+            score += 0.3
+        
+        diversity_scores.append(score)
+    
+    # Return average diversity score
+    return sum(diversity_scores) / len(diversity_scores) if diversity_scores else 1.0
+
+
 def get_api_key(cfg_key: str):
     api_keys = config.app.get(cfg_key)
     if not api_keys:
@@ -35,6 +125,7 @@ def search_videos_pexels(
     search_term: str,
     minimum_duration: int,
     video_aspect: VideoAspect = VideoAspect.portrait,
+    quality_filter: bool = True,
 ) -> List[MaterialInfo]:
     aspect = VideoAspect(video_aspect)
     video_orientation = aspect.name
@@ -44,8 +135,8 @@ def search_videos_pexels(
         "Authorization": api_key,
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
     }
-    # Build URL
-    params = {"query": search_term, "per_page": 20, "orientation": video_orientation}
+    # Build URL - request more results for better filtering
+    params = {"query": search_term, "per_page": 50, "orientation": video_orientation}
     query_url = f"https://api.pexels.com/videos/search?{urlencode(params)}"
     logger.info(f"searching videos: {query_url}, with proxies: {config.proxy}")
 
@@ -81,6 +172,11 @@ def search_videos_pexels(
                     item.duration = duration
                     video_items.append(item)
                     break
+        
+        # Apply quality filtering if enabled
+        if quality_filter and video_items:
+            video_items = filter_by_quality(video_items, minimum_duration)
+        
         return video_items
     except Exception as e:
         logger.error(f"search videos failed: {str(e)}")
@@ -92,6 +188,7 @@ def search_videos_pixabay(
     search_term: str,
     minimum_duration: int,
     video_aspect: VideoAspect = VideoAspect.portrait,
+    quality_filter: bool = True,
 ) -> List[MaterialInfo]:
     aspect = VideoAspect(video_aspect)
 
@@ -137,6 +234,11 @@ def search_videos_pixabay(
                     item.duration = duration
                     video_items.append(item)
                     break
+        
+        # Apply quality filtering if enabled
+        if quality_filter and video_items:
+            video_items = filter_by_quality(video_items, minimum_duration)
+        
         return video_items
     except Exception as e:
         logger.error(f"search videos failed: {str(e)}")
@@ -202,6 +304,8 @@ def download_videos(
     video_contact_mode: VideoConcatMode = VideoConcatMode.random,
     audio_duration: float = 0.0,
     max_clip_duration: int = 5,
+    quality_filter: bool = True,
+    diversity_threshold: float = 0.3,
 ) -> List[str]:
     valid_video_items = []
     valid_video_urls = []
@@ -215,11 +319,21 @@ def download_videos(
             search_term=search_term,
             minimum_duration=max_clip_duration,
             video_aspect=video_aspect,
+            quality_filter=quality_filter,
         )
         logger.info(f"found {len(video_items)} videos for '{search_term}'")
 
         for item in video_items:
             if item.url not in valid_video_urls:
+                # Apply diversity check if enabled
+                if diversity_threshold > 0:
+                    diversity_score = calculate_diversity_score(
+                        valid_video_items, item, diversity_threshold
+                    )
+                    if diversity_score < diversity_threshold:
+                        logger.info(f"skipping similar video (diversity: {diversity_score:.2f}): {item.url[:50]}")
+                        continue
+                
                 valid_video_items.append(item)
                 valid_video_urls.append(item.url)
                 found_duration += item.duration

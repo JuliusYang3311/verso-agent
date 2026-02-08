@@ -15,6 +15,9 @@ Generate short videos from a topic using Verso's integrated LLM and free edge-tt
 - **Stock Video**: Downloads from Pexels/Pixabay (API keys needed)
 - **Local Materials**: Use your own video/image files
 - **Automatic Subtitles**: SRT subtitle generation
+- **Quality Filtering**: Enhanced material selection for better visual quality
+- **Cinematic Style**: Generate atmospheric, professional-looking videos
+- **Diversity Scoring**: Avoid repetitive footage
 
 ## Configuration
 
@@ -27,7 +30,10 @@ Add to `~/.verso/verso.json`:
     "outputPath": "~/Projects/tmp",
     "retentionDays": 7,
     "pexelsApiKey": "your-pexels-api-key",
-    "pixabayApiKey": "your-pixabay-api-key"
+    "pixabayApiKey": "your-pixabay-api-key",
+    "qualityFilter": true,
+    "diversityThreshold": 0.3,
+    "minClipDuration": 8
   }
 }
 ```
@@ -47,6 +53,13 @@ brew install ffmpeg
 ```bash
 # Basic - AI generates script
 /opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "The future of AI"
+
+# Enhanced with cinematic style (recommended for best quality)
+/opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py \
+  --topic "Studying in a cozy library" \
+  --cinematic-style \
+  --quality-filter \
+  --diversity-threshold 0.4
 
 # Custom script text
 /opt/homebrew/bin/python3.11 {baseDir}/scripts/generate.py --topic "AI" \
@@ -85,6 +98,11 @@ brew install ffmpeg
 | `--materials` | Local material paths (for --source local) | - |
 | `--bgm` | Background music file | none |
 | `--no-subtitle` | Disable subtitles | false |
+| **`--cinematic-style`** | Add cinematic descriptors for better aesthetics | `false` |
+| **`--quality-filter`** | Enable enhanced quality filtering | `true` |
+| **`--no-quality-filter`** | Disable quality filtering | - |
+| **`--diversity-threshold`** | How different videos should be (0-1) | `0.3` |
+| **`--min-clip-duration`** | Minimum clip duration in seconds | `8` |
 
 ## Popular Voices
 
@@ -105,4 +123,12 @@ The generated files are organized for clarity:
 - `metadata.json`: Full task metadata including script, search terms, and timestamp.
 - `Final.mp4` / `combined.mp4`: Temporary intermediate video files.
 - `[timestamp].mp4`: Raw downloaded video materials.
+
+## Tips for Best Results
+
+- **Use `--cinematic-style`** for more visually appealing, atmospheric footage
+- **Increase `--diversity-threshold`** (e.g., 0.4-0.5) to avoid similar-looking clips
+- **Set `--min-clip-duration`** higher (10-15s) for more professional footage
+- Provide specific, descriptive topics for better material matching
+- Use custom scripts to control pacing and content precisely
 

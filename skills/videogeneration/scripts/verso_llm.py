@@ -170,7 +170,8 @@ Write the complete script now:"""
 def generate_terms(
     video_subject: str,
     video_script: str,
-    amount: int = 5
+    amount: int = 5,
+    cinematic_style: bool = False
 ) -> List[str]:
     """
     Generate search terms for stock video footage using Verso LLM.
@@ -179,11 +180,19 @@ def generate_terms(
         video_subject: Topic of the video
         video_script: The video script content
         amount: Number of search terms to generate
+        cinematic_style: If True, add cinematic/atmospheric descriptors
     
     Returns:
         List of search terms
     """
     script_preview = video_script if video_script else video_subject
+    
+    cinematic_guidance = ""
+    if cinematic_style:
+        cinematic_guidance = """
+- Include visual style descriptors like "cinematic", "atmospheric", "warm lighting", "depth of field"
+- Focus on mood and composition (e.g., "cozy library", "golden hour sunset", "misty forest")
+- Prefer terms that suggest professional, high-quality footage"""
     
     prompt = f"""Generate {amount} search terms for stock video footage.
 
@@ -194,9 +203,17 @@ Script:
 
 Requirements:
 - Return ONLY a JSON array of strings like ["term1", "term2"]
-- Each term should be 1-3 words
+- Each term should be 2-4 words for better specificity
 - Terms must be in English (for stock video APIs)
-- Terms should visually represent the video content
+- Terms should visually represent the video content with rich detail{cinematic_guidance}
+- Avoid generic single words, prefer descriptive phrases
+- Think about lighting, composition, mood, and atmosphere
+
+Examples of good terms:
+- "warm library reading"
+- "cinematic city sunset"
+- "peaceful nature morning"
+- "modern office workspace"
 
 Return the JSON array:"""
 
@@ -214,9 +231,21 @@ Return the JSON array:"""
         except (json.JSONDecodeError, TypeError):
             pass
     
-    # Fallback: generate terms from subject
+    # Fallback: generate enhanced terms from subject
     fallback_words = video_subject.lower().split()
     fallback_terms = [w for w in fallback_words if len(w) > 2][:amount]
+    
+    # Add cinematic modifiers to fallback if requested
+    if cinematic_style and fallback_terms:
+        modifiers = ["cinematic", "atmospheric", "warm lighting", "beautiful", "professional"]
+        enhanced = []
+        for i, term in enumerate(fallback_terms):
+            if i < len(modifiers):
+                enhanced.append(f"{modifiers[i]} {term}")
+            else:
+                enhanced.append(term)
+        return enhanced[:amount]
+    
     return fallback_terms if fallback_terms else ["nature", "technology", "business"]
 
 

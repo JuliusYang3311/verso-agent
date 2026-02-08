@@ -170,10 +170,13 @@ def generate_video_from_params(params: VideoParams, task_dir: str, config: dict)
     # Step 2: Generate or use provided terms
     if not params.video_terms:
         print("🔍 Generating search terms...")
+        # Check if cinematic_style is enabled in config
+        cinematic = config.get('_cinematic_style', False)
         params.video_terms = generate_terms(
             params.video_subject,
             params.video_script,
-            amount=5
+            amount=5,
+            cinematic_style=cinematic
         )
         result["terms"] = params.video_terms
     
@@ -225,14 +228,16 @@ def generate_video_from_params(params: VideoParams, task_dir: str, config: dict)
             if pexels_key and params.video_source != "pixabay":
                 videos = material.search_videos_pexels(
                     search_term=term,
-                    minimum_duration=5,
+                    minimum_duration=config.get('_min_clip_duration', 5),
                     video_aspect=params.video_aspect,
+                    quality_filter=config.get('_quality_filter', True),
                 )
             elif pixabay_key:
                 videos = material.search_videos_pixabay(
                     search_term=term,
-                    minimum_duration=5,
+                    minimum_duration=config.get('_min_clip_duration', 5),
                     video_aspect=params.video_aspect,
+                    quality_filter=config.get('_quality_filter', True),
                 )
             
             # Download first matching video
@@ -334,6 +339,18 @@ Examples:
     parser.add_argument("--no-subtitle", action="store_true", help="Disable subtitles")
     parser.add_argument("--font", type=str, default=None, help="Font name or path")
     
+    # Quality and diversity options
+    parser.add_argument("--quality-filter", action="store_true", default=True,
+                       help="Enable enhanced quality filtering for materials")
+    parser.add_argument("--no-quality-filter", dest="quality_filter", action="store_false",
+                       help="Disable quality filtering")
+    parser.add_argument("--diversity-threshold", type=float, default=0.3,
+                       help="Diversity threshold (0-1, higher = more different videos)")
+    parser.add_argument("--cinematic-style", action="store_true", default=False,
+                       help="Add cinematic descriptors to search terms for better aesthetics")
+    parser.add_argument("--min-clip-duration", type=int, default=8,
+                       help="Minimum duration for video clips in seconds")
+    
     args = parser.parse_args()
     
     # Validate
@@ -403,6 +420,12 @@ Examples:
         bgm_file=args.bgm,
         font_name=args.font,
     )
+    
+    # Store quality parameters in config for use in generate_video_from_params
+    config['_quality_filter'] = args.quality_filter
+    config['_diversity_threshold'] = args.diversity_threshold
+    config['_cinematic_style'] = args.cinematic_style
+    config['_min_clip_duration'] = args.min_clip_duration
     
     # Generate video
     result = generate_video_from_params(params, task_dir, config)
