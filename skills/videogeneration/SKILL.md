@@ -94,10 +94,15 @@ brew install ffmpeg
 
 ## Output
 
-```
-output-dir/
-├── video-1.mp4     # Final video
-├── audio.mp3       # Voice narration  
-├── subtitle.srt    # Subtitles
-└── metadata.json   # Script and metadata
-```
+The generated files are organized for clarity:
+
+**In the base output directory:**
+- `final-{topic}-{timestamp}-1.mp4`: The final polished video ready for use.
+
+**In the task subfolder (`task-{topic}-{timestamp}/`):**
+- `audio.mp3`: The generated voice narration.
+- `subtitle.srt`: The generated subtitles.
+- `metadata.json`: Full task metadata including script, search terms, and timestamp.
+- `Final.mp4` / `combined.mp4`: Temporary intermediate video files.
+- `[timestamp].mp4`: Raw downloaded video materials.
+
