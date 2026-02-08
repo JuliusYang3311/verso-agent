@@ -446,6 +446,23 @@ export const AgentEntrySchema = z
       .optional(),
     sandbox: AgentSandboxSchema,
     tools: AgentToolsSchema,
+    compaction: z
+      .object({
+        mode: z.union([z.literal("default"), z.literal("safeguard")]).optional(),
+        reserveTokensFloor: z.number().int().nonnegative().optional(),
+        maxHistoryShare: z.number().min(0.1).max(0.9).optional(),
+        memoryFlush: z
+          .object({
+            enabled: z.boolean().optional(),
+            softThresholdTokens: z.number().int().nonnegative().optional(),
+            prompt: z.string().optional(),
+            systemPrompt: z.string().optional(),
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

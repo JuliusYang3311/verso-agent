@@ -75,19 +75,15 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
             output = result.stdout.strip()
             
             # Find JSON block in output
-            # Look for the last matching pair of curly braces that forms a valid JSON object
             json_match = re.search(r'(\{.*\})', output, re.DOTALL)
             if json_match:
                 try:
                     data = json.loads(json_match.group(1))
-                    # Extract response text from payloads
                     payloads = data.get('payloads', [])
                     texts = [p.get('text', '') for p in payloads if isinstance(p, dict)]
                     return '\n'.join(texts).strip()
                 except json.JSONDecodeError:
                     pass
-            
-            # Fallback for non-JSON output
             return output
         else:
             print(f"⚠️  Verso agent error: {result.stderr}")
@@ -102,6 +98,14 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
     except Exception as e:
         print(f"❌ Verso agent error: {e}")
         return ""
+    finally:
+        # Cleanup session file to ensure statelessness as requested
+        try:
+            session_file = os.path.join(os.path.expanduser("~/.verso/agents/utility/agent/sessions"), f"{session_id}.json")
+            if os.path.exists(session_file):
+                os.remove(session_file)
+        except Exception as e:
+            pass
 
 
 def generate_script(

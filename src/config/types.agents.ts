@@ -1,4 +1,4 @@
-import type { AgentDefaultsConfig } from "./types.agent-defaults.js";
+import type { AgentCompactionConfig, AgentDefaultsConfig } from "./types.agent-defaults.js";
 import type { HumanDelayConfig, IdentityConfig } from "./types.base.js";
 import type { GroupChatConfig } from "./types.messages.js";
 import type {
@@ -60,6 +60,8 @@ export type AgentConfig = {
     prune?: SandboxPruneSettings;
   };
   tools?: AgentToolsConfig;
+  /** Compaction tuning and pre-compaction memory flush behavior for this agent. */
+  compaction?: AgentCompactionConfig;
 };
 
 export type AgentsConfig = {
