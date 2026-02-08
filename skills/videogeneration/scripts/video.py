@@ -431,8 +431,9 @@ def generate_video(
         _clip = _clip.with_end(subtitle_item[0][1])
         _clip = _clip.with_duration(duration)
         if params.subtitle_position == "bottom":
-            # Use 0.90 instead of 0.95 to add more bottom margin and prevent clipping
-            _clip = _clip.with_position(("center", video_height * 0.90 - _clip.h))
+            # Use 0.85 to add sufficient bottom margin and prevent clipping
+            # 0.90 was still too close, causing bottom text to be cut off
+            _clip = _clip.with_position(("center", video_height * 0.85 - _clip.h))
         elif params.subtitle_position == "top":
             _clip = _clip.with_position(("center", video_height * 0.05))
         elif params.subtitle_position == "custom":
