@@ -190,13 +190,115 @@ def _format_text(text: str) -> str:
     return text.strip()
 
 
+def _fuzzy_match_text(text1: str, text2: str) -> float:
+    """
+    Calculate similarity between two text strings.
+    Returns a score between 0.0 and 1.0.
+    Handles Chinese and English text.
+    """
+    # Remove all punctuation and whitespace for comparison
+    import string
+    
+    def clean_text(t: str) -> str:
+        # Remove punctuation
+        for p in string.punctuation + '，。！？；：、':
+            t = t.replace(p, '')
+        # Remove whitespace
+        t = ''.join(t.split())
+        return t.lower()
+    
+    clean1 = clean_text(text1)
+    clean2 = clean_text(text2)
+    
+    if not clean1 or not clean2:
+        return 0.0
+    
+    # Exact match
+    if clean1 == clean2:
+        return 1.0
+    
+    # Check if one contains the other
+    if clean1 in clean2 or clean2 in clean1:
+        shorter = min(len(clean1), len(clean2))
+        longer = max(len(clean1), len(clean2))
+        return shorter / longer
+    
+    # Calculate character overlap
+    set1 = set(clean1)
+    set2 = set(clean2)
+    intersection = len(set1 & set2)
+    union = len(set1 | set2)
+    
+    if union == 0:
+        return 0.0
+    
+    return intersection / union
+
+
+def _create_fallback_subtitles(sub_maker: submaker.SubMaker, max_duration_per_line: float = 3.0) -> list:
+    """
+    Create simple time-based subtitles from word boundaries.
+    Groups words into readable chunks based on time windows.
+    
+    Args:
+        sub_maker: SubMaker object with word timing data
+        max_duration_per_line: Maximum duration for each subtitle line in seconds
+    
+    Returns:
+        List of formatted SRT subtitle strings
+    """
+    if not sub_maker.cues:
+        return []
+    
+    def formatter(idx: int, start_time: float, end_time: float, sub_text: str) -> str:
+        start_t = mktimestamp(start_time).replace(".", ",")
+        end_t = mktimestamp(end_time).replace(".", ",")
+        return f"{idx}\n{start_t} --> {end_t}\n{sub_text}\n"
+    
+    sub_items = []
+    current_text = ""
+    start_time = None
+    sub_index = 1
+    
+    for cue in sub_maker.cues:
+        start_time_micro = cue.start.total_seconds() * 10000000
+        end_time_micro = cue.end.total_seconds() * 10000000
+        
+        if start_time is None:
+            start_time = start_time_micro
+        
+        word = unescape(cue.content)
+        current_text += word
+        
+        # Calculate current duration
+        current_duration = (end_time_micro - start_time) / 10000000
+        
+        # Create subtitle if duration exceeds threshold or this is the last cue
+        if current_duration >= max_duration_per_line or cue == sub_maker.cues[-1]:
+            if current_text.strip():
+                line = formatter(
+                    idx=sub_index,
+                    start_time=start_time,
+                    end_time=end_time_micro,
+                    sub_text=current_text.strip()
+                )
+                sub_items.append(line)
+                sub_index += 1
+                current_text = ""
+                start_time = None
+    
+    return sub_items
+
+
 def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str):
     """
     Create optimized SRT subtitle file from TTS timing data.
     
-    1. Split text by punctuation into sentences
-    2. Match each sentence with TTS word boundaries
-    3. Generate SRT file with sentence-level subtitles
+    Uses a hybrid approach:
+    1. Try to match TTS word boundaries with script sentences (primary)
+    2. If that fails, use simple time-based grouping (fallback)
+    
+    This ensures subtitles are always generated.
     """
     text = _format_text(text)
 
@@ -205,37 +307,54 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
         end_t = mktimestamp(end_time).replace(".", ",")
         return f"{idx}\n{start_t} --> {end_t}\n{sub_text}\n"
 
+    # Primary approach: Match with script sentences
     start_time = -1.0
     sub_items = []
     sub_index = 0
 
     script_lines = utils.split_string_by_punctuations(text)
+    
+    logger.info(f"Attempting primary subtitle matching with {len(script_lines)} script lines")
 
     def match_line(_sub_line: str, _sub_index: int):
+        """Enhanced matching with fuzzy logic."""
         if len(script_lines) <= _sub_index:
             return ""
 
         _line = script_lines[_sub_index]
+        
+        # Try exact match first
         if _sub_line == _line:
+            logger.debug(f"Exact match found for line {_sub_index}")
             return script_lines[_sub_index].strip()
 
+        # Try without punctuation
         _sub_line_ = re.sub(r"[^\w\s]", "", _sub_line)
         _line_ = re.sub(r"[^\w\s]", "", _line)
         if _sub_line_ == _line_:
+            logger.debug(f"Punctuation-free match found for line {_sub_index}")
             return _line_.strip()
 
+        # Try without all non-word characters
         _sub_line_ = re.sub(r"\W+", "", _sub_line)
         _line_ = re.sub(r"\W+", "", _line)
         if _sub_line_ == _line_:
+            logger.debug(f"Non-word-free match found for line {_sub_index}")
             return _line.strip()
-
+        
+        # Try fuzzy matching
+        similarity = _fuzzy_match_text(_sub_line, _line)
+        if similarity >= 0.8:  # 80% similarity threshold
+            logger.debug(f"Fuzzy match found for line {_sub_index} (similarity: {similarity:.2f})")
+            return _line.strip()
+        
+        logger.debug(f"No match found for line {_sub_index} (similarity: {similarity:.2f})")
         return ""
 
     sub_line = ""
 
     try:
         for cue in sub_maker.cues:
-            # cue.start and cue.end are timedelta objects
             start_time_micro = cue.start.total_seconds() * 10000000
             end_time_micro = cue.end.total_seconds() * 10000000
             
@@ -257,15 +376,29 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
                 start_time = -1.0
                 sub_line = ""
 
+        # Check if primary matching succeeded
         if sub_items:
+            logger.info(f"Primary matching succeeded: {len(sub_items)} subtitle items created")
             with open(subtitle_file, "w", encoding="utf-8") as file:
                 file.write("\n".join(sub_items) + "\n")
             logger.info(f"subtitle created: {subtitle_file}")
         else:
-            logger.warning(f"no subtitle items generated")
+            # Fallback: Use simple time-based grouping
+            logger.warning("Primary matching failed, using fallback subtitle generation")
+            sub_items = _create_fallback_subtitles(sub_maker)
+            
+            if sub_items:
+                logger.info(f"Fallback succeeded: {len(sub_items)} subtitle items created")
+                with open(subtitle_file, "w", encoding="utf-8") as file:
+                    file.write("\n".join(sub_items) + "\n")
+                logger.info(f"subtitle created (fallback): {subtitle_file}")
+            else:
+                logger.error("Both primary and fallback subtitle generation failed")
 
     except Exception as e:
         logger.error(f"subtitle creation failed: {str(e)}")
+
+
 
 
 def _get_audio_duration_from_submaker(sub_maker: submaker.SubMaker) -> float:
