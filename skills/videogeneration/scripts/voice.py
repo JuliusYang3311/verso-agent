@@ -377,14 +377,23 @@ def create_subtitle(sub_maker: submaker.SubMaker, text: str, subtitle_file: str)
                 sub_line = ""
 
         # Check if primary matching succeeded
-        if sub_items:
-            logger.info(f"Primary matching succeeded: {len(sub_items)} subtitle items created")
+        # Success means we matched ALL expected script lines, not just some
+        expected_lines = len(script_lines)
+        matched_lines = len(sub_items)
+        
+        if sub_items and matched_lines >= expected_lines:
+            # Primary matching fully succeeded
+            logger.info(f"Primary matching succeeded: {matched_lines}/{expected_lines} subtitle items created")
             with open(subtitle_file, "w", encoding="utf-8") as file:
                 file.write("\n".join(sub_items) + "\n")
             logger.info(f"subtitle created: {subtitle_file}")
         else:
             # Fallback: Use simple time-based grouping
-            logger.warning("Primary matching failed, using fallback subtitle generation")
+            if sub_items:
+                logger.warning(f"Primary matching incomplete ({matched_lines}/{expected_lines} lines matched), using fallback subtitle generation")
+            else:
+                logger.warning("Primary matching failed completely, using fallback subtitle generation")
+            
             sub_items = _create_fallback_subtitles(sub_maker)
             
             if sub_items:
