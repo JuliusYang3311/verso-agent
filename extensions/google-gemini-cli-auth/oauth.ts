@@ -118,7 +118,7 @@ function findFile(dir: string, name: string, depth: number): string | null {
         if (found) return found;
       }
     }
-  } catch {}
+  } catch { }
   return null;
 }
 
@@ -261,8 +261,8 @@ async function waitForLocalCallback(params: {
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.end(
           "<!doctype html><html><head><meta charset='utf-8'/></head>" +
-            "<body><h2>Gemini CLI OAuth complete</h2>" +
-            "<p>You can close this window and return to Verso.</p></body></html>",
+          "<body><h2>Gemini CLI OAuth complete</h2>" +
+          "<p>You can close this window and return to Verso.</p></body></html>",
         );
 
         finish(undefined, { code, state });
@@ -299,7 +299,11 @@ async function waitForLocalCallback(params: {
   });
 }
 
-async function exchangeCodeForTokens(code: string, verifier: string): Promise<GeminiCliOAuthCredentials> {
+async function exchangeCodeForTokens(
+  code: string,
+  verifier: string,
+  ctx?: GeminiCliOAuthContext,
+): Promise<GeminiCliOAuthCredentials> {
   const { clientId, clientSecret } = resolveOAuthClientConfig();
   const body = new URLSearchParams({
     client_id: clientId,
@@ -334,7 +338,7 @@ async function exchangeCodeForTokens(code: string, verifier: string): Promise<Ge
   }
 
   const email = await getUserEmail(data.access_token);
-  const projectId = await discoverProject(data.access_token);
+  const projectId = await discoverProject(data.access_token, ctx);
   const expiresAt = Date.now() + data.expires_in * 1000 - 5 * 60 * 1000;
 
   return {
@@ -361,7 +365,7 @@ async function getUserEmail(accessToken: string): Promise<string | undefined> {
   return undefined;
 }
 
-async function discoverProject(accessToken: string): Promise<string> {
+async function discoverProject(accessToken: string, ctx?: GeminiCliOAuthContext): Promise<string> {
   const envProject = process.env.GOOGLE_CLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT_ID;
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -415,6 +419,14 @@ async function discoverProject(accessToken: string): Promise<string> {
     if (typeof project === "string" && project) return project;
     if (typeof project === "object" && project?.id) return project.id;
     if (envProject) return envProject;
+
+    if (ctx) {
+      const manual = await ctx.prompt(
+        "Project discovery failed, but your account requires a Google Cloud Project. Please enter your Project ID:",
+      );
+      if (manual?.trim()) return manual.trim();
+    }
+
     throw new Error(
       "This account requires GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_PROJECT_ID to be set.",
     );
@@ -423,6 +435,13 @@ async function discoverProject(accessToken: string): Promise<string> {
   const tier = getDefaultTier(data.allowedTiers);
   const tierId = tier?.id || TIER_FREE;
   if (tierId !== TIER_FREE && !envProject) {
+    if (ctx) {
+      const manual = await ctx.prompt(
+        `Account tier "${tierId}" requires a Google Cloud Project. Please enter your Project ID:`,
+      );
+      if (manual?.trim()) return manual.trim();
+    }
+
     throw new Error(
       "This account requires GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_PROJECT_ID to be set.",
     );
@@ -464,6 +483,13 @@ async function discoverProject(accessToken: string): Promise<string> {
   const projectId = lro.response?.cloudaicompanionProject?.id;
   if (projectId) return projectId;
   if (envProject) return envProject;
+
+  if (ctx) {
+    const manual = await ctx.prompt(
+      "Could not discover or provision a Google Cloud project. Please enter your Project ID manually:",
+    );
+    if (manual?.trim()) return manual.trim();
+  }
 
   throw new Error(
     "Could not discover or provision a Google Cloud project. Set GOOGLE_CLOUD_PROJECT or GOOGLE_CLOUD_PROJECT_ID.",
@@ -513,15 +539,15 @@ export async function loginGeminiCliOAuth(ctx: GeminiCliOAuthContext): Promise<G
   await ctx.note(
     needsManual
       ? [
-          "You are running in a remote/VPS environment.",
-          "A URL will be shown for you to open in your LOCAL browser.",
-          "After signing in, copy the redirect URL and paste it back here.",
-        ].join("\n")
+        "You are running in a remote/VPS environment.",
+        "A URL will be shown for you to open in your LOCAL browser.",
+        "After signing in, copy the redirect URL and paste it back here.",
+      ].join("\n")
       : [
-          "Browser will open for Google authentication.",
-          "Sign in with your Google account for Gemini CLI access.",
-          "The callback will be captured automatically on localhost:8085.",
-        ].join("\n"),
+        "Browser will open for Google authentication.",
+        "Sign in with your Google account for Gemini CLI access.",
+        "The callback will be captured automatically on localhost:8085.",
+      ].join("\n"),
     "Gemini CLI OAuth",
   );
 
@@ -539,7 +565,7 @@ export async function loginGeminiCliOAuth(ctx: GeminiCliOAuthContext): Promise<G
       throw new Error("OAuth state mismatch - please try again");
     }
     ctx.progress.update("Exchanging authorization code for tokens...");
-    return exchangeCodeForTokens(parsed.code, verifier);
+    return exchangeCodeForTokens(parsed.code, verifier, ctx);
   }
 
   ctx.progress.update("Complete sign-in in browser...");
@@ -573,7 +599,7 @@ export async function loginGeminiCliOAuth(ctx: GeminiCliOAuthContext): Promise<G
         throw new Error("OAuth state mismatch - please try again");
       }
       ctx.progress.update("Exchanging authorization code for tokens...");
-      return exchangeCodeForTokens(parsed.code, verifier);
+      return exchangeCodeForTokens(parsed.code, verifier, ctx);
     }
     throw err;
   }
