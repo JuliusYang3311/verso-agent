@@ -582,7 +582,7 @@ export async function loginGeminiCliOAuth(ctx: GeminiCliOAuthContext): Promise<G
       onProgress: (msg) => ctx.progress.update(msg),
     });
     ctx.progress.update("Exchanging authorization code for tokens...");
-    return await exchangeCodeForTokens(code, verifier);
+    return await exchangeCodeForTokens(code, verifier, ctx);
   } catch (err) {
     if (
       err instanceof Error &&
