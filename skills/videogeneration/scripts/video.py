@@ -412,8 +412,11 @@ def generate_video(
         wrapped_txt, txt_height = wrap_text(
             phrase, max_width=max_width, font=font_path, fontsize=params.font_size
         )
+        # Add extra vertical padding to prevent character clipping
+        # Especially important for Chinese characters and descenders
+        vertical_padding = params.font_size * 0.5  # 50% of font size as padding
         interline = int(params.font_size * 0.25)
-        size=(int(max_width), int(txt_height + params.font_size * 0.25 + (interline * (wrapped_txt.count("\n") + 1))))
+        size=(int(max_width), int(txt_height + vertical_padding + (interline * (wrapped_txt.count("\n") + 1))))
 
         _clip = TextClip(
             text=wrapped_txt,
@@ -423,17 +426,16 @@ def generate_video(
             bg_color=params.text_background_color,
             stroke_color=params.stroke_color,
             stroke_width=params.stroke_width,
-            # interline=interline,
-            # size=size,
+            interline=interline,
+            size=size,
         )
         duration = subtitle_item[0][1] - subtitle_item[0][0]
         _clip = _clip.with_start(subtitle_item[0][0])
         _clip = _clip.with_end(subtitle_item[0][1])
         _clip = _clip.with_duration(duration)
         if params.subtitle_position == "bottom":
-            # Use 0.85 to add sufficient bottom margin and prevent clipping
-            # 0.90 was still too close, causing bottom text to be cut off
-            _clip = _clip.with_position(("center", video_height * 0.85 - _clip.h))
+            # Restored to 0.95 - font rendering fix (size/interline params) prevents clipping
+            _clip = _clip.with_position(("center", video_height * 0.95 - _clip.h))
         elif params.subtitle_position == "top":
             _clip = _clip.with_position(("center", video_height * 0.05))
         elif params.subtitle_position == "custom":
