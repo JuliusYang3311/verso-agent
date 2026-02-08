@@ -99,9 +99,15 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
     except FileNotFoundError:
         print("❌ Verso agent not found - make sure pnpm is installed")
         return ""
-    except Exception as e:
-        print(f"❌ Verso agent error: {e}")
-        return ""
+    finally:
+        # Cleanup isolated session file to maintain statelessness
+        session_path = os.path.expanduser("~/.verso/agents/utility/agent/sessions")
+        session_file = os.path.join(session_path, f"{session_id}.json")
+        if os.path.exists(session_file):
+            try:
+                os.remove(session_file)
+            except Exception:
+                pass
 
 
 def generate_script(

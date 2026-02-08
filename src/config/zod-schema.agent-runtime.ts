@@ -405,6 +405,25 @@ export const MemorySearchSchema = z
   })
   .strict()
   .optional();
+
+export const CompactionSchema = z
+  .object({
+    mode: z.enum(["default", "safeguard"]).optional(),
+    reserveTokensFloor: z.number().int().nonnegative().optional(),
+    maxHistoryShare: z.number().min(0.1).max(0.9).optional(),
+    memoryFlush: z
+      .object({
+        enabled: z.boolean().optional(),
+        softThresholdTokens: z.number().int().nonnegative().optional(),
+        prompt: z.string().optional(),
+        systemPrompt: z.string().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .optional();
+
 export const AgentModelSchema = z.union([
   z.string(),
   z
@@ -422,11 +441,11 @@ export const AgentEntrySchema = z
     workspace: z.string().optional(),
     agentDir: z.string().optional(),
     model: AgentModelSchema.optional(),
-    memorySearch: MemorySearchSchema,
+    memorySearch: MemorySearchSchema.optional(),
     humanDelay: HumanDelaySchema.optional(),
-    heartbeat: HeartbeatSchema,
-    identity: IdentitySchema,
-    groupChat: GroupChatSchema,
+    heartbeat: HeartbeatSchema.optional(),
+    identity: IdentitySchema.optional(),
+    groupChat: GroupChatSchema.optional(),
     subagents: z
       .object({
         allowAgents: z.array(z.string()).optional(),
@@ -444,8 +463,9 @@ export const AgentEntrySchema = z
       })
       .strict()
       .optional(),
-    sandbox: AgentSandboxSchema,
-    tools: AgentToolsSchema,
+    sandbox: AgentSandboxSchema.optional(),
+    tools: AgentToolsSchema.optional(),
+    compaction: CompactionSchema,
   })
   .strict();
 

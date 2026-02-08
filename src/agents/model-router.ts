@@ -8,7 +8,7 @@ import type { RouterConfig } from "../config/types.router.js";
 import { parseModelRef, type ModelRef } from "./model-selection.js";
 import { logVerbose } from "../globals.js";
 
-const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 10000;
+const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 30000;
 
 const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS list for the USER INPUT.
 
@@ -91,6 +91,7 @@ export type SelectDynamicModelParams = {
     timeoutMs: number;
   }) => Promise<string>;
   classifierModel: string;
+  timeoutMs?: number;
 };
 
 export async function selectDynamicModel(params: SelectDynamicModelParams): Promise<string | null> {
@@ -98,8 +99,33 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return candidates[0];
 
-  // Use a cheap/fast model for selection (reuse classifier model)
-  const parsed = parseModelRef(classifierModel, "google");
+  // Determine the classifier model to use.
+  // If not explicitly provided, we'll try to find a suitable "flash" model from candidates.
+  let effectiveClassifier = classifierModel;
+  const classifierRef = parseModelRef(effectiveClassifier, "google");
+
+  if (!classifierRef) {
+    // Attempt to pick the first "flash" model from candidates as a fallback.
+    // Favor "google-gemini-cli" provider as requested.
+    const flashFallback =
+      candidates.find(
+        (m) =>
+          m.startsWith("google-gemini-cli/") &&
+          (m.toLowerCase().includes("flash") || m.toLowerCase().includes("preview")),
+      ) ??
+      candidates.find(
+        (m) => m.toLowerCase().includes("flash") || m.toLowerCase().includes("preview"),
+      );
+    if (flashFallback) {
+      effectiveClassifier = flashFallback;
+    } else {
+      // Last resort fallback
+      effectiveClassifier = candidates[0];
+    }
+    logVerbose(`Router: No valid classifierModel configured. Auto-selected ${effectiveClassifier}`);
+  }
+
+  const parsed = parseModelRef(effectiveClassifier, "google");
   if (!parsed) return candidates[0]; // fallback
 
   let attempts = 0;
@@ -119,7 +145,7 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
         provider: parsed.provider,
         model: parsed.model,
         prompt,
-        timeoutMs: DEFAULT_CLASSIFICATION_TIMEOUT_MS,
+        timeoutMs: params.timeoutMs ?? DEFAULT_CLASSIFICATION_TIMEOUT_MS,
       });
 
       // Extract <selected_model>model-id</selected_model>
@@ -137,7 +163,7 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
       }
 
       logVerbose(
-        `Router classifier raw response: "${response.replace(/\n/g, "\\n")}" (extracted: "${selected}")`,
+        `Router classifier raw response: "${response.replace(/\n/g, "\\n")}" (extracted: "${selected}") (timeoutMs: ${params.timeoutMs ?? DEFAULT_CLASSIFICATION_TIMEOUT_MS})`,
       );
 
       if (
@@ -223,6 +249,7 @@ export async function resolveRouterModel(params: {
 
   const routerConfig = resolveRouterConfig(cfg);
   if (!routerConfig) {
+    logVerbose(`Router is disabled (resolveRouterConfig returned null)`);
     return { routerUsed: false };
   }
 
@@ -250,7 +277,8 @@ export async function resolveRouterModel(params: {
         input,
         candidates,
         callClassifier,
-        classifierModel: routerConfig.classifierModel ?? "google/gemini-2.0-flash",
+        classifierModel: routerConfig.classifierModel ?? "",
+        timeoutMs: routerConfig.classificationTimeoutMs ?? DEFAULT_CLASSIFICATION_TIMEOUT_MS,
       });
 
       logVerbose(`Router dynamic selection: ${selectedId}`);
