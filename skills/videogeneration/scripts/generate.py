@@ -47,7 +47,7 @@ def load_verso_config() -> dict:
 
 
 def cleanup_old_videos(output_base: Path, retention_days: int):
-    """Delete video directories older than retention_days."""
+    """Delete task directories and final videos older than retention_days."""
     if retention_days <= 0:
         return
     
@@ -57,27 +57,46 @@ def cleanup_old_videos(output_base: Path, retention_days: int):
         return
     
     for item in output_base.iterdir():
-        if not item.is_dir() or not item.name.startswith("videogeneration-"):
+        # Clean up old videogeneration-* subfolders, new task-* subfolders, and final video files
+        is_task_dir = item.is_dir() and (item.name.startswith("videogeneration-") or item.name.startswith("task-"))
+        is_final_video = item.is_file() and item.name.startswith("final-") and item.name.endswith(".mp4")
+        
+        if not (is_task_dir or is_final_video):
             continue
         
         try:
             parts = item.name.split("-")
-            if len(parts) >= 3:
-                date_str = parts[1]
-                time_str = parts[2]
+            # For task-topic-YYYYMMDD-HHMMSS or final-topic-YYYYMMDD-HHMMSS-1.mp4
+            # We need to find the date and time parts. 
+            # New format: task-topic-20230101-120000
+            # Old format: videogeneration-20230101-120000
+            
+            # Find parts that look like date and time
+            date_str = ""
+            time_str = ""
+            for i in range(len(parts) - 1):
+                if len(parts[i]) == 8 and parts[i].isdigit() and len(parts[i+1].split('.')[0]) == 6 and parts[i+1].split('.')[0].isdigit():
+                    date_str = parts[i]
+                    time_str = parts[i+1].split('.')[0]
+                    break
+            
+            if date_str and time_str:
                 dir_time = datetime.strptime(f"{date_str}-{time_str}", "%Y%m%d-%H%M%S")
                 if dir_time < cutoff:
-                    print(f"🗑️  Cleaning up old directory: {item.name}")
-                    shutil.rmtree(item)
-        except ValueError:
+                    print(f"🗑️  Cleaning up old item: {item.name}")
+                    if item.is_dir():
+                        shutil.rmtree(item)
+                    else:
+                        item.unlink()
+        except (ValueError, IndexError):
             continue
 
 
-def get_output_dir(config: dict, custom_dir: str = None) -> tuple:
-    """Get the output directory from config, custom, or default."""
+def get_output_dir(config: dict, topic: str, custom_dir: str = None) -> tuple:
+    """Get the output base path and a descriptive task directory."""
     if custom_dir:
         output_dir = Path(custom_dir)
-        return output_dir.parent, output_dir
+        return output_dir, output_dir
     
     if config.get("outputPath"):
         base = Path(config["outputPath"]).expanduser()
@@ -88,8 +107,12 @@ def get_output_dir(config: dict, custom_dir: str = None) -> tuple:
         else:
             base = Path("./tmp")
     
+    # Create a nice task name: task-topic-timestamp
+    safe_topic = "".join(c if c.isalnum() else "_" for c in topic[:20]).strip("_")
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return base, base / f"videogeneration-{timestamp}"
+    task_name = f"task-{safe_topic}-{timestamp}"
+    
+    return base, base / task_name
 
 
 def load_script_from_file(file_path: str) -> str:
@@ -318,19 +341,15 @@ Examples:
         parser.error("--materials is required when --source=local")
     
     # Setup directories
-    output_base, output_dir = get_output_dir(config, args.out_dir)
+    output_base, task_dir_path = get_output_dir(config, args.topic, args.out_dir)
     
-    # Cleanup old videos
+    # Cleanup old videos (tasks and final files)
     retention_days = config.get("retentionDays", 7)
     if args.cleanup or retention_days > 0:
         cleanup_old_videos(output_base, retention_days)
     
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create task directory
-    task_id = str(uuid.uuid4())[:8]
-    task_dir = str(output_dir / "task")
-    os.makedirs(task_dir, exist_ok=True)
+    task_dir_path.mkdir(parents=True, exist_ok=True)
+    task_dir = str(task_dir_path)
     
     # Load script
     script_text = args.script
@@ -364,7 +383,7 @@ Examples:
         print(f"   Script: {preview}")
     if video_terms:
         print(f"   Terms: {', '.join(video_terms)}")
-    print(f"   Output: {output_dir}")
+    print(f"   Output: {task_dir_path}")
     print()
     
     # Build params
@@ -392,21 +411,19 @@ Examples:
         print()
         print("✅ Video generation complete!")
         
-        # Copy videos to output
+        # Create final video name with topic and timestamp
+        safe_topic = "".join(c if c.isalnum() else "_" for c in args.topic[:30]).strip("_")
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        
+        # Copy videos to output directory (base)
         for i, video_path in enumerate(result["videos"], 1):
             if os.path.exists(video_path):
-                dest = output_dir / f"video-{i}.mp4"
+                file_name = f"final-{safe_topic}-{timestamp}-{i}.mp4"
+                dest = output_base / file_name
                 shutil.copy(video_path, dest)
                 print(f"   📹 {dest}")
         
-        # Copy artifacts
-        if result.get("audio_file") and os.path.exists(result["audio_file"]):
-            shutil.copy(result["audio_file"], output_dir / "audio.mp3")
-        
-        if result.get("subtitle_path") and os.path.exists(result["subtitle_path"]):
-            shutil.copy(result["subtitle_path"], output_dir / "subtitle.srt")
-        
-        # Save metadata
+        # Save metadata to task folder
         metadata = {
             "topic": args.topic,
             "script": result.get("script", ""),
@@ -416,11 +433,12 @@ Examples:
             "source": args.source,
             "generated_at": datetime.now().isoformat(),
         }
-        with open(output_dir / "metadata.json", "w", encoding="utf-8") as f:
+        with open(task_dir_path / "metadata.json", "w", encoding="utf-8") as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
         
         print()
-        print(f"📁 All files: {output_dir}")
+        print(f"📁 Task artifacts (logs, materials): {task_dir_path}")
+        print(f"📁 Final video(s) directly in: {output_base}")
     else:
         print("❌ Video generation failed")
         sys.exit(1)
