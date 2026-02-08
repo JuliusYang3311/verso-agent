@@ -56,6 +56,10 @@ export async function callTaskClassifier(
     agentDir,
   });
 
+  logVerbose(
+    `[RouterClassifier] Resolved auth for ${provider}: profile=${auth.profileId}, source=${auth.source}, mode=${auth.mode}, agentDir=${agentDir}`,
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let modelObj: Model<Api> | undefined = getModel(provider as any, model);
   if (!modelObj) {
