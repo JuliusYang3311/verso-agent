@@ -147,15 +147,26 @@ def combine_videos(
         clip_w, clip_h = clip.size
         close_clip(clip)
         
-        start_time = 0
-
-        while start_time < clip_duration:
-            end_time = min(start_time + max_clip_duration, clip_duration)            
-            if clip_duration - start_time >= max_clip_duration:
-                subclipped_items.append(SubClippedVideoClip(file_path= video_path, start_time=start_time, end_time=end_time, width=clip_w, height=clip_h))
-            start_time = end_time    
-            if video_concat_mode.value == VideoConcatMode.sequential.value:
-                break
+        # Use each source video only ONCE - select one random segment
+        # This prevents material reuse within the same final video
+        if clip_duration >= max_clip_duration:
+            # Select random start time for variety
+            max_start = clip_duration - max_clip_duration
+            start_time = random.uniform(0, max_start)
+            end_time = start_time + max_clip_duration
+        else:
+            # Use entire clip if shorter than max duration
+            start_time = 0
+            end_time = clip_duration
+        
+        # Create only ONE subclip per source video
+        subclipped_items.append(SubClippedVideoClip(
+            file_path=video_path, 
+            start_time=start_time, 
+            end_time=end_time, 
+            width=clip_w, 
+            height=clip_h
+        ))
 
     # random subclipped_items order
     if video_concat_mode.value == VideoConcatMode.random.value:
