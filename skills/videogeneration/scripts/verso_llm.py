@@ -50,9 +50,15 @@ def call_verso_agent(prompt: str, timeout: int = 120) -> str:
     session_id = str(uuid.uuid4())
     
     try:
+        # Use pnpm run verso to ensure it hits the script defined in package.json
+        # and search for pnpm in common paths if not in PATH
+        pnpm_cmd = "pnpm"
+        if os.path.exists("/opt/homebrew/bin/pnpm"):
+            pnpm_cmd = "/opt/homebrew/bin/pnpm"
+            
         result = subprocess.run(
             [
-                "pnpm", "verso", "agent",
+                pnpm_cmd, "run", "verso", "agent",
                 "-m", prompt,
                 "--agent", "utility",
                 "--session-id", session_id,
