@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-
+import type { ProgramContext } from "./context.js";
 import { agentsListCommand } from "../../commands/agents.js";
 import { healthCommand } from "../../commands/health.js";
 import { sessionsCommand } from "../../commands/sessions.js";
@@ -9,6 +9,7 @@ import { getFlagValue, getPositiveIntFlagValue, getVerboseFlag, hasFlag } from "
 import { registerBrowserCli } from "../browser-cli.js";
 import { registerConfigCli } from "../config-cli.js";
 import { registerMemoryCli, runMemoryStatus } from "../memory-cli.js";
+import { registerWorldMonitorCli } from "../world-monitor-cli.js";
 import { registerAgentCommands } from "./register.agent.js";
 import { registerConfigureCommand } from "./register.configure.js";
 import { registerMaintenanceCommands } from "./register.maintenance.js";
@@ -17,7 +18,6 @@ import { registerOnboardCommand } from "./register.onboard.js";
 import { registerSetupCommand } from "./register.setup.js";
 import { registerStatusHealthSessionsCommands } from "./register.status-health-sessions.js";
 import { registerSubCliCommands } from "./register.subclis.js";
-import type { ProgramContext } from "./context.js";
 
 type CommandRegisterParams = {
   program: Command;
@@ -44,7 +44,9 @@ const routeHealth: RouteSpec = {
     const json = hasFlag(argv, "--json");
     const verbose = getVerboseFlag(argv, { includeDebug: true });
     const timeoutMs = getPositiveIntFlagValue(argv, "--timeout");
-    if (timeoutMs === null) return false;
+    if (timeoutMs === null) {
+      return false;
+    }
     await healthCommand({ json, timeoutMs, verbose }, defaultRuntime);
     return true;
   },
@@ -60,7 +62,9 @@ const routeStatus: RouteSpec = {
     const usage = hasFlag(argv, "--usage");
     const verbose = getVerboseFlag(argv, { includeDebug: true });
     const timeoutMs = getPositiveIntFlagValue(argv, "--timeout");
-    if (timeoutMs === null) return false;
+    if (timeoutMs === null) {
+      return false;
+    }
     await statusCommand({ json, deep, all, usage, timeoutMs, verbose }, defaultRuntime);
     return true;
   },
@@ -71,9 +75,13 @@ const routeSessions: RouteSpec = {
   run: async (argv) => {
     const json = hasFlag(argv, "--json");
     const store = getFlagValue(argv, "--store");
-    if (store === null) return false;
+    if (store === null) {
+      return false;
+    }
     const active = getFlagValue(argv, "--active");
-    if (active === null) return false;
+    if (active === null) {
+      return false;
+    }
     await sessionsCommand({ json, store, active }, defaultRuntime);
     return true;
   },
@@ -93,7 +101,9 @@ const routeMemoryStatus: RouteSpec = {
   match: (path) => path[0] === "memory" && path[1] === "status",
   run: async (argv) => {
     const agent = getFlagValue(argv, "--agent");
-    if (agent === null) return false;
+    if (agent === null) {
+      return false;
+    }
     const json = hasFlag(argv, "--json");
     const deep = hasFlag(argv, "--deep");
     const index = hasFlag(argv, "--index");
@@ -152,6 +162,10 @@ export const commandRegistry: CommandRegistration[] = [
     id: "browser",
     register: ({ program }) => registerBrowserCli(program),
   },
+  {
+    id: "world-monitor",
+    register: ({ program }) => registerWorldMonitorCli(program),
+  },
 ];
 
 export function registerProgramCommands(
@@ -166,9 +180,13 @@ export function registerProgramCommands(
 
 export function findRoutedCommand(path: string[]): RouteSpec | null {
   for (const entry of commandRegistry) {
-    if (!entry.routes) continue;
+    if (!entry.routes) {
+      continue;
+    }
     for (const route of entry.routes) {
-      if (route.match(path)) return route;
+      if (route.match(path)) {
+        return route;
+      }
     }
   }
   return null;

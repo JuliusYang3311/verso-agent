@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import type { VersoConfig } from "../config/config.js";
 import { DEFAULT_ASSISTANT_IDENTITY, resolveAssistantIdentity } from "./assistant-identity.js";
 

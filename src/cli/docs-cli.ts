@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-
 import { docsSearchCommand } from "../commands/docs.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
@@ -13,7 +12,8 @@ export function registerDocsCli(program: Command) {
     .argument("[query...]", "Search query")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "docs.molt.bot/cli/docs")}\n`,
+      () =>
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/docs", "docs.openclaw.ai/cli/docs")}\n`,
     )
     .action(async (queryParts: string[]) => {
       await runCommandWithRuntime(defaultRuntime, async () => {

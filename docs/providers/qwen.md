@@ -3,7 +3,9 @@ summary: "Use Qwen OAuth (free tier) in Verso"
 read_when:
   - You want to use Qwen with Verso
   - You want free-tier OAuth access to Qwen Coder
+title: "Qwen"
 ---
+
 # Qwen
 
 Qwen provides a free-tier OAuth flow for Qwen Coder and Qwen Vision models

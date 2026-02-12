@@ -1,9 +1,19 @@
 {
-  "name": "@verso/googlechat",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/googlechat",
+  "version": "2026.2.9",
+  "private": true,
   "description": "Verso Google Chat channel plugin",
-  "verso": {
+  "type": "module",
+  "dependencies": {
+    "google-auth-library": "^10.5.0"
+  },
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.1.26"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ],
@@ -22,18 +32,9 @@
       "order": 55
     },
     "install": {
-      "npmSpec": "@verso/googlechat",
+      "npmSpec": "@openclaw/googlechat",
       "localPath": "extensions/googlechat",
       "defaultChoice": "npm"
     }
-  },
-  "dependencies": {
-    "google-auth-library": "^10.5.0"
-  },
-  "devDependencies": {
-    "verso": "workspace:*"
-  },
-  "peerDependencies": {
-    "verso": ">=2026.1.26"
   }
 }

@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { VersoConfig } from "../config/config.js";
 import {
   resolveAgentConfig,
+  resolveAgentDir,
   resolveAgentModelFallbacksOverride,
   resolveAgentModelPrimary,
+  resolveAgentWorkspaceDir,
 } from "./agent-scope.js";
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("resolveAgentConfig", () => {
   it("should return undefined when no agents config exists", () => {

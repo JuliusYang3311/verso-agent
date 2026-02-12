@@ -1,9 +1,13 @@
 {
-  "name": "@verso/line",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/line",
+  "version": "2026.2.9",
+  "private": true,
   "description": "Verso LINE channel plugin",
-  "verso": {
+  "type": "module",
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ],
@@ -18,12 +22,9 @@
       "quickstartAllowFrom": true
     },
     "install": {
-      "npmSpec": "@verso/line",
+      "npmSpec": "@openclaw/line",
       "localPath": "extensions/line",
       "defaultChoice": "npm"
     }
-  },
-  "devDependencies": {
-    "verso": "workspace:*"
   }
 }

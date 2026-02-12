@@ -1,5 +1,4 @@
 import { z } from "zod";
-
 import { isSafeExecutableValue } from "../infra/exec-safety.js";
 
 export const ModelApiSchema = z.union([
@@ -9,6 +8,8 @@ export const ModelApiSchema = z.union([
   z.literal("google-generative-ai"),
   z.literal("github-copilot"),
   z.literal("bedrock-converse-stream"),
+  z.literal("completions"),
+  z.literal("openai-legacy-completions"),
 ]);
 
 export const ModelCompatSchema = z
@@ -283,9 +284,13 @@ export const requireOpenAllowFrom = (params: {
   path: Array<string | number>;
   message: string;
 }) => {
-  if (params.policy !== "open") return;
+  if (params.policy !== "open") {
+    return;
+  }
   const allow = normalizeAllowFrom(params.allowFrom);
-  if (allow.includes("*")) return;
+  if (allow.includes("*")) {
+    return;
+  }
   params.ctx.addIssue({
     code: z.ZodIssueCode.custom,
     path: params.path,
@@ -379,7 +384,13 @@ export const MediaUnderstandingScopeSchema = z
               .object({
                 channel: z.string().optional(),
                 chatType: z
-                  .union([z.literal("direct"), z.literal("group"), z.literal("channel")])
+                  .union([
+                    z.literal("direct"),
+                    z.literal("group"),
+                    z.literal("channel"),
+                    /** @deprecated Use `direct` instead. Kept for backward compatibility. */
+                    z.literal("dm"),
+                  ])
                   .optional(),
                 keyPrefix: z.string().optional(),
               })

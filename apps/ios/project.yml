@@ -1,6 +1,6 @@
 name: Verso
 options:
-  bundleIdPrefix: bot.molt
+  bundleIdPrefix: ai.openclaw
   deploymentTarget:
     iOS: "18.0"
   xcodeVersion: "16.0"
@@ -71,8 +71,8 @@ targets:
         CODE_SIGN_IDENTITY: "Apple Development"
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: Y5PE65HELJ
-        PRODUCT_BUNDLE_IDENTIFIER: bot.molt.ios
-        PROVISIONING_PROFILE_SPECIFIER: "bot.molt.ios Development"
+        PRODUCT_BUNDLE_IDENTIFIER: ai.openclaw.ios
+        PROVISIONING_PROFILE_SPECIFIER: "ai.openclaw.ios Development"
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_APPINTENTS_METADATA: NO
@@ -81,8 +81,8 @@ targets:
       properties:
         CFBundleDisplayName: Verso
         CFBundleIconName: AppIcon
-        CFBundleShortVersionString: "2026.1.29"
-        CFBundleVersion: "20260129"
+        CFBundleShortVersionString: "2026.2.9"
+        CFBundleVersion: "20260202"
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -121,7 +121,7 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: bot.molt.ios.tests
+        PRODUCT_BUNDLE_IDENTIFIER: ai.openclaw.ios.tests
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Verso.app/Verso"

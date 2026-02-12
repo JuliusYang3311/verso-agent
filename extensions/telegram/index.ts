@@ -1,6 +1,5 @@
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
 import { telegramPlugin } from "./src/channel.js";
 import { setTelegramRuntime } from "./src/runtime.js";
 
@@ -11,7 +10,7 @@ const plugin = {
   configSchema: emptyPluginConfigSchema(),
   register(api: VersoPluginApi) {
     setTelegramRuntime(api.runtime);
-    api.registerChannel({ plugin: telegramPlugin });
+    api.registerChannel({ plugin: telegramPlugin as ChannelPlugin });
   },
 };
 

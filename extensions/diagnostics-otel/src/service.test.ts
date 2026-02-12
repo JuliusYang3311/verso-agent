@@ -83,6 +83,7 @@ vi.mock("@opentelemetry/sdk-trace-base", () => ({
 }));
 
 vi.mock("@opentelemetry/resources", () => ({
+  resourceFromAttributes: vi.fn((attrs: Record<string, unknown>) => attrs),
   Resource: class {
     // eslint-disable-next-line @typescript-eslint/no-useless-constructor
     constructor(_value?: unknown) {}
@@ -103,8 +104,8 @@ vi.mock("verso/plugin-sdk", async () => {
   };
 });
 
-import { createDiagnosticsOtelService } from "./service.js";
 import { emitDiagnosticEvent } from "verso/plugin-sdk";
+import { createDiagnosticsOtelService } from "./service.js";
 
 describe("diagnostics-otel service", () => {
   beforeEach(() => {
@@ -209,7 +210,7 @@ describe("diagnostics-otel service", () => {
     expect(registerLogTransportMock).toHaveBeenCalledTimes(1);
     expect(registeredTransports).toHaveLength(1);
     registeredTransports[0]?.({
-      0: "{\"subsystem\":\"diagnostic\"}",
+      0: '{"subsystem":"diagnostic"}',
       1: "hello",
       _meta: { logLevelName: "INFO", date: new Date() },
     });

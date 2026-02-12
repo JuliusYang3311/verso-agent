@@ -1,11 +1,15 @@
-import { formatCliCommand } from "../../cli/command-format.js";
 import type { ElevatedLevel, ReasoningLevel } from "./directives.js";
+import { formatCliCommand } from "../../cli/command-format.js";
 
 export const SYSTEM_MARK = "⚙️";
 
 export const formatDirectiveAck = (text: string): string => {
-  if (!text) return text;
-  if (text.startsWith(SYSTEM_MARK)) return text;
+  if (!text) {
+    return text;
+  }
+  if (text.startsWith(SYSTEM_MARK)) {
+    return text;
+  }
   return `${SYSTEM_MARK} ${text}`;
 };
 
@@ -27,8 +31,12 @@ export const formatElevatedEvent = (level: ElevatedLevel) => {
 };
 
 export const formatReasoningEvent = (level: ReasoningLevel) => {
-  if (level === "stream") return "Reasoning STREAM — emit live <think>.";
-  if (level === "on") return "Reasoning ON — include <think>.";
+  if (level === "stream") {
+    return "Reasoning STREAM — emit live <think>.";
+  }
+  if (level === "on") {
+    return "Reasoning ON — include <think>.";
+  }
   return "Reasoning OFF — hide <think>.";
 };
 
@@ -50,7 +58,9 @@ export function formatElevatedUnavailableText(params: {
     );
   }
   if (params.sessionKey) {
-    lines.push(`See: ${formatCliCommand(`verso sandbox explain --session ${params.sessionKey}`)}`);
+    lines.push(
+      `See: ${formatCliCommand(`openclaw sandbox explain --session ${params.sessionKey}`)}`,
+    );
   }
   return lines.join("\n");
 }

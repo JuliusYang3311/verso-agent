@@ -1,22 +1,25 @@
+import type { ChannelId } from "../channels/plugins/types.js";
 import type {
   BlockStreamingChunkConfig,
   BlockStreamingCoalesceConfig,
   HumanDelayConfig,
   TypingMode,
 } from "./types.base.js";
-import type { ChannelId } from "../channels/plugins/types.js";
 import type {
   SandboxBrowserSettings,
   SandboxDockerSettings,
   SandboxPruneSettings,
 } from "./types.sandbox.js";
 import type { MemorySearchConfig } from "./types.tools.js";
-import type { RouterConfig } from "./types.router.js";
+
+export type PersistenceMode = "persistent" | "transient" | "singleton";
 
 export type AgentModelEntryConfig = {
   alias?: string;
   /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
   params?: Record<string, unknown>;
+  /** Enable streaming for this model (default: true, false for Ollama to avoid SDK issue #1205). */
+  streaming?: boolean;
 };
 
 export type AgentModelListConfig = {
@@ -97,6 +100,8 @@ export type AgentDefaultsConfig = {
   model?: AgentModelListConfig;
   /** Optional image-capable model and fallbacks (provider/model). */
   imageModel?: AgentModelListConfig;
+  /** Default persistence mode for sessions started by this agent. */
+  persistence?: PersistenceMode;
   /** Model catalog with optional aliases (full provider/model keys). */
   models?: Record<string, AgentModelEntryConfig>;
   /** Agent working directory (preferred). Used as the default cwd for agent runs. */
@@ -123,7 +128,7 @@ export type AgentDefaultsConfig = {
    * Include elapsed time in message envelopes ("on" | "off", default: "on").
    */
   envelopeElapsed?: "on" | "off";
-  /** Optional display-only context window override (used for % in status UIs). */
+  /** Optional context window cap (used for runtime estimates + status %). */
   contextTokens?: number;
   /** Optional CLI backends for text-only fallback (claude-cli, etc.). */
   cliBackends?: Record<string, CliBackendConfig>;
@@ -133,8 +138,6 @@ export type AgentDefaultsConfig = {
   compaction?: AgentCompactionConfig;
   /** Vector memory search configuration (per-agent overrides supported). */
   memorySearch?: MemorySearchConfig;
-  /** Smart model router configuration for task-based model selection. */
-  router?: RouterConfig;
   /** Default thinking level when no /think directive is present. */
   thinkingDefault?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
   /** Default verbose level when no /verbose directive is present. */
@@ -162,8 +165,6 @@ export type AgentDefaultsConfig = {
   /** Max inbound media size in MB for agent-visible attachments (text note or future image attach). */
   mediaMaxMb?: number;
   typingIntervalSeconds?: number;
-  /** Max duration for typing indicator before auto-clearing (ms). Default: 120000 (2m). */
-  typingTtlMs?: number;
   /** Typing indicator start mode (never|instant|thinking|message). */
   typingMode?: TypingMode;
   /** Periodic background heartbeat runs. */
@@ -187,6 +188,8 @@ export type AgentDefaultsConfig = {
     target?: "last" | "none" | ChannelId;
     /** Optional delivery override (E.164 for WhatsApp, chat id for Telegram). */
     to?: string;
+    /** Optional account id for multi-account channels. */
+    accountId?: string;
     /** Override the heartbeat prompt body (default: "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK."). */
     prompt?: string;
     /** Max chars allowed after HEARTBEAT_OK before delivery (default: 30). */
@@ -209,6 +212,8 @@ export type AgentDefaultsConfig = {
     archiveAfterMinutes?: number;
     /** Default model selection for spawned sub-agents (string or {primary,fallbacks}). */
     model?: string | { primary?: string; fallbacks?: string[] };
+    /** Default thinking level for spawned sub-agents (e.g. "off", "low", "medium", "high"). */
+    thinking?: string;
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: {
@@ -247,6 +252,8 @@ export type AgentCompactionMode = "default" | "safeguard";
 export type AgentCompactionConfig = {
   /** Compaction summarization mode. */
   mode?: AgentCompactionMode;
+  /** Soft limit for session context window. Triggers compaction when exceeded. */
+  maxSessionTokens?: number;
   /** Minimum reserve tokens enforced for Pi compaction (0 disables the floor). */
   reserveTokensFloor?: number;
   /** Max share of context window for history during safeguard pruning (0.1–0.9, default 0.5). */

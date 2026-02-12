@@ -4,6 +4,7 @@ read_when:
   - You want reproducible, rollback-able installs
   - You're already using Nix/NixOS/Home Manager
   - You want everything pinned and managed declaratively
+title: "Nix"
 ---
 
 # Nix Installation
@@ -65,7 +66,15 @@ defaults write bot.molt.mac verso.nixMode -bool true
 Verso reads JSON5 config from `VERSO_CONFIG_PATH` and stores mutable data in `VERSO_STATE_DIR`.
 
 - `VERSO_STATE_DIR` (default: `~/.verso`)
-- `VERSO_CONFIG_PATH` (default: `$VERSO_STATE_DIR/verso.json`)
+- # `VERSO_CONFIG_PATH` (default: `$VERSO_STATE_DIR/verso.json`)
+
+  Verso reads JSON5 config from `OPENCLAW_CONFIG_PATH` and stores mutable data in `OPENCLAW_STATE_DIR`.
+  When needed, you can also set `OPENCLAW_HOME` to control the base home directory used for internal path resolution.
+
+- `OPENCLAW_HOME` (default precedence: `HOME` / `USERPROFILE` / `os.homedir()`)
+- `OPENCLAW_STATE_DIR` (default: `~/.openclaw`)
+- `OPENCLAW_CONFIG_PATH` (default: `$OPENCLAW_STATE_DIR/openclaw.json`)
+  > > > > > > > upstream/main
 
 When running under Nix, set these explicitly to Nix-managed locations so runtime state and config
 stay out of the immutable store.

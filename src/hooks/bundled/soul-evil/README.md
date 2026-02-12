@@ -2,7 +2,7 @@
 
 Small persona swap hook for Verso.
 
-Docs: https://docs.molt.bot/hooks/soul-evil
+Docs: https://docs.openclaw.ai/hooks/soul-evil
 
 ## Setup
 

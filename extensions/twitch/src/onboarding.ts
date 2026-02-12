@@ -2,6 +2,7 @@
  * Twitch onboarding adapter for CLI setup wizard.
  */
 
+import type { VersoConfig } from "verso/plugin-sdk";
 import {
   formatDocsLink,
   promptChannelAccessConfig,
@@ -9,20 +10,16 @@ import {
   type ChannelOnboardingDmPolicy,
   type WizardPrompter,
 } from "verso/plugin-sdk";
+import type { TwitchAccountConfig, TwitchRole } from "./types.js";
 import { DEFAULT_ACCOUNT_ID, getAccountConfig } from "./config.js";
 import { isAccountConfigured } from "./utils/twitch.js";
-import type { TwitchAccountConfig, TwitchRole } from "./types.js";
-import type { VersoConfig } from "verso/plugin-sdk";
 
 const channel = "twitch" as const;
 
 /**
  * Set Twitch account configuration
  */
-function setTwitchAccount(
-  cfg: VersoConfig,
-  account: Partial<TwitchAccountConfig>,
-): VersoConfig {
+function setTwitchAccount(cfg: VersoConfig, account: Partial<TwitchAccountConfig>): VersoConfig {
   const existing = getAccountConfig(cfg, DEFAULT_ACCOUNT_ID);
   const merged: TwitchAccountConfig = {
     username: account.username ?? existing?.username ?? "",
@@ -105,7 +102,9 @@ async function promptToken(
       initialValue: envToken ?? "",
       validate: (value) => {
         const raw = String(value ?? "").trim();
-        if (!raw) return "Required";
+        if (!raw) {
+          return "Required";
+        }
         if (!raw.startsWith("oauth:")) {
           return "Token should start with 'oauth:'";
         }
@@ -265,8 +264,12 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
   getCurrent: (cfg) => {
     const account = getAccountConfig(cfg, DEFAULT_ACCOUNT_ID);
     // Map allowedRoles to policy equivalent
-    if (account?.allowedRoles?.includes("all")) return "open";
-    if (account?.allowFrom && account.allowFrom.length > 0) return "allowlist";
+    if (account?.allowedRoles?.includes("all")) {
+      return "open";
+    }
+    if (account?.allowFrom && account.allowFrom.length > 0) {
+      return "allowlist";
+    }
     return "disabled";
   },
   setPolicy: (cfg, policy) => {

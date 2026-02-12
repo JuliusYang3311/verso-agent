@@ -233,7 +233,7 @@ describe("resolveVersoMetadata", () => {
     const content = `---
 name: session-memory
 description: "Save session context to memory when /new command is issued"
-homepage: https://docs.molt.bot/hooks#session-memory
+homepage: https://docs.openclaw.ai/hooks#session-memory
 metadata:
   {
     "verso":

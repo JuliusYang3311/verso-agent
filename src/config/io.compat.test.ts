@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-
 import { createConfigIO } from "./io.js";
 
 async function withTempHome(run: (home: string) => Promise<void>): Promise<void> {
@@ -37,7 +36,7 @@ describe("config io compat (new + legacy folders)", () => {
         env: {} as NodeJS.ProcessEnv,
         homedir: () => home,
       });
-      expect(io.configPath).toBe(newConfigPath);
+      expect(io.configPath).toBe(configPath);
       expect(io.loadConfig().gateway?.port).toBe(19001);
     });
   });
@@ -50,9 +49,7 @@ describe("config io compat (new + legacy folders)", () => {
         env: {} as NodeJS.ProcessEnv,
         homedir: () => home,
       });
-
-      expect(io.configPath).toBe(legacyConfigPath);
-      expect(io.loadConfig().gateway?.port).toBe(20001);
+      expect(io.configPath).toBe(path.join(home, ".openclaw", "openclaw.json"));
     });
   });
 
@@ -61,12 +58,10 @@ describe("config io compat (new + legacy folders)", () => {
       const legacyConfigPath = await writeConfig(home, ".verso", 20002, "verso.json");
 
       const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
-        homedir: () => home,
+        env: { OPENCLAW_HOME: path.join(home, "svc-home") } as NodeJS.ProcessEnv,
+        homedir: () => path.join(home, "ignored-home"),
       });
-
-      expect(io.configPath).toBe(legacyConfigPath);
-      expect(io.loadConfig().gateway?.port).toBe(20002);
+      expect(io.configPath).toBe(path.join(home, "svc-home", ".openclaw", "openclaw.json"));
     });
   });
 
@@ -76,7 +71,7 @@ describe("config io compat (new + legacy folders)", () => {
       await writeConfig(home, ".verso", 20004, "verso.json");
 
       const io = createConfigIO({
-        env: {} as NodeJS.ProcessEnv,
+        env: { OPENCLAW_CONFIG_PATH: customPath } as NodeJS.ProcessEnv,
         homedir: () => home,
       });
 

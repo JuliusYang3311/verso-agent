@@ -1,6 +1,5 @@
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
 import { nextcloudTalkPlugin } from "./src/channel.js";
 import { setNextcloudTalkRuntime } from "./src/runtime.js";
 

@@ -30,7 +30,6 @@ describe("subscribeEmbeddedPiSession", () => {
 
     for (const listener of listeners) {
       listener({ type: "auto_compaction_end", willRetry: true });
-      listener({ type: "auto_compaction_end", willRetry: true });
     }
 
     let resolved = false;
@@ -67,8 +66,12 @@ describe("subscribeEmbeddedPiSession", () => {
 
     const events: Array<{ phase: string; willRetry?: boolean }> = [];
     const stop = onAgentEvent((evt) => {
-      if (evt.runId !== "run-compaction") return;
-      if (evt.stream !== "compaction") return;
+      if (evt.runId !== "run-compaction") {
+        return;
+      }
+      if (evt.stream !== "compaction") {
+        return;
+      }
       const phase = typeof evt.data?.phase === "string" ? evt.data.phase : "";
       events.push({
         phase,

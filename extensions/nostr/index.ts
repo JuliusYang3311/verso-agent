@@ -1,11 +1,10 @@
 import type { VersoPluginApi, VersoConfig } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
-import { nostrPlugin } from "./src/channel.js";
-import { setNostrRuntime, getNostrRuntime } from "./src/runtime.js";
-import { createNostrProfileHttpHandler } from "./src/nostr-profile-http.js";
-import { resolveNostrAccount } from "./src/types.js";
 import type { NostrProfile } from "./src/config-schema.js";
+import { nostrPlugin } from "./src/channel.js";
+import { createNostrProfileHttpHandler } from "./src/nostr-profile-http.js";
+import { setNostrRuntime, getNostrRuntime } from "./src/runtime.js";
+import { resolveNostrAccount } from "./src/types.js";
 
 const plugin = {
   id: "nostr",

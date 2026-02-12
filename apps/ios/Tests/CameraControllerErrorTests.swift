@@ -1,5 +1,5 @@
 import Testing
-@testable import Moltbot
+@testable import Verso
 
 @Suite struct CameraControllerErrorTests {
     @Test func errorDescriptionsAreStable() {

@@ -1,6 +1,5 @@
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
 import { googlechatDock, googlechatPlugin } from "./src/channel.js";
 import { handleGoogleChatWebhookRequest } from "./src/monitor.js";
 import { setGoogleChatRuntime } from "./src/runtime.js";

@@ -1,12 +1,16 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
-import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
-
 import type { VersoConfig } from "../../config/config.js";
 import type { ModelDefinitionConfig } from "../../config/types.js";
 import { resolveVersoAgentDir } from "../agent-paths.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../defaults.js";
 import { normalizeModelCompat } from "../model-compat.js";
 import { normalizeProviderId } from "../model-selection.js";
+import {
+  discoverAuthStorage,
+  discoverModels,
+  type AuthStorage,
+  type ModelRegistry,
+} from "../pi-model-discovery.js";
 
 type InlineModelEntry = ModelDefinitionConfig & { provider: string; baseUrl?: string };
 type InlineProviderConfig = {
@@ -15,12 +19,109 @@ type InlineProviderConfig = {
   models?: ModelDefinitionConfig[];
 };
 
+const OPENAI_CODEX_GPT_53_MODEL_ID = "gpt-5.3-codex";
+
+const OPENAI_CODEX_TEMPLATE_MODEL_IDS = ["gpt-5.2-codex"] as const;
+
+// pi-ai's built-in Anthropic catalog can lag behind Verso's defaults/docs.
+// Add forward-compat fallbacks for known-new IDs by cloning an older template model.
+const ANTHROPIC_OPUS_46_MODEL_ID = "claude-opus-4-6";
+const ANTHROPIC_OPUS_46_DOT_MODEL_ID = "claude-opus-4.6";
+const ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS = ["claude-opus-4-5", "claude-opus-4.5"] as const;
+
+function resolveOpenAICodexGpt53FallbackModel(
+  provider: string,
+  modelId: string,
+  modelRegistry: ModelRegistry,
+): Model<Api> | undefined {
+  const normalizedProvider = normalizeProviderId(provider);
+  const trimmedModelId = modelId.trim();
+  if (normalizedProvider !== "openai-codex") {
+    return undefined;
+  }
+  if (trimmedModelId.toLowerCase() !== OPENAI_CODEX_GPT_53_MODEL_ID) {
+    return undefined;
+  }
+
+  for (const templateId of OPENAI_CODEX_TEMPLATE_MODEL_IDS) {
+    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
+    if (!template) {
+      continue;
+    }
+    return normalizeModelCompat({
+      ...template,
+      id: trimmedModelId,
+      name: trimmedModelId,
+    } as Model<Api>);
+  }
+
+  return normalizeModelCompat({
+    id: trimmedModelId,
+    name: trimmedModelId,
+    api: "openai-codex-responses",
+    provider: normalizedProvider,
+    baseUrl: "https://chatgpt.com/backend-api",
+    reasoning: true,
+    input: ["text", "image"],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: DEFAULT_CONTEXT_TOKENS,
+    maxTokens: DEFAULT_CONTEXT_TOKENS,
+  } as Model<Api>);
+}
+
+function resolveAnthropicOpus46ForwardCompatModel(
+  provider: string,
+  modelId: string,
+  modelRegistry: ModelRegistry,
+): Model<Api> | undefined {
+  const normalizedProvider = normalizeProviderId(provider);
+  if (normalizedProvider !== "anthropic") {
+    return undefined;
+  }
+
+  const trimmedModelId = modelId.trim();
+  const lower = trimmedModelId.toLowerCase();
+  const isOpus46 =
+    lower === ANTHROPIC_OPUS_46_MODEL_ID ||
+    lower === ANTHROPIC_OPUS_46_DOT_MODEL_ID ||
+    lower.startsWith(`${ANTHROPIC_OPUS_46_MODEL_ID}-`) ||
+    lower.startsWith(`${ANTHROPIC_OPUS_46_DOT_MODEL_ID}-`);
+  if (!isOpus46) {
+    return undefined;
+  }
+
+  const templateIds: string[] = [];
+  if (lower.startsWith(ANTHROPIC_OPUS_46_MODEL_ID)) {
+    templateIds.push(lower.replace(ANTHROPIC_OPUS_46_MODEL_ID, "claude-opus-4-5"));
+  }
+  if (lower.startsWith(ANTHROPIC_OPUS_46_DOT_MODEL_ID)) {
+    templateIds.push(lower.replace(ANTHROPIC_OPUS_46_DOT_MODEL_ID, "claude-opus-4.5"));
+  }
+  templateIds.push(...ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS);
+
+  for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
+    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
+    if (!template) {
+      continue;
+    }
+    return normalizeModelCompat({
+      ...template,
+      id: trimmedModelId,
+      name: trimmedModelId,
+    } as Model<Api>);
+  }
+
+  return undefined;
+}
+
 export function buildInlineProviderModels(
   providers: Record<string, InlineProviderConfig>,
 ): InlineModelEntry[] {
   return Object.entries(providers).flatMap(([providerId, entry]) => {
     const trimmed = providerId.trim();
-    if (!trimmed) return [];
+    if (!trimmed) {
+      return [];
+    }
     const resolveDefaultApi = (p: string) => {
       switch (p) {
         case "anthropic":
@@ -52,13 +153,17 @@ export function buildModelAliasLines(cfg?: VersoConfig) {
   const entries: Array<{ alias: string; model: string }> = [];
   for (const [keyRaw, entryRaw] of Object.entries(models)) {
     const model = String(keyRaw ?? "").trim();
-    if (!model) continue;
+    if (!model) {
+      continue;
+    }
     const alias = String((entryRaw as { alias?: string } | undefined)?.alias ?? "").trim();
-    if (!alias) continue;
+    if (!alias) {
+      continue;
+    }
     entries.push({ alias, model });
   }
   return entries
-    .sort((a, b) => a.alias.localeCompare(b.alias))
+    .toSorted((a, b) => a.alias.localeCompare(b.alias))
     .map((entry) => `- ${entry.alias}: ${entry.model}`);
 }
 
@@ -70,8 +175,8 @@ export function resolveModel(
 ): {
   model?: Model<Api>;
   error?: string;
-  authStorage: ReturnType<typeof discoverAuthStorage>;
-  modelRegistry: ReturnType<typeof discoverModels>;
+  authStorage: AuthStorage;
+  modelRegistry: ModelRegistry;
 } {
   const resolvedAgentDir = agentDir ?? resolveVersoAgentDir();
   const authStorage = discoverAuthStorage(resolvedAgentDir);

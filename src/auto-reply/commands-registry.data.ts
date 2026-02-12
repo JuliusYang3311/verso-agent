@@ -1,12 +1,12 @@
-import { listChannelDocks } from "../channels/dock.js";
-import { getActivePluginRegistry } from "../plugins/runtime.js";
-import { listThinkingLevels } from "./thinking.js";
-import { COMMAND_ARG_FORMATTERS } from "./commands-args.js";
 import type {
   ChatCommandDefinition,
   CommandCategory,
   CommandScope,
 } from "./commands-registry.types.js";
+import { listChannelDocks } from "../channels/dock.js";
+import { getActivePluginRegistry } from "../plugins/runtime.js";
+import { COMMAND_ARG_FORMATTERS } from "./commands-args.js";
+import { listThinkingLevels } from "./thinking.js";
 
 type DefineChatCommandInput = {
   key: string;
@@ -66,9 +66,13 @@ function registerAlias(commands: ChatCommandDefinition[], key: string, ...aliase
   const existing = new Set(command.textAliases.map((alias) => alias.trim().toLowerCase()));
   for (const alias of aliases) {
     const trimmed = alias.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {
+      continue;
+    }
     const lowered = trimmed.toLowerCase();
-    if (existing.has(lowered)) continue;
+    if (existing.has(lowered)) {
+      continue;
+    }
     existing.add(lowered);
     command.textAliases.push(trimmed);
   }
@@ -419,6 +423,34 @@ function buildChatCommands(): ChatCommandDefinition[] {
       ],
     }),
     defineChatCommand({
+      key: "evolve",
+      description: "Start/stop evolver (or show status).",
+      textAlias: "/evolve",
+      scope: "text",
+      category: "management",
+      acceptsArgs: true,
+      args: [
+        {
+          name: "mode",
+          description: "on, off, or status",
+          type: "string",
+          choices: ["on", "off", "status"],
+        },
+      ],
+      argsMenu: {
+        arg: "mode",
+        title:
+          "Evolver Actions:\n• On – Start evolver\n• Off – Stop evolver\n• Status – Show evolver status",
+      },
+    }),
+    defineChatCommand({
+      key: "evolveoff",
+      description: "Stop the evolver daemon.",
+      textAlias: "/evolveoff",
+      scope: "text",
+      category: "management",
+    }),
+    defineChatCommand({
       key: "think",
       nativeName: "think",
       description: "Set thinking level.",
@@ -585,7 +617,9 @@ function buildChatCommands(): ChatCommandDefinition[] {
 
 export function getChatCommands(): ChatCommandDefinition[] {
   const registry = getActivePluginRegistry();
-  if (cachedCommands && registry === cachedRegistry) return cachedCommands;
+  if (cachedCommands && registry === cachedRegistry) {
+    return cachedCommands;
+  }
   const commands = buildChatCommands();
   cachedCommands = commands;
   cachedRegistry = registry;

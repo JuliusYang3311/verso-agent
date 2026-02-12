@@ -1,6 +1,5 @@
 import type { App } from "@slack/bolt";
 import { describe, expect, it } from "vitest";
-
 import type { VersoConfig } from "../../config/config.js";
 import type { RuntimeEnv } from "../../runtime.js";
 import { createSlackMonitorContext, normalizeSlackChannelType } from "./context.js";

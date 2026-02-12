@@ -4,6 +4,7 @@ read_when:
   - Packaging Verso.app
   - Debugging the macOS gateway launchd service
   - Installing the gateway CLI for macOS
+title: "Gateway on macOS"
 ---
 
 # Gateway on macOS (external launchd)
@@ -26,24 +27,42 @@ The macOS app’s **Install CLI** button runs the same flow via npm/pnpm (bun no
 ## Launchd (Gateway as LaunchAgent)
 
 Label:
-- `bot.molt.gateway` (or `bot.molt.<profile>`; legacy `com.verso.*` may remain)
+
+- # `bot.molt.gateway` (or `bot.molt.<profile>`; legacy `com.verso.*` may remain)
+
+- `bot.molt.gateway` (or `bot.molt.<profile>`; legacy `com.openclaw.*` may remain)
+  > > > > > > > upstream/main
 
 Plist location (per‑user):
+
 - `~/Library/LaunchAgents/bot.molt.gateway.plist`
   (or `~/Library/LaunchAgents/bot.molt.<profile>.plist`)
 
 Manager:
+
 - The macOS app owns LaunchAgent install/update in Local mode.
 - The CLI can also install it: `verso gateway install`.
 
 Behavior:
+
+- # “Verso Active” enables/disables the LaunchAgent.
+- The CLI can also install it: `openclaw gateway install`.
+
+Behavior:
+
 - “Verso Active” enables/disables the LaunchAgent.
+  > > > > > > > upstream/main
 - App quit does **not** stop the gateway (launchd keeps it alive).
 - If a Gateway is already running on the configured port, the app attaches to
   it instead of starting a new one.
 
 Logging:
-- launchd stdout/err: `/tmp/verso/verso-gateway.log`
+<<<<<<< HEAD
+
+- # launchd stdout/err: `/tmp/verso/verso-gateway.log`
+
+- launchd stdout/err: `/tmp/openclaw/openclaw-gateway.log`
+  > > > > > > > upstream/main
 
 ## Version compatibility
 

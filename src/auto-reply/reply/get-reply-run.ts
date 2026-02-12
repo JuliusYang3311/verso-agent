@@ -1,13 +1,19 @@
 import crypto from "node:crypto";
+import type { ExecToolDefaults } from "../../agents/bash-tools.js";
+import type { VersoConfig } from "../../config/config.js";
+import type { MsgContext, TemplateContext } from "../templating.js";
+import type { GetReplyOptions, ReplyPayload } from "../types.js";
+import type { buildCommandContext } from "./commands.js";
+import type { InlineDirectives } from "./directive-handling.js";
+import type { createModelSelectionState } from "./model-selection.js";
+import type { TypingController } from "./typing.js";
+import { resolveSessionAuthProfileOverride } from "../../agents/auth-profiles/session-override.js";
 import {
   abortEmbeddedPiRun,
   isEmbeddedPiRunActive,
   isEmbeddedPiRunStreaming,
   resolveEmbeddedSessionLane,
 } from "../../agents/pi-embedded.js";
-import { resolveSessionAuthProfileOverride } from "../../agents/auth-profiles/session-override.js";
-import type { ExecToolDefaults } from "../../agents/bash-tools.js";
-import type { VersoConfig } from "../../config/config.js";
 import {
   resolveGroupSessionKey,
   resolveSessionFilePath,
@@ -20,7 +26,6 @@ import { normalizeMainKey } from "../../routing/session-key.js";
 import { isReasoningTagProvider } from "../../utils/provider-utils.js";
 import { hasControlCommand } from "../command-detection.js";
 import { buildInboundMediaNote } from "../media-note.js";
-import type { MsgContext, TemplateContext } from "../templating.js";
 import {
   type ElevatedLevel,
   formatXHighModelHint,
@@ -31,26 +36,20 @@ import {
   type VerboseLevel,
 } from "../thinking.js";
 import { SILENT_REPLY_TOKEN } from "../tokens.js";
-import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import { runReplyAgent } from "./agent-runner.js";
 import { applySessionHints } from "./body.js";
-import { routeReply } from "./route-reply.js";
-import type { buildCommandContext } from "./commands.js";
-import type { InlineDirectives } from "./directive-handling.js";
 import { buildGroupIntro } from "./groups.js";
-import type { createModelSelectionState } from "./model-selection.js";
 import { resolveQueueSettings } from "./queue.js";
+import { routeReply } from "./route-reply.js";
 import { ensureSkillSnapshot, prependSystemEvents } from "./session-updates.js";
-import type { TypingController } from "./typing.js";
 import { resolveTypingMode } from "./typing-mode.js";
-import { resolveRouterModel } from "../../agents/model-router.js";
-import { createClassifierFn } from "../../agents/model-router-classifier.js";
+import { appendUntrustedContext } from "./untrusted-context.js";
 
 type AgentDefaults = NonNullable<VersoConfig["agents"]>["defaults"];
 type ExecOverrides = Pick<ExecToolDefaults, "host" | "security" | "ask" | "node">;
 
 const BARE_SESSION_RESET_PROMPT =
-  "A new session was started via /new or /reset. Say hi briefly (1-2 sentences) and ask what the user wants to do next. If the runtime model differs from default_model in the system prompt, mention the default model in the greeting. Do not mention internal steps, files, tools, or reasoning.";
+  "A new session was started via /new or /reset. Greet the user in your configured persona, if one is provided. Be yourself - use your defined voice, mannerisms, and mood. Keep it to 1-3 sentences and ask what they want to do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.";
 
 type RunPreparedReplyParams = {
   ctx: MsgContext;
@@ -78,6 +77,7 @@ type RunPreparedReplyParams = {
     minChars: number;
     maxChars: number;
     breakPreference: "paragraph" | "newline" | "sentence";
+    flushOnParagraph?: boolean;
   };
   resolvedBlockStreamingBreak: "text_end" | "message_end";
   modelState: Awaited<ReturnType<typeof createModelSelectionState>>;
@@ -228,6 +228,7 @@ export async function runPreparedReply(
     isNewSession,
     prefixedBodyBase,
   });
+  prefixedBodyBase = appendUntrustedContext(prefixedBodyBase, sessionCtx.UntrustedContext);
   const threadStarterBody = ctx.ThreadStarterBody?.trim();
   const threadStarterNote =
     isNewSession && threadStarterBody
@@ -250,7 +251,7 @@ export async function runPreparedReply(
   const prefixedBody = [threadStarterNote, prefixedBodyBase].filter(Boolean).join("\n\n");
   const mediaNote = buildInboundMediaNote(ctx);
   const mediaReplyHint = mediaNote
-    ? "To send an image back, prefer the message tool (media/path/filePath). If you must inline, use MEDIA:/path or MEDIA:https://example.com/image.jpg (spaces ok, quote if needed). Keep caption in the text body."
+    ? "To send an image back, prefer the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body."
     : undefined;
   let prefixedCommandBody = mediaNote
     ? [mediaNote, mediaReplyHint, prefixedBody ?? ""].filter(Boolean).join("\n").trim()
@@ -287,6 +288,7 @@ export async function runPreparedReply(
     }
   }
   if (resetTriggered && command.isAuthorizedSender) {
+    // oxlint-disable-next-line typescript/no-explicit-any
     const channel = ctx.OriginatingChannel || (command.channel as any);
     const to = ctx.OriginatingTo || command.from || command.to;
     if (channel && to) {
@@ -340,156 +342,93 @@ export async function runPreparedReply(
     resolvedQueue.mode === "followup" ||
     resolvedQueue.mode === "collect" ||
     resolvedQueue.mode === "steer-backlog";
-  // Smart Router + Retry Loop
-  let retryCount = 0;
-  const maxRetries = 2;
-  const excludeModels: string[] = [];
-  let lastError: unknown;
-
-  while (retryCount <= maxRetries) {
-    // Smart model router: classify task and potentially override model
-    let finalProvider = provider;
-    let finalModel = model;
-
-    // Only query router if we haven't exhausted all attempts or if it's the first run
-    // (Should always query to get the next best model)
-    const routerResult = await resolveRouterModel({
-      input: prefixedCommandBody,
-      cfg,
-      defaultProvider,
-      callClassifier: createClassifierFn(cfg, agentDir),
-      excludeModels,
-    });
-
-    if (routerResult.routerUsed) {
-      if (routerResult.provider && routerResult.model) {
-        finalProvider = routerResult.provider;
-        finalModel = routerResult.model;
-        if (retryCount > 0) {
-          console.log(
-            `[Router] Retry ${retryCount}/${maxRetries}: Selected ${finalProvider}/${finalModel}`,
-          );
-        } else {
-          console.log(`[Router] Selected ${finalProvider}/${finalModel}`);
-        }
-      } else if (routerResult.error) {
-        console.log(`[Router] classification failed: ${routerResult.error}`);
-      }
-    }
-
-    // Resolve auth profile for the FINAL selected provider
-    const authProfileId = await resolveSessionAuthProfileOverride({
-      cfg,
-      provider: finalProvider,
+  const authProfileId = await resolveSessionAuthProfileOverride({
+    cfg,
+    provider,
+    agentDir,
+    sessionEntry,
+    sessionStore,
+    sessionKey,
+    storePath,
+    isNewSession,
+  });
+  const authProfileIdSource = sessionEntry?.authProfileOverrideSource;
+  const followupRun = {
+    prompt: queuedBody,
+    messageId: sessionCtx.MessageSidFull ?? sessionCtx.MessageSid,
+    summaryLine: baseBodyTrimmedRaw,
+    enqueuedAt: Date.now(),
+    // Originating channel for reply routing.
+    originatingChannel: ctx.OriginatingChannel,
+    originatingTo: ctx.OriginatingTo,
+    originatingAccountId: ctx.AccountId,
+    originatingThreadId: ctx.MessageThreadId,
+    originatingChatType: ctx.ChatType,
+    run: {
+      agentId,
       agentDir,
-      sessionEntry,
-      sessionStore,
+      sessionId: sessionIdFinal,
       sessionKey,
-      storePath,
-      isNewSession,
-    });
-    const authProfileIdSource = sessionEntry?.authProfileOverrideSource;
-
-    const followupRun = {
-      prompt: queuedBody,
-      messageId: sessionCtx.MessageSidFull ?? sessionCtx.MessageSid,
-      summaryLine: baseBodyTrimmedRaw,
-      enqueuedAt: Date.now(),
-      // Originating channel for reply routing.
-      originatingChannel: ctx.OriginatingChannel,
-      originatingTo: ctx.OriginatingTo,
-      originatingAccountId: ctx.AccountId,
-      originatingThreadId: ctx.MessageThreadId,
-      originatingChatType: ctx.ChatType,
-      run: {
-        agentId,
-        agentDir,
-        sessionId: sessionIdFinal,
-        sessionKey,
-        messageProvider: sessionCtx.Provider?.trim().toLowerCase() || undefined,
-        agentAccountId: sessionCtx.AccountId,
-        groupId: resolveGroupSessionKey(sessionCtx)?.id ?? undefined,
-        groupChannel: sessionCtx.GroupChannel?.trim() ?? sessionCtx.GroupSubject?.trim(),
-        groupSpace: sessionCtx.GroupSpace?.trim() ?? undefined,
-        senderId: sessionCtx.SenderId?.trim() || undefined,
-        senderName: sessionCtx.SenderName?.trim() || undefined,
-        senderUsername: sessionCtx.SenderUsername?.trim() || undefined,
-        senderE164: sessionCtx.SenderE164?.trim() || undefined,
-        sessionFile,
-        workspaceDir,
-        config: cfg,
-        skillsSnapshot,
-        provider: finalProvider,
-        model: finalModel,
-        authProfileId,
-        authProfileIdSource,
-        thinkLevel: resolvedThinkLevel,
-        verboseLevel: resolvedVerboseLevel,
-        reasoningLevel: resolvedReasoningLevel,
-        elevatedLevel: resolvedElevatedLevel,
-        execOverrides,
-        bashElevated: {
-          enabled: elevatedEnabled,
-          allowed: elevatedAllowed,
-          defaultLevel: resolvedElevatedLevel ?? "off",
-        },
-        timeoutMs,
-        blockReplyBreak: resolvedBlockStreamingBreak,
-        ownerNumbers: command.ownerList.length > 0 ? command.ownerList : undefined,
-        extraSystemPrompt: extraSystemPrompt || undefined,
-        ...(isReasoningTagProvider(provider, finalModel) ? { enforceFinalTag: true } : {}),
+      messageProvider: sessionCtx.Provider?.trim().toLowerCase() || undefined,
+      agentAccountId: sessionCtx.AccountId,
+      groupId: resolveGroupSessionKey(sessionCtx)?.id ?? undefined,
+      groupChannel: sessionCtx.GroupChannel?.trim() ?? sessionCtx.GroupSubject?.trim(),
+      groupSpace: sessionCtx.GroupSpace?.trim() ?? undefined,
+      senderId: sessionCtx.SenderId?.trim() || undefined,
+      senderName: sessionCtx.SenderName?.trim() || undefined,
+      senderUsername: sessionCtx.SenderUsername?.trim() || undefined,
+      senderE164: sessionCtx.SenderE164?.trim() || undefined,
+      senderIsOwner: command.senderIsOwner,
+      sessionFile,
+      workspaceDir,
+      config: cfg,
+      skillsSnapshot,
+      provider,
+      model,
+      authProfileId,
+      authProfileIdSource,
+      thinkLevel: resolvedThinkLevel,
+      verboseLevel: resolvedVerboseLevel,
+      reasoningLevel: resolvedReasoningLevel,
+      elevatedLevel: resolvedElevatedLevel,
+      execOverrides,
+      bashElevated: {
+        enabled: elevatedEnabled,
+        allowed: elevatedAllowed,
+        defaultLevel: resolvedElevatedLevel ?? "off",
       },
-    };
+      timeoutMs,
+      blockReplyBreak: resolvedBlockStreamingBreak,
+      ownerNumbers: command.ownerList.length > 0 ? command.ownerList : undefined,
+      extraSystemPrompt: extraSystemPrompt || undefined,
+      ...(isReasoningTagProvider(provider) ? { enforceFinalTag: true } : {}),
+    },
+  };
 
-    try {
-      return await runReplyAgent({
-        commandBody: prefixedCommandBody,
-        followupRun,
-        queueKey,
-        resolvedQueue,
-        shouldSteer,
-        shouldFollowup,
-        isActive,
-        isStreaming,
-        opts,
-        typing,
-        sessionEntry,
-        sessionStore,
-        sessionKey,
-        storePath,
-        defaultModel,
-        agentCfgContextTokens: agentCfg?.contextTokens,
-        resolvedVerboseLevel: resolvedVerboseLevel ?? "off",
-        isNewSession,
-        blockStreamingEnabled,
-        blockReplyChunking,
-        resolvedBlockStreamingBreak,
-        sessionCtx,
-        shouldInjectGroupIntro,
-        typingMode,
-      });
-    } catch (err) {
-      lastError = err;
-      retryCount++;
-
-      // If runReplyAgent enqueued (async), it returned undefined (handled in try).
-      // If it threw, it was a sync failure.
-
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logVerbose(`Agent run failed with ${finalProvider}/${finalModel}: ${errMsg}`);
-
-      // Add to exclusion list
-      const key = `${finalProvider}/${finalModel}`;
-      if (!excludeModels.includes(key)) {
-        excludeModels.push(key);
-      }
-
-      if (retryCount > maxRetries) {
-        throw err; // Exhausted retries
-      }
-      // Loop continues to pick next model
-    }
-  }
-
-  return undefined; // Should not reach here
+  return runReplyAgent({
+    commandBody: prefixedCommandBody,
+    followupRun,
+    queueKey,
+    resolvedQueue,
+    shouldSteer,
+    shouldFollowup,
+    isActive,
+    isStreaming,
+    opts,
+    typing,
+    sessionEntry,
+    sessionStore,
+    sessionKey,
+    storePath,
+    defaultModel,
+    agentCfgContextTokens: agentCfg?.contextTokens,
+    resolvedVerboseLevel: resolvedVerboseLevel ?? "off",
+    isNewSession,
+    blockStreamingEnabled,
+    blockReplyChunking,
+    resolvedBlockStreamingBreak,
+    sessionCtx,
+    shouldInjectGroupIntro,
+    typingMode,
+  });
 }

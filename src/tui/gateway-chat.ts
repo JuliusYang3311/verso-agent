@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { loadConfig, resolveGatewayPort } from "../config/config.js";
+import { ensureExplicitGatewayAuth, resolveExplicitGatewayAuth } from "../gateway/call.js";
 import { GatewayClient } from "../gateway/client.js";
+import { GATEWAY_CLIENT_CAPS } from "../gateway/protocol/client-info.js";
 import {
   type HelloOk,
   PROTOCOL_VERSION,
   type SessionsListParams,
+  type SessionsPatchResult,
   type SessionsPatchParams,
 } from "../gateway/protocol/index.js";
 import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
@@ -22,6 +25,7 @@ export type ChatSendOptions = {
   thinking?: string;
   deliver?: boolean;
   timeoutMs?: number;
+  runId?: string;
 };
 
 export type GatewayEvent = {
@@ -116,6 +120,7 @@ export class GatewayChatClient {
       clientVersion: VERSION,
       platform: process.platform,
       mode: GATEWAY_CLIENT_MODES.UI,
+      caps: [GATEWAY_CLIENT_CAPS.TOOL_EVENTS],
       instanceId: randomUUID(),
       minProtocol: PROTOCOL_VERSION,
       maxProtocol: PROTOCOL_VERSION,
@@ -153,7 +158,7 @@ export class GatewayChatClient {
   }
 
   async sendChat(opts: ChatSendOptions): Promise<{ runId: string }> {
-    const runId = randomUUID();
+    const runId = opts.runId ?? randomUUID();
     await this.client.request("chat.send", {
       sessionKey: opts.sessionKey,
       message: opts.message,
@@ -195,8 +200,8 @@ export class GatewayChatClient {
     return await this.client.request<GatewayAgentsList>("agents.list", {});
   }
 
-  async patchSession(opts: SessionsPatchParams) {
-    return await this.client.request("sessions.patch", opts);
+  async patchSession(opts: SessionsPatchParams): Promise<SessionsPatchResult> {
+    return await this.client.request<SessionsPatchResult>("sessions.patch", opts);
   }
 
   async resetSession(key: string) {
@@ -220,8 +225,16 @@ export function resolveGatewayConnection(opts: GatewayConnectionOptions) {
   const authToken = config.gateway?.auth?.token;
 
   const localPort = resolveGatewayPort(config);
+  const urlOverride =
+    typeof opts.url === "string" && opts.url.trim().length > 0 ? opts.url.trim() : undefined;
+  const explicitAuth = resolveExplicitGatewayAuth({ token: opts.token, password: opts.password });
+  ensureExplicitGatewayAuth({
+    urlOverride,
+    auth: explicitAuth,
+    errorHint: "Fix: pass --token or --password when using --url.",
+  });
   const url =
-    (typeof opts.url === "string" && opts.url.trim().length > 0 ? opts.url.trim() : undefined) ||
+    urlOverride ||
     (typeof remote?.url === "string" && remote.url.trim().length > 0
       ? remote.url.trim()
       : undefined) ||

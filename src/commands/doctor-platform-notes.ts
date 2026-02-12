@@ -3,7 +3,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-
 import type { VersoConfig } from "../config/config.js";
 import { note } from "../terminal/note.js";
 import { shortenHomePath } from "../utils.js";
@@ -15,10 +14,14 @@ function resolveHomeDir(): string {
 }
 
 export async function noteMacLaunchAgentOverrides() {
-  if (process.platform !== "darwin") return;
+  if (process.platform !== "darwin") {
+    return;
+  }
   const markerPath = path.join(resolveHomeDir(), ".verso", "disable-launchagent");
   const hasMarker = fs.existsSync(markerPath);
-  if (!hasMarker) return;
+  if (!hasMarker) {
+    return;
+  }
 
   const displayMarkerPath = shortenHomePath(markerPath);
   const lines = [
@@ -60,13 +63,19 @@ export async function noteMacLaunchctlGatewayEnvOverrides(
   },
 ) {
   const platform = deps?.platform ?? process.platform;
-  if (platform !== "darwin") return;
-  if (!hasConfigGatewayCreds(cfg)) return;
+  if (platform !== "darwin") {
+    return;
+  }
+  if (!hasConfigGatewayCreds(cfg)) {
+    return;
+  }
 
   const getenv = deps?.getenv ?? launchctlGetenv;
   const envToken = await getenv("VERSO_GATEWAY_TOKEN");
   const envPassword = await getenv("VERSO_GATEWAY_PASSWORD");
-  if (!envToken && !envPassword) return;
+  if (!envToken && !envPassword) {
+    return;
+  }
 
   const lines = [
     "- launchctl environment overrides detected (can cause confusing unauthorized errors).",
@@ -78,4 +87,29 @@ export async function noteMacLaunchctlGatewayEnvOverrides(
   ].filter((line): line is string => Boolean(line));
 
   (deps?.noteFn ?? note)(lines.join("\n"), "Gateway (macOS)");
+}
+
+export function noteDeprecatedLegacyEnvVars(
+  env: NodeJS.ProcessEnv = process.env,
+  deps?: { noteFn?: typeof note },
+) {
+  const entries = Object.entries(env)
+    .filter(
+      ([key, value]) =>
+        (key.startsWith("MOLTBOT_") || key.startsWith("CLAWDBOT_")) && value?.trim(),
+    )
+    .map(([key]) => key);
+  if (entries.length === 0) {
+    return;
+  }
+
+  const lines = [
+    "- Deprecated legacy environment variables detected (ignored).",
+    "- Use OPENCLAW_* equivalents instead:",
+    ...entries.map((key) => {
+      const suffix = key.slice(key.indexOf("_") + 1);
+      return `  ${key} -> OPENCLAW_${suffix}`;
+    }),
+  ];
+  (deps?.noteFn ?? note)(lines.join("\n"), "Environment");
 }

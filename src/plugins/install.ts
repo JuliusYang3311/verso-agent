@@ -1,9 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
-import { runCommandWithTimeout } from "../process/exec.js";
-import { CONFIG_DIR, resolveUserPath } from "../utils.js";
+import { LEGACY_MANIFEST_KEY, MANIFEST_KEY } from "../compat/legacy-names.js";
 import {
   extractArchive,
   fileExists,
@@ -11,6 +9,9 @@ import {
   resolveArchiveKind,
   resolvePackedRootDir,
 } from "../infra/archive.js";
+import { runCommandWithTimeout } from "../process/exec.js";
+import { scanDirectoryWithSummary } from "../security/skill-scanner.js";
+import { CONFIG_DIR, resolveUserPath } from "../utils.js";
 
 type PluginInstallLogger = {
   info?: (message: string) => void;
@@ -37,16 +38,47 @@ export type InstallPluginResult =
 
 const defaultLogger: PluginInstallLogger = {};
 
+function validatePluginId(pluginId: string): string | null {
+  const trimmed = pluginId.trim();
+  if (!trimmed) {
+    return "Plugin id is required.";
+  }
+  if (trimmed.length > 214) {
+    return "Plugin id must be <= 214 characters.";
+  }
+  if (trimmed.startsWith(".") || trimmed.startsWith("_")) {
+    return "Plugin id must not start with '.' or '_'.";
+  }
+  if (trimmed.includes("..")) {
+    return "Plugin id must not include '..'.";
+  }
+  return null;
+}
+
+function isPathInside(basePath: string, candidatePath: string): boolean {
+  const relative = path.relative(basePath, candidatePath);
+  return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function extensionUsesSkippedScannerPath(entry: string): boolean {
+  const normalized = entry.replaceAll("\\", "/");
+  return normalized.includes("/node_modules/") || normalized.includes("/dist/");
+}
+
 function unscopedPackageName(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed) return trimmed;
+  if (!trimmed) {
+    return trimmed;
+  }
   return trimmed.includes("/") ? (trimmed.split("/").pop() ?? trimmed) : trimmed;
 }
 
 function safeDirName(input: string): string {
   const trimmed = input.trim();
-  if (!trimmed) return trimmed;
-  return trimmed.replaceAll("/", "__");
+  if (!trimmed) {
+    return trimmed;
+  }
+  return trimmed.replaceAll("/", "__").replaceAll("\\", "__");
 }
 
 function safeFileName(input: string): string {
@@ -69,7 +101,34 @@ export function resolvePluginInstallDir(pluginId: string, extensionsDir?: string
   const extensionsBase = extensionsDir
     ? resolveUserPath(extensionsDir)
     : path.join(CONFIG_DIR, "extensions");
-  return path.join(extensionsBase, safeDirName(pluginId));
+  const pluginIdError = validatePluginId(pluginId);
+  if (pluginIdError) {
+    throw new Error(pluginIdError);
+  }
+  const targetDirResult = resolveSafeInstallDir(extensionsBase, pluginId);
+  if (!targetDirResult.ok) {
+    throw new Error(targetDirResult.error);
+  }
+  return targetDirResult.path;
+}
+
+function resolveSafeInstallDir(
+  extensionsDir: string,
+  pluginId: string,
+): { ok: true; path: string } | { ok: false; error: string } {
+  const targetDir = path.join(extensionsDir, safeDirName(pluginId));
+  const resolvedBase = path.resolve(extensionsDir);
+  const resolvedTarget = path.resolve(targetDir);
+  const relative = path.relative(resolvedBase, resolvedTarget);
+  if (
+    !relative ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    return { ok: false, error: "invalid plugin name: path traversal detected" };
+  }
+  return { ok: true, path: targetDir };
 }
 
 async function installPluginFromPackageDir(params: {
@@ -107,6 +166,10 @@ async function installPluginFromPackageDir(params: {
 
   const pkgName = typeof manifest.name === "string" ? manifest.name : "";
   const pluginId = pkgName ? unscopedPackageName(pkgName) : "plugin";
+  const pluginIdError = validatePluginId(pluginId);
+  if (pluginIdError) {
+    return { ok: false, error: pluginIdError };
+  }
   if (params.expectedPluginId && params.expectedPluginId !== pluginId) {
     return {
       ok: false,
@@ -114,12 +177,56 @@ async function installPluginFromPackageDir(params: {
     };
   }
 
+  const packageDir = path.resolve(params.packageDir);
+  const forcedScanEntries: string[] = [];
+  for (const entry of extensions) {
+    const resolvedEntry = path.resolve(packageDir, entry);
+    if (!isPathInside(packageDir, resolvedEntry)) {
+      logger.warn?.(`extension entry escapes plugin directory and will not be scanned: ${entry}`);
+      continue;
+    }
+    if (extensionUsesSkippedScannerPath(entry)) {
+      logger.warn?.(
+        `extension entry is in a hidden/node_modules path and will receive targeted scan coverage: ${entry}`,
+      );
+    }
+    forcedScanEntries.push(resolvedEntry);
+  }
+
+  // Scan plugin source for dangerous code patterns (warn-only; never blocks install)
+  try {
+    const scanSummary = await scanDirectoryWithSummary(params.packageDir, {
+      includeFiles: forcedScanEntries,
+    });
+    if (scanSummary.critical > 0) {
+      const criticalDetails = scanSummary.findings
+        .filter((f) => f.severity === "critical")
+        .map((f) => `${f.message} (${f.file}:${f.line})`)
+        .join("; ");
+      logger.warn?.(
+        `WARNING: Plugin "${pluginId}" contains dangerous code patterns: ${criticalDetails}`,
+      );
+    } else if (scanSummary.warn > 0) {
+      logger.warn?.(
+        `Plugin "${pluginId}" has ${scanSummary.warn} suspicious code pattern(s). Run "openclaw security audit --deep" for details.`,
+      );
+    }
+  } catch (err) {
+    logger.warn?.(
+      `Plugin "${pluginId}" code safety scan failed (${String(err)}). Installation continues; run "openclaw security audit --deep" after install.`,
+    );
+  }
+
   const extensionsDir = params.extensionsDir
     ? resolveUserPath(params.extensionsDir)
     : path.join(CONFIG_DIR, "extensions");
   await fs.mkdir(extensionsDir, { recursive: true });
 
-  const targetDir = path.join(extensionsDir, safeDirName(pluginId));
+  const targetDirResult = resolveSafeInstallDir(extensionsDir, pluginId);
+  if (!targetDirResult.ok) {
+    return { ok: false, error: targetDirResult.error };
+  }
+  const targetDir = targetDirResult.path;
 
   if (mode === "install" && (await fileExists(targetDir))) {
     return {
@@ -157,6 +264,10 @@ async function installPluginFromPackageDir(params: {
 
   for (const entry of extensions) {
     const resolvedEntry = path.resolve(targetDir, entry);
+    if (!isPathInside(targetDir, resolvedEntry)) {
+      logger.warn?.(`extension entry escapes plugin directory: ${entry}`);
+      continue;
+    }
     if (!(await fileExists(resolvedEntry))) {
       logger.warn?.(`extension entry not found: ${entry}`);
     }
@@ -304,6 +415,10 @@ export async function installPluginFromFile(params: {
 
   const base = path.basename(filePath, path.extname(filePath));
   const pluginId = base || "plugin";
+  const pluginIdError = validatePluginId(pluginId);
+  if (pluginIdError) {
+    return { ok: false, error: pluginIdError };
+  }
   const targetFile = path.join(extensionsDir, `${safeFileName(pluginId)}${path.extname(filePath)}`);
 
   if (mode === "install" && (await fileExists(targetFile))) {
@@ -349,7 +464,9 @@ export async function installPluginFromNpmSpec(params: {
   const dryRun = params.dryRun ?? false;
   const expectedPluginId = params.expectedPluginId;
   const spec = params.spec.trim();
-  if (!spec) return { ok: false, error: "missing npm spec" };
+  if (!spec) {
+    return { ok: false, error: "missing npm spec" };
+  }
 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-npm-pack-"));
   logger.info?.(`Downloading ${spec}…`);

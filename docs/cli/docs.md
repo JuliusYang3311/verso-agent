@@ -5,11 +5,3 @@ read_when:
 ---
 
 # `verso docs`
-
-Search the live docs index.
-
-```bash
-verso docs browser extension
-verso docs sandbox allowHostControl
-```
-

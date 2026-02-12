@@ -1,14 +1,26 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-
 import { CONFIG_DIR, ensureDir } from "../utils.js";
 
 export const WIDE_AREA_DISCOVERY_DOMAIN = "verso.internal.";
 export const WIDE_AREA_ZONE_FILENAME = "verso.internal.db";
 
-export function getWideAreaZonePath(): string {
-  return path.join(CONFIG_DIR, "dns", WIDE_AREA_ZONE_FILENAME);
+export function resolveWideAreaDiscoveryDomain(params?: {
+  env?: NodeJS.ProcessEnv;
+  configDomain?: string | null;
+}): string | null {
+  const env = params?.env ?? process.env;
+  const candidate = params?.configDomain ?? env.OPENCLAW_WIDE_AREA_DOMAIN ?? null;
+  return normalizeWideAreaDomain(candidate);
+}
+
+function zoneFilenameForDomain(domain: string): string {
+  return `${domain.replace(/\.$/, "")}.db`;
+}
+
+export function getWideAreaZonePath(domain: string): string {
+  return path.join(CONFIG_DIR, "dns", zoneFilenameForDomain(domain));
 }
 
 function dnsLabel(raw: string, fallback: string): string {
@@ -37,15 +49,21 @@ function formatYyyyMmDd(date: Date): string {
 function nextSerial(existingSerial: number | null, now: Date): number {
   const today = formatYyyyMmDd(now);
   const base = Number.parseInt(`${today}01`, 10);
-  if (!existingSerial || !Number.isFinite(existingSerial)) return base;
+  if (!existingSerial || !Number.isFinite(existingSerial)) {
+    return base;
+  }
   const existing = String(existingSerial);
-  if (existing.startsWith(today)) return existingSerial + 1;
+  if (existing.startsWith(today)) {
+    return existingSerial + 1;
+  }
   return base;
 }
 
 function extractSerial(zoneText: string): number | null {
   const match = zoneText.match(/^\s*@\s+IN\s+SOA\s+\S+\s+\S+\s+(\d+)\s+/m);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const parsed = Number.parseInt(match[1], 10);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -66,6 +84,7 @@ function computeContentHash(body: string): string {
 }
 
 export type WideAreaGatewayZoneOpts = {
+  domain: string;
   gatewayPort: number;
   displayName: string;
   tailnetIPv4: string;
@@ -108,7 +127,7 @@ function renderZone(opts: WideAreaGatewayZoneOpts & { serial: number }): string 
 
   const records: string[] = [];
 
-  records.push(`$ORIGIN ${WIDE_AREA_DISCOVERY_DOMAIN}`);
+  records.push(`$ORIGIN ${domain}`);
   records.push(`$TTL 60`);
   const soaLine = `@ IN SOA ns1 hostmaster ${opts.serial} 7200 3600 1209600 60`;
   records.push(soaLine);
@@ -143,7 +162,11 @@ export function renderWideAreaGatewayZoneText(
 export async function writeWideAreaGatewayZone(
   opts: WideAreaGatewayZoneOpts,
 ): Promise<{ zonePath: string; changed: boolean }> {
-  const zonePath = getWideAreaZonePath();
+  const domain = normalizeWideAreaDomain(opts.domain);
+  if (!domain) {
+    throw new Error("wide-area discovery domain is required");
+  }
+  const zonePath = getWideAreaZonePath(domain);
   await ensureDir(path.dirname(zonePath));
 
   const existing = (() => {

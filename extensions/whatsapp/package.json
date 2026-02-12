@@ -1,9 +1,13 @@
 {
-  "name": "@verso/whatsapp",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/whatsapp",
+  "version": "2026.2.9",
+  "private": true,
   "description": "Verso WhatsApp channel plugin",
-  "verso": {
+  "type": "module",
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ]

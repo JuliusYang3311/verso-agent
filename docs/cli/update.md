@@ -3,6 +3,7 @@ summary: "CLI reference for `verso update` (safe-ish source update + gateway aut
 read_when:
   - You want to update a source checkout safely
   - You need to understand `--update` shorthand behavior
+title: "update"
 ---
 
 # `verso update`
@@ -46,6 +47,7 @@ verso update status --timeout 10
 ```
 
 Options:
+
 - `--json`: print machine-readable status JSON.
 - `--timeout <seconds>`: timeout for checks (default is 3s).
 

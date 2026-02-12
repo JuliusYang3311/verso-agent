@@ -3,6 +3,7 @@ summary: "Twitch chat bot configuration and setup"
 read_when:
   - Setting up Twitch chat integration for Verso
 ---
+
 # Twitch (plugin)
 
 Twitch chat support via IRC connection. Verso connects as a Twitch user (bot account) to receive and send messages in channels.
@@ -23,21 +24,23 @@ Local checkout (when running from a git repo):
 verso plugins install ./extensions/twitch
 ```
 
-Details: [Plugins](/plugin)
+Details: [Plugins](/tools/plugin)
 
 ## Quick setup (beginner)
 
-1) Create a dedicated Twitch account for the bot (or use an existing account).
-2) Generate credentials: [Twitch Token Generator](https://twitchtokengenerator.com/)
+1. Create a dedicated Twitch account for the bot (or use an existing account).
+2. Generate credentials: [Twitch Token Generator](https://twitchtokengenerator.com/)
    - Select **Bot Token**
    - Verify scopes `chat:read` and `chat:write` are selected
    - Copy the **Client ID** and **Access Token**
+
 3) Find your Twitch user ID: https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
 4) Configure the token:
    - Env: `VERSO_TWITCH_ACCESS_TOKEN=...` (default account only)
    - Or config: `channels.twitch.accessToken`
    - If both are set, config takes precedence (env fallback is default-account only).
-5) Start the gateway.
+
+5. Start the gateway.
 
 **⚠️ Important:** Add access control (`allowFrom` or `allowedRoles`) to prevent unauthorized users from triggering the bot. `requireMention` defaults to `true`.
 
@@ -48,13 +51,13 @@ Minimal config:
   channels: {
     twitch: {
       enabled: true,
-      username: "verso",              // Bot's Twitch account
-      accessToken: "oauth:abc123...",    // OAuth Access Token (or use VERSO_TWITCH_ACCESS_TOKEN env var)
-      clientId: "xyz789...",             // Client ID from Token Generator
-      channel: "vevisk",                 // Which Twitch channel's chat to join (required)
-      allowFrom: ["123456789"]           // (recommended) Your Twitch user ID only - get it from https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
-    }
-  }
+      username: "verso", // Bot's Twitch account
+      accessToken: "oauth:abc123...", // OAuth Access Token (or use VERSO_TWITCH_ACCESS_TOKEN env var)
+      clientId: "xyz789...", // Client ID from Token Generator
+      channel: "vevisk", // Which Twitch channel's chat to join (required)
+      allowFrom: ["123456789"], // (recommended) Your Twitch user ID only - get it from https://www.streamweasels.com/tools/convert-twitch-username-to-user-id/
+    },
+  },
 }
 ```
 
@@ -70,6 +73,7 @@ Minimal config:
 ### Generate credentials
 
 Use [Twitch Token Generator](https://twitchtokengenerator.com/):
+
 - Select **Bot Token**
 - Verify scopes `chat:read` and `chat:write` are selected
 - Copy the **Client ID** and **Access Token**
@@ -79,11 +83,13 @@ No manual app registration needed. Tokens expire after several hours.
 ### Configure the bot
 
 **Env var (default account only):**
+
 ```bash
 VERSO_TWITCH_ACCESS_TOKEN=oauth:abc123...
 ```
 
 **Or config:**
+
 ```json5
 {
   channels: {
@@ -92,9 +98,9 @@ VERSO_TWITCH_ACCESS_TOKEN=oauth:abc123...
       username: "verso",
       accessToken: "oauth:abc123...",
       clientId: "xyz789...",
-      channel: "vevisk"
-    }
-  }
+      channel: "vevisk",
+    },
+  },
 }
 ```
 
@@ -106,18 +112,19 @@ If both env and config are set, config takes precedence.
 {
   channels: {
     twitch: {
-      allowFrom: ["123456789"],       // (recommended) Your Twitch user ID only
-      allowedRoles: ["moderator"]     // Or restrict to roles
-    }
-  }
+      allowFrom: ["123456789"], // (recommended) Your Twitch user ID only
+    },
+  },
 }
 ```
+
+Prefer `allowFrom` for a hard allowlist. Use `allowedRoles` instead if you want role-based access.
 
 **Available roles:** `"moderator"`, `"owner"`, `"vip"`, `"subscriber"`, `"all"`.
 
 **Why user IDs?** Usernames can change, allowing impersonation. User IDs are permanent.
 
-Find your Twitch user ID: https://www.streamweasels.com/tools/convert-twitch-username-%20to-user-id/ (Convert your Twitch username to ID)
+Find your Twitch user ID: [https://www.streamweasels.com/tools/convert-twitch-username-%20to-user-id/](https://www.streamweasels.com/tools/convert-twitch-username-%20to-user-id/) (Convert your Twitch username to ID)
 
 ## Token refresh (optional)
 
@@ -130,9 +137,9 @@ For automatic token refresh, create your own Twitch application at [Twitch Devel
   channels: {
     twitch: {
       clientSecret: "your_client_secret",
-      refreshToken: "your_refresh_token"
-    }
-  }
+      refreshToken: "your_refresh_token",
+    },
+  },
 }
 ```
 
@@ -153,17 +160,17 @@ Example (one bot account in two channels):
           username: "verso",
           accessToken: "oauth:abc123...",
           clientId: "xyz789...",
-          channel: "vevisk"
+          channel: "vevisk",
         },
         channel2: {
           username: "verso",
           accessToken: "oauth:def456...",
           clientId: "uvw012...",
-          channel: "secondchannel"
-        }
-      }
-    }
-  }
+          channel: "secondchannel",
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -179,11 +186,11 @@ Example (one bot account in two channels):
     twitch: {
       accounts: {
         default: {
-          allowedRoles: ["moderator", "vip"]
-        }
-      }
-    }
-  }
+          allowedRoles: ["moderator", "vip"],
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -195,17 +202,18 @@ Example (one bot account in two channels):
     twitch: {
       accounts: {
         default: {
-          allowFrom: ["123456789", "987654321"]
-        }
-      }
-    }
-  }
+          allowFrom: ["123456789", "987654321"],
+        },
+      },
+    },
+  },
 }
 ```
 
-### Combined allowlist + roles
+### Role-based access (alternative)
 
-Users in `allowFrom` bypass role checks:
+`allowFrom` is a hard allowlist. When set, only those user IDs are allowed.
+If you want role-based access, leave `allowFrom` unset and configure `allowedRoles` instead:
 
 ```json5
 {
@@ -213,12 +221,11 @@ Users in `allowFrom` bypass role checks:
     twitch: {
       accounts: {
         default: {
-          allowFrom: ["123456789"],
-          allowedRoles: ["moderator"]
-        }
-      }
-    }
-  }
+          allowedRoles: ["moderator"],
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -232,11 +239,11 @@ By default, `requireMention` is `true`. To disable and respond to all messages:
     twitch: {
       accounts: {
         default: {
-          requireMention: false
-        }
-      }
-    }
-  }
+          requireMention: false,
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -251,13 +258,15 @@ verso channels status --probe
 
 ### Bot doesn't respond to messages
 
-**Check access control:** Temporarily set `allowedRoles: ["all"]` to test.
+**Check access control:** Ensure your user ID is in `allowFrom`, or temporarily remove
+`allowFrom` and set `allowedRoles: ["all"]` to test.
 
 **Check the bot is in the channel:** The bot must join the channel specified in `channel`.
 
 ### Token issues
 
 **"Failed to connect" or authentication errors:**
+
 - Verify `accessToken` is the OAuth access token value (typically starts with `oauth:` prefix)
 - Check token has `chat:read` and `chat:write` scopes
 - If using token refresh, verify `clientSecret` and `refreshToken` are set
@@ -265,18 +274,21 @@ verso channels status --probe
 ### Token refresh not working
 
 **Check logs for refresh events:**
+
 ```
 Using env token source for mybot
 Access token refreshed for user 123456 (expires in 14400s)
 ```
 
 If you see "token refresh disabled (no refresh token)":
+
 - Ensure `clientSecret` is provided
 - Ensure `refreshToken` is provided
 
 ## Config
 
 **Account config:**
+
 - `username` - Bot username
 - `accessToken` - OAuth access token with `chat:read` and `chat:write`
 - `clientId` - Twitch Client ID (from Token Generator or your app)
@@ -291,6 +303,7 @@ If you see "token refresh disabled (no refresh token)":
 - `requireMention` - Require @mention (default: `true`)
 
 **Provider options:**
+
 - `channels.twitch.enabled` - Enable/disable channel startup
 - `channels.twitch.username` - Bot username (simplified single-account config)
 - `channels.twitch.accessToken` - OAuth access token (simplified single-account config)
@@ -325,28 +338,29 @@ Full example:
           expiresIn: 14400,
           obtainmentTimestamp: 1706092800000,
           allowFrom: ["123456789", "987654321"],
-          allowedRoles: ["moderator"]
-        }
-      }
-    }
-  }
+          allowedRoles: ["moderator"],
+        },
+      },
+    },
+  },
 }
 ```
 
 ## Tool actions
 
 The agent can call `twitch` with action:
+
 - `send` - Send a message to a channel
 
 Example:
 
 ```json5
 {
-  "action": "twitch",
-  "params": {
-    "message": "Hello Twitch!",
-    "to": "#mychannel"
-  }
+  action: "twitch",
+  params: {
+    message: "Hello Twitch!",
+    to: "#mychannel",
+  },
 }
 ```
 

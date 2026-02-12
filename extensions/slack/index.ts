@@ -1,6 +1,5 @@
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
 import { slackPlugin } from "./src/channel.js";
 import { setSlackRuntime } from "./src/runtime.js";
 

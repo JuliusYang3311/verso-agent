@@ -10,12 +10,7 @@ import {
   normalizeAccountId,
   promptAccountId,
 } from "verso/plugin-sdk";
-
-import {
-  listZaloAccountIds,
-  resolveDefaultZaloAccountId,
-  resolveZaloAccount,
-} from "./accounts.js";
+import { listZaloAccountIds, resolveDefaultZaloAccountId, resolveZaloAccount } from "./accounts.js";
 
 const channel = "zalo" as const;
 
@@ -25,7 +20,8 @@ function setZaloDmPolicy(
   cfg: VersoConfig,
   dmPolicy: "pairing" | "allowlist" | "open" | "disabled",
 ) {
-  const allowFrom = dmPolicy === "open" ? addWildcardAllowFrom(cfg.channels?.zalo?.allowFrom) : undefined;
+  const allowFrom =
+    dmPolicy === "open" ? addWildcardAllowFrom(cfg.channels?.zalo?.allowFrom) : undefined;
   return {
     ...cfg,
     channels: {
@@ -64,17 +60,9 @@ function setZaloUpdateMode(
         },
       } as VersoConfig;
     }
-    const accounts = { ...(cfg.channels?.zalo?.accounts ?? {}) } as Record<
-      string,
-      Record<string, unknown>
-    >;
+    const accounts = { ...cfg.channels?.zalo?.accounts } as Record<string, Record<string, unknown>>;
     const existing = accounts[accountId] ?? {};
-    const {
-      webhookUrl: _url,
-      webhookSecret: _secret,
-      webhookPath: _path,
-      ...rest
-    } = existing;
+    const { webhookUrl: _url, webhookSecret: _secret, webhookPath: _path, ...rest } = existing;
     accounts[accountId] = rest;
     return {
       ...cfg,
@@ -103,12 +91,9 @@ function setZaloUpdateMode(
     } as VersoConfig;
   }
 
-  const accounts = { ...(cfg.channels?.zalo?.accounts ?? {}) } as Record<
-    string,
-    Record<string, unknown>
-  >;
+  const accounts = { ...cfg.channels?.zalo?.accounts } as Record<string, Record<string, unknown>>;
   accounts[accountId] = {
-    ...(accounts[accountId] ?? {}),
+    ...accounts[accountId],
     webhookUrl,
     webhookSecret,
     webhookPath,
@@ -132,7 +117,7 @@ async function noteZaloTokenHelp(prompter: WizardPrompter): Promise<void> {
       "2) Create a bot and get the token",
       "3) Token looks like 12345689:abc-xyz",
       "Tip: you can also set ZALO_BOT_TOKEN in your env.",
-      "Docs: https://docs.molt.bot/channels/zalo",
+      "Docs: https://docs.openclaw.ai/channels/zalo",
     ].join("\n"),
     "Zalo bot token",
   );
@@ -152,8 +137,12 @@ async function promptZaloAllowFrom(params: {
     initialValue: existingAllowFrom[0] ? String(existingAllowFrom[0]) : undefined,
     validate: (value) => {
       const raw = String(value ?? "").trim();
-      if (!raw) return "Required";
-      if (!/^\d+$/.test(raw)) return "Use a numeric Zalo user id";
+      if (!raw) {
+        return "Required";
+      }
+      if (!/^\d+$/.test(raw)) {
+        return "Use a numeric Zalo user id";
+      }
       return undefined;
     },
   });
@@ -187,9 +176,9 @@ async function promptZaloAllowFrom(params: {
         ...cfg.channels?.zalo,
         enabled: true,
         accounts: {
-          ...(cfg.channels?.zalo?.accounts ?? {}),
+          ...cfg.channels?.zalo?.accounts,
           [accountId]: {
-            ...(cfg.channels?.zalo?.accounts?.[accountId] ?? {}),
+            ...cfg.channels?.zalo?.accounts?.[accountId],
             enabled: cfg.channels?.zalo?.accounts?.[accountId]?.enabled ?? true,
             dmPolicy: "allowlist",
             allowFrom: unique,
@@ -210,7 +199,7 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
   promptAllowFrom: async ({ cfg, prompter, accountId }) => {
     const id =
       accountId && normalizeAccountId(accountId)
-        ? normalizeAccountId(accountId) ?? DEFAULT_ACCOUNT_ID
+        ? (normalizeAccountId(accountId) ?? DEFAULT_ACCOUNT_ID)
         : resolveDefaultZaloAccountId(cfg as VersoConfig);
     return promptZaloAllowFrom({
       cfg: cfg as VersoConfig,
@@ -235,12 +224,16 @@ export const zaloOnboardingAdapter: ChannelOnboardingAdapter = {
       quickstartScore: configured ? 1 : 10,
     };
   },
-  configure: async ({ cfg, prompter, accountOverrides, shouldPromptAccountIds, forceAllowFrom }) => {
+  configure: async ({
+    cfg,
+    prompter,
+    accountOverrides,
+    shouldPromptAccountIds,
+    forceAllowFrom,
+  }) => {
     const zaloOverride = accountOverrides.zalo?.trim();
     const defaultZaloAccountId = resolveDefaultZaloAccountId(cfg as VersoConfig);
-    let zaloAccountId = zaloOverride
-      ? normalizeAccountId(zaloOverride)
-      : defaultZaloAccountId;
+    let zaloAccountId = zaloOverride ? normalizeAccountId(zaloOverride) : defaultZaloAccountId;
     if (shouldPromptAccountIds && !zaloOverride) {
       zaloAccountId = await promptAccountId({
         cfg: cfg as VersoConfig,
@@ -333,9 +326,9 @@ export const zaloOnboardingAdapter: ChannelOnboardingAdapter = {
               ...next.channels?.zalo,
               enabled: true,
               accounts: {
-                ...(next.channels?.zalo?.accounts ?? {}),
+                ...next.channels?.zalo?.accounts,
                 [zaloAccountId]: {
-                  ...(next.channels?.zalo?.accounts?.[zaloAccountId] ?? {}),
+                  ...next.channels?.zalo?.accounts?.[zaloAccountId],
                   enabled: true,
                   botToken: token,
                 },
@@ -354,7 +347,8 @@ export const zaloOnboardingAdapter: ChannelOnboardingAdapter = {
       const webhookUrl = String(
         await prompter.text({
           message: "Webhook URL (https://...) ",
-          validate: (value) => (value?.trim()?.startsWith("https://") ? undefined : "HTTPS URL required"),
+          validate: (value) =>
+            value?.trim()?.startsWith("https://") ? undefined : "HTTPS URL required",
         }),
       ).trim();
       const defaultPath = (() => {
@@ -369,7 +363,9 @@ export const zaloOnboardingAdapter: ChannelOnboardingAdapter = {
           message: "Webhook secret (8-256 chars)",
           validate: (value) => {
             const raw = String(value ?? "");
-            if (raw.length < 8 || raw.length > 256) return "8-256 chars";
+            if (raw.length < 8 || raw.length > 256) {
+              return "8-256 chars";
+            }
             return undefined;
           },
         }),

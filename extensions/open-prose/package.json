@@ -1,9 +1,13 @@
 {
-  "name": "@verso/open-prose",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/open-prose",
+  "version": "2026.2.9",
+  "private": true,
   "description": "OpenProse VM skill pack plugin (slash command + telemetry).",
-  "verso": {
+  "type": "module",
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ]

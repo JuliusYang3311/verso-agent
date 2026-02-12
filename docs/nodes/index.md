@@ -4,6 +4,7 @@ read_when:
   - Pairing iOS/Android nodes to a gateway
   - Using node canvas/camera for agent context
   - Adding new node commands or CLI helpers
+title: "Nodes"
 ---
 
 # Nodes
@@ -15,8 +16,10 @@ Legacy transport: [Bridge protocol](/gateway/bridge-protocol) (TCP JSONL; deprec
 macOS can also run in **node mode**: the menubar app connects to the Gateway’s WS server and exposes its local canvas/camera commands as a node (so `verso nodes …` works against this Mac).
 
 Notes:
+
 - Nodes are **peripherals**, not gateways. They don’t run the gateway service.
 - Telegram/WhatsApp/etc. messages land on the **gateway**, not on nodes.
+- Troubleshooting runbook: [/nodes/troubleshooting](/nodes/troubleshooting)
 
 ## Pairing + status
 
@@ -34,6 +37,7 @@ verso nodes describe --node <idOrNameOrIp>
 ```
 
 Notes:
+
 - `nodes status` marks a node as **paired** when its device pairing role includes `node`.
 - `node.pair.*` (CLI: `verso nodes pending/approve/reject`) is a separate gateway-owned
   node pairing store; it does **not** gate the WS `connect` handshake.
@@ -45,6 +49,7 @@ to execute on another. The model still talks to the **gateway**; the gateway
 forwards `exec` calls to the **node host** when `host=node` is selected.
 
 ### What runs where
+
 - **Gateway host**: receives messages, runs the model, routes tool calls.
 - **Node host**: executes `system.run`/`system.which` on the node machine.
 - **Approvals**: enforced on the node host via `~/.verso/exec-approvals.json`.
@@ -56,6 +61,28 @@ On the node machine:
 ```bash
 verso node run --host <gateway-host> --port 18789 --display-name "Build Node"
 ```
+
+### Remote gateway via SSH tunnel (loopback bind)
+
+If the Gateway binds to loopback (`gateway.bind=loopback`, default in local mode),
+remote node hosts cannot connect directly. Create an SSH tunnel and point the
+node host at the local end of the tunnel.
+
+Example (node host -> gateway host):
+
+```bash
+# Terminal A (keep running): forward local 18790 -> gateway 127.0.0.1:18789
+ssh -N -L 18790:127.0.0.1:18789 user@gateway-host
+
+# Terminal B: export the gateway token and connect through the tunnel
+export OPENCLAW_GATEWAY_TOKEN="<gateway-token>"
+openclaw node run --host 127.0.0.1 --port 18790 --display-name "Build Node"
+```
+
+Notes:
+
+- The token is `gateway.auth.token` from the gateway config (`~/.openclaw/openclaw.json` on the gateway host).
+- `openclaw node run` reads `OPENCLAW_GATEWAY_TOKEN` for auth.
 
 ### Start a node host (service)
 
@@ -75,8 +102,20 @@ verso nodes list
 ```
 
 Naming options:
+
 - `--display-name` on `verso node run` / `verso node install` (persists in `~/.verso/node.json` on the node).
-- `verso nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
+- # `verso nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
+  openclaw nodes pending
+  openclaw nodes approve <requestId>
+  openclaw nodes list
+
+````
+
+Naming options:
+
+- `--display-name` on `openclaw node run` / `openclaw node install` (persists in `~/.openclaw/node.json` on the node).
+- `openclaw nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
+>>>>>>> upstream/main
 
 ### Allowlist the commands
 
@@ -85,7 +124,7 @@ Exec approvals are **per node host**. Add allowlist entries from the gateway:
 ```bash
 verso approvals allowlist add --node <id|name|ip> "/usr/bin/uname"
 verso approvals allowlist add --node <id|name|ip> "/usr/bin/sw_vers"
-```
+````
 
 Approvals live on the node host at `~/.verso/exec-approvals.json`.
 
@@ -109,6 +148,7 @@ Once set, any `exec` call with `host=node` runs on the node host (subject to the
 node allowlist/approvals).
 
 Related:
+
 - [Node host CLI](/cli/node)
 - [Exec tool](/tools/exec)
 - [Exec approvals](/tools/exec-approvals)
@@ -144,6 +184,7 @@ verso nodes canvas eval --node <idOrNameOrIp> --js "document.title"
 ```
 
 Notes:
+
 - `canvas present` accepts URLs or local file paths (`--target`), plus optional `--x/--y/--width/--height` for positioning.
 - `canvas eval` accepts inline JS (`--js`) or a positional arg.
 
@@ -156,6 +197,7 @@ verso nodes canvas a2ui reset --node <idOrNameOrIp>
 ```
 
 Notes:
+
 - Only A2UI v0.8 JSONL is supported (v0.9/createSurface is rejected).
 
 ## Photos + videos (node camera)
@@ -176,6 +218,7 @@ verso nodes camera clip --node <idOrNameOrIp> --duration 3000 --no-audio
 ```
 
 Notes:
+
 - The node must be **foregrounded** for `canvas.*` and `camera.*` (background calls return `NODE_BACKGROUND_UNAVAILABLE`).
 - Clip duration is clamped (currently `<= 60s`) to avoid oversized base64 payloads.
 - Android will prompt for `CAMERA`/`RECORD_AUDIO` permissions when possible; denied permissions fail with `*_PERMISSION_REQUIRED`.
@@ -190,6 +233,7 @@ verso nodes screen record --node <idOrNameOrIp> --duration 10s --fps 10 --no-aud
 ```
 
 Notes:
+
 - `screen.record` requires the node app to be foregrounded.
 - Android will show the system screen-capture prompt before recording.
 - Screen recordings are clamped to `<= 60s`.
@@ -208,6 +252,7 @@ verso nodes location get --node <idOrNameOrIp> --accuracy precise --max-age 1500
 ```
 
 Notes:
+
 - Location is **off by default**.
 - “Always” requires system permission; background fetch is best-effort.
 - The response includes lat/lon, accuracy (meters), and timestamp.
@@ -223,6 +268,7 @@ verso nodes invoke --node <idOrNameOrIp> --command sms.send --params '{"to":"+15
 ```
 
 Notes:
+
 - The permission prompt must be accepted on the Android device before the capability is advertised.
 - Wi-Fi-only devices without telephony will not advertise `sms.send`.
 
@@ -239,6 +285,7 @@ verso nodes notify --node <idOrNameOrIp> --title "Ping" --body "Gateway ready"
 ```
 
 Notes:
+
 - `system.run` returns stdout/stderr/exit code in the payload.
 - `system.notify` respects notification permission state on the macOS app.
 - `system.run` supports `--cwd`, `--env KEY=VAL`, `--command-timeout`, and `--needs-screen-recording`.
@@ -290,6 +337,7 @@ verso node run --host <gateway-host> --port 18789
 ```
 
 Notes:
+
 - Pairing is still required (the Gateway will show a node approval prompt).
 - The node host stores its node id, token, display name, and gateway connection info in `~/.verso/node.json`.
 - Exec approvals are enforced locally via `~/.verso/exec-approvals.json`

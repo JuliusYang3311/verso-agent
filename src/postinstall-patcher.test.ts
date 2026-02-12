@@ -2,7 +2,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-
 import {
   applyPatchSet,
   detectPackageManager,
@@ -103,7 +102,6 @@ index 0000000..1111111 100644
      toCell = function (isBlack) {
 `;
 
-    applyPatchSet({ patchText, targetDir: dir });
     applyPatchSet({ patchText, targetDir: dir });
 
     const updated = fs.readFileSync(filePath, "utf-8");

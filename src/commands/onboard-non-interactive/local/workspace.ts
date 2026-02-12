@@ -1,6 +1,6 @@
 import type { VersoConfig } from "../../../config/config.js";
-import { resolveUserPath } from "../../../utils.js";
 import type { OnboardOptions } from "../../onboard-types.js";
+import { resolveUserPath } from "../../../utils.js";
 
 export function resolveNonInteractiveWorkspaceDir(params: {
   opts: OnboardOptions;

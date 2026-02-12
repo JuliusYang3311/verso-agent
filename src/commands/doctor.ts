@@ -1,6 +1,7 @@
-import fs from "node:fs";
-
 import { intro as clackIntro, outro as clackOutro } from "@clack/prompts";
+import fs from "node:fs";
+import type { VersoConfig } from "../config/config.js";
+import type { RuntimeEnv } from "../runtime.js";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";
@@ -10,14 +11,12 @@ import {
   resolveHooksGmailModel,
 } from "../agents/model-selection.js";
 import { formatCliCommand } from "../cli/command-format.js";
-import type { VersoConfig } from "../config/config.js";
 import { CONFIG_PATH, readConfigFileSnapshot, writeConfigFile } from "../config/config.js";
 import { logConfigUpdated } from "../config/logging.js";
 import { resolveGatewayService } from "../daemon/service.js";
 import { resolveGatewayAuth } from "../gateway/auth.js";
 import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { resolveVersoPackageRoot } from "../infra/verso-root.js";
-import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { note } from "../terminal/note.js";
 import { stylePromptTitle } from "../terminal/prompt-style.js";
@@ -27,11 +26,11 @@ import {
   maybeRepairAnthropicOAuthProfileId,
   noteAuthProfileHealth,
 } from "./doctor-auth.js";
+import { doctorShellCompletion } from "./doctor-completion.js";
 import { loadAndMaybeMigrateDoctorConfig } from "./doctor-config-flow.js";
 import { maybeRepairGatewayDaemon } from "./doctor-gateway-daemon-flow.js";
 import { checkGatewayHealth } from "./doctor-gateway-health.js";
 import {
-  maybeMigrateLegacyGatewayService,
   maybeRepairGatewayServiceConfig,
   maybeScanExtraGatewayServices,
 } from "./doctor-gateway-services.js";
@@ -39,6 +38,7 @@ import { noteSourceInstallIssues } from "./doctor-install.js";
 import {
   noteMacLaunchAgentOverrides,
   noteMacLaunchctlGatewayEnvOverrides,
+  noteDeprecatedLegacyEnvVars,
 } from "./doctor-platform-notes.js";
 import { createDoctorPrompter, type DoctorOptions } from "./doctor-prompter.js";
 import { maybeRepairSandboxImages, noteSandboxScopeWarnings } from "./doctor-sandbox.js";
@@ -50,8 +50,8 @@ import {
 } from "./doctor-state-migrations.js";
 import { maybeRepairUiProtocolFreshness } from "./doctor-ui.js";
 import { maybeOfferUpdateBeforeDoctor } from "./doctor-update.js";
-import { MEMORY_SYSTEM_PROMPT, shouldSuggestMemorySystem } from "./doctor-workspace.js";
 import { noteWorkspaceStatus } from "./doctor-workspace-status.js";
+import { MEMORY_SYSTEM_PROMPT, shouldSuggestMemorySystem } from "./doctor-workspace.js";
 import { applyWizardMetadata, printWizardHeader, randomToken } from "./onboard-helpers.js";
 import { ensureSystemdUserLingerInteractive } from "./systemd-linger.js";
 
@@ -83,10 +83,13 @@ export async function doctorCommand(
     confirm: (p) => prompter.confirm(p),
     outro,
   });
-  if (updateResult.handled) return;
+  if (updateResult.handled) {
+    return;
+  }
 
   await maybeRepairUiProtocolFreshness(runtime, prompter);
   noteSourceInstallIssues(root);
+  noteDeprecatedLegacyEnvVars();
 
   const configResult = await loadAndMaybeMigrateDoctorConfig({
     options,
@@ -184,8 +187,7 @@ export async function doctorCommand(
   cfg = await maybeRepairSandboxImages(cfg, runtime, prompter);
   noteSandboxScopeWarnings(cfg);
 
-  await maybeMigrateLegacyGatewayService(cfg, resolveMode(cfg), runtime, prompter);
-  await maybeScanExtraGatewayServices(options);
+  await maybeScanExtraGatewayServices(options, runtime, prompter);
   await maybeRepairGatewayServiceConfig(cfg, resolveMode(cfg), runtime, prompter);
   await noteMacLaunchAgentOverrides();
   await noteMacLaunchctlGatewayEnvOverrides(cfg);
@@ -257,6 +259,11 @@ export async function doctorCommand(
   }
 
   noteWorkspaceStatus(cfg);
+
+  // Check and fix shell completion
+  await doctorShellCompletion(runtime, prompter, {
+    nonInteractive: options.nonInteractive,
+  });
 
   const { healthOk } = await checkGatewayHealth({
     runtime,

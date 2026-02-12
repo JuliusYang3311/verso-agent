@@ -96,21 +96,29 @@ describe("daemon-cli coverage", () => {
   });
 
   afterEach(() => {
-    if (originalEnv.VERSO_STATE_DIR !== undefined)
+    if (originalEnv.VERSO_STATE_DIR !== undefined) {
       process.env.VERSO_STATE_DIR = originalEnv.VERSO_STATE_DIR;
-    else delete process.env.VERSO_STATE_DIR;
+    } else {
+      delete process.env.VERSO_STATE_DIR;
+    }
 
-    if (originalEnv.VERSO_CONFIG_PATH !== undefined)
+    if (originalEnv.VERSO_CONFIG_PATH !== undefined) {
       process.env.VERSO_CONFIG_PATH = originalEnv.VERSO_CONFIG_PATH;
-    else delete process.env.VERSO_CONFIG_PATH;
+    } else {
+      delete process.env.VERSO_CONFIG_PATH;
+    }
 
-    if (originalEnv.VERSO_GATEWAY_PORT !== undefined)
+    if (originalEnv.VERSO_GATEWAY_PORT !== undefined) {
       process.env.VERSO_GATEWAY_PORT = originalEnv.VERSO_GATEWAY_PORT;
-    else delete process.env.VERSO_GATEWAY_PORT;
+    } else {
+      delete process.env.VERSO_GATEWAY_PORT;
+    }
 
-    if (originalEnv.VERSO_PROFILE !== undefined)
+    if (originalEnv.VERSO_PROFILE !== undefined) {
       process.env.VERSO_PROFILE = originalEnv.VERSO_PROFILE;
-    else delete process.env.VERSO_PROFILE;
+    } else {
+      delete process.env.VERSO_PROFILE;
+    }
   });
 
   it("probes gateway status by default", async () => {

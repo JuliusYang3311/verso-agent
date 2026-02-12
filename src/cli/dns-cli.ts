@@ -1,12 +1,10 @@
+import type { Command } from "commander";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-
-import type { Command } from "commander";
-
 import { loadConfig } from "../config/config.js";
 import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "../infra/tailnet.js";
-import { getWideAreaZonePath, WIDE_AREA_DISCOVERY_DOMAIN } from "../infra/widearea-dns.js";
+import { getWideAreaZonePath, resolveWideAreaDiscoveryDomain } from "../infra/widearea-dns.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { renderTable } from "../terminal/table.js";
@@ -19,7 +17,9 @@ function run(cmd: string, args: string[], opts?: RunOpts): string {
     encoding: "utf-8",
     stdio: opts?.inherit ? "inherit" : "pipe",
   });
-  if (res.error) throw res.error;
+  if (res.error) {
+    throw res.error;
+  }
   if (!opts?.allowFailure && res.status !== 0) {
     const errText =
       typeof res.stderr === "string" && res.stderr.trim()
@@ -46,7 +46,9 @@ function writeFileSudoIfNeeded(filePath: string, content: string): void {
     encoding: "utf-8",
     stdio: ["pipe", "ignore", "inherit"],
   });
-  if (res.error) throw res.error;
+  if (res.error) {
+    throw res.error;
+  }
   if (res.status !== 0) {
     throw new Error(`sudo tee ${filePath} failed: exit ${res.status ?? "unknown"}`);
   }
@@ -67,7 +69,9 @@ function mkdirSudoIfNeeded(dirPath: string): void {
 }
 
 function zoneFileNeedsBootstrap(zonePath: string): boolean {
-  if (!fs.existsSync(zonePath)) return true;
+  if (!fs.existsSync(zonePath)) {
+    return true;
+  }
   try {
     const content = fs.readFileSync(zonePath, "utf-8");
     return !/\bSOA\b/.test(content) || !/\bNS\b/.test(content);
@@ -79,13 +83,17 @@ function zoneFileNeedsBootstrap(zonePath: string): boolean {
 function detectBrewPrefix(): string {
   const out = run("brew", ["--prefix"]);
   const prefix = out.trim();
-  if (!prefix) throw new Error("failed to resolve Homebrew prefix");
+  if (!prefix) {
+    throw new Error("failed to resolve Homebrew prefix");
+  }
   return prefix;
 }
 
 function ensureImportLine(corefilePath: string, importGlob: string): boolean {
   const existing = fs.readFileSync(corefilePath, "utf-8");
-  if (existing.includes(importGlob)) return false;
+  if (existing.includes(importGlob)) {
+    return false;
+  }
   const next = `${existing.replace(/\s*$/, "")}\n\nimport ${importGlob}\n`;
   writeFileSudoIfNeeded(corefilePath, next);
   return true;
@@ -97,7 +105,7 @@ export function registerDnsCli(program: Command) {
     .description("DNS helpers for wide-area discovery (Tailscale + CoreDNS)")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "docs.molt.bot/cli/dns")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "docs.openclaw.ai/cli/dns")}\n`,
     );
 
   dns
@@ -112,7 +120,15 @@ export function registerDnsCli(program: Command) {
       const cfg = loadConfig();
       const tailnetIPv4 = pickPrimaryTailnetIPv4();
       const tailnetIPv6 = pickPrimaryTailnetIPv6();
-      const zonePath = getWideAreaZonePath();
+      const wideAreaDomain = resolveWideAreaDiscoveryDomain({
+        configDomain: (opts.domain as string | undefined) ?? cfg.discovery?.wideArea?.domain,
+      });
+      if (!wideAreaDomain) {
+        throw new Error(
+          "No wide-area domain configured. Set discovery.wideArea.domain or pass --domain.",
+        );
+      }
+      const zonePath = getWideAreaZonePath(wideAreaDomain);
 
       const tableWidth = Math.max(60, (process.stdout.columns ?? 120) - 1);
       defaultRuntime.log(theme.heading("DNS setup"));
@@ -124,7 +140,7 @@ export function registerDnsCli(program: Command) {
             { key: "Value", header: "Value", minWidth: 24, flex: true },
           ],
           rows: [
-            { Key: "Domain", Value: WIDE_AREA_DISCOVERY_DOMAIN },
+            { Key: "Domain", Value: wideAreaDomain },
             { Key: "Zone file", Value: zonePath },
             {
               Key: "Tailnet IP",
@@ -139,7 +155,7 @@ export function registerDnsCli(program: Command) {
         JSON.stringify(
           {
             gateway: { bind: "auto" },
-            discovery: { wideArea: { enabled: true } },
+            discovery: { wideArea: { enabled: true, domain: wideAreaDomain } },
           },
           null,
           2,
@@ -189,7 +205,7 @@ export function registerDnsCli(program: Command) {
       const bindArgs = [tailnetIPv4, tailnetIPv6].filter((v): v is string => Boolean(v?.trim()));
 
       const server = [
-        `${WIDE_AREA_DISCOVERY_DOMAIN.replace(/\.$/, "")}:53 {`,
+        `${wideAreaDomain.replace(/\.$/, "")}:53 {`,
         `  bind ${bindArgs.join(" ")}`,
         `  file ${zonePath} {`,
         `    reload 10s`,

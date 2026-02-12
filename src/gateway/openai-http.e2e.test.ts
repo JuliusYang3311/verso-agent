@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
 import { HISTORY_CONTEXT_MARKER } from "../auto-reply/reply/history.js";
 import { CURRENT_MESSAGE_MARKER } from "../auto-reply/reply/mentions.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
@@ -385,7 +384,6 @@ describe("OpenAI-compatible HTTP API (e2e)", () => {
         agentCommand.mockReset();
         agentCommand.mockImplementationOnce(async (opts: unknown) => {
           const runId = (opts as { runId?: string } | undefined)?.runId ?? "";
-          emitAgentEvent({ runId, stream: "assistant", data: { delta: "hi" } });
           emitAgentEvent({ runId, stream: "assistant", data: { delta: "hi" } });
           return { payloads: [{ text: "hihi" }] } as never;
         });

@@ -1,9 +1,12 @@
 {
-  "name": "@verso/discord",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/discord",
+  "version": "2026.2.9",
   "description": "Verso Discord channel plugin",
-  "verso": {
+  "type": "module",
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ]

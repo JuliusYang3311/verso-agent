@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-
 import type { VersoConfig } from "../config/config.js";
 
 const mocks = vi.hoisted(() => ({

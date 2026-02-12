@@ -28,14 +28,22 @@ export type SkillsCheckOptions = {
 };
 
 function appendVersoHubHint(output: string, json?: boolean): string {
-  if (json) return output;
+  if (json) {
+    return output;
+  }
   return `${output}\n\nTip: use \`npx versohub\` to search, install, and sync skills.`;
 }
 
 function formatSkillStatus(skill: SkillStatusEntry): string {
-  if (skill.eligible) return theme.success("✓ ready");
-  if (skill.disabled) return theme.warn("⏸ disabled");
-  if (skill.blockedByAllowlist) return theme.warn("🚫 blocked");
+  if (skill.eligible) {
+    return theme.success("✓ ready");
+  }
+  if (skill.disabled) {
+    return theme.warn("⏸ disabled");
+  }
+  if (skill.blockedByAllowlist) {
+    return theme.warn("🚫 blocked");
+  }
   return theme.error("✗ missing");
 }
 
@@ -82,6 +90,7 @@ export function formatSkillsList(report: SkillStatusReport, opts: SkillsListOpti
         disabled: s.disabled,
         blockedByAllowlist: s.blockedByAllowlist,
         source: s.source,
+        bundled: s.bundled,
         primaryEnv: s.primaryEnv,
         homepage: s.homepage,
         missing: s.missing,
@@ -337,7 +346,7 @@ export function registerSkillsCli(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/skills", "docs.molt.bot/cli/skills")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/skills", "docs.openclaw.ai/cli/skills")}\n`,
     );
 
   skills

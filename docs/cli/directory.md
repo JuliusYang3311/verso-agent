@@ -3,6 +3,7 @@ summary: "CLI reference for `verso directory` (self, peers, groups)"
 read_when:
   - You want to look up contacts/groups/self ids for a channel
   - You are developing a channel directory adapter
+title: "directory"
 ---
 
 # `verso directory`
@@ -10,12 +11,17 @@ read_when:
 Directory lookups for channels that support it (contacts/peers, groups, and “me”).
 
 ## Common flags
+
 - `--channel <name>`: channel id/alias (required when multiple channels are configured; auto when only one is configured)
 - `--account <id>`: account id (default: channel default)
 - `--json`: output JSON
 
 ## Notes
-- `directory` is meant to help you find IDs you can paste into other commands (especially `verso message send --target ...`).
+
+- # `directory` is meant to help you find IDs you can paste into other commands (especially `verso message send --target ...`).
+
+- `directory` is meant to help you find IDs you can paste into other commands (especially `openclaw message send --target ...`).
+  > > > > > > > upstream/main
 - For many channels, results are config-backed (allowlists / configured groups) rather than a live provider directory.
 - Default output is `id` (and sometimes `name`) separated by a tab; use `--json` for scripting.
 

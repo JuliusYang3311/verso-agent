@@ -13,7 +13,9 @@ export type AuthChoice =
   | "openai-api-key"
   | "openrouter-api-key"
   | "ai-gateway-api-key"
+  | "cloudflare-ai-gateway-api-key"
   | "moonshot-api-key"
+  | "moonshot-api-key-cn"
   | "kimi-code-api-key"
   | "synthetic-api-key"
   | "venice-api-key"
@@ -28,13 +30,14 @@ export type AuthChoice =
   | "minimax"
   | "minimax-api"
   | "minimax-api-lightning"
+  | "minimax-portal"
   | "opencode-zen"
   | "github-copilot"
   | "copilot-proxy"
   | "qwen-portal"
-  | "skip"
-  | "ollama"
-  | "custom-openai";
+  | "xai-api-key"
+  | "qianfan-api-key"
+  | "skip";
 export type GatewayAuthChoice = "token" | "password";
 export type ResetScope = "config" | "config+creds+sessions" | "full";
 export type GatewayBind = "loopback" | "lan" | "auto" | "custom" | "tailnet";
@@ -66,6 +69,9 @@ export type OnboardOptions = {
   openaiApiKey?: string;
   openrouterApiKey?: string;
   aiGatewayApiKey?: string;
+  cloudflareAiGatewayAccountId?: string;
+  cloudflareAiGatewayGatewayId?: string;
+  cloudflareAiGatewayApiKey?: string;
   moonshotApiKey?: string;
   kimiCodeApiKey?: string;
   geminiApiKey?: string;
@@ -75,6 +81,8 @@ export type OnboardOptions = {
   syntheticApiKey?: string;
   veniceApiKey?: string;
   opencodeZenApiKey?: string;
+  xaiApiKey?: string;
+  qianfanApiKey?: string;
   gatewayPort?: number;
   gatewayBind?: GatewayBind;
   gatewayAuth?: GatewayAuthChoice;

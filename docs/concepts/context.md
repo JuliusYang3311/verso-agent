@@ -4,17 +4,26 @@ read_when:
   - You want to understand what “context” means in Verso
   - You are debugging why the model “knows” something (or forgot it)
   - You want to reduce context overhead (/context, /status, /compact)
+title: "Context"
 ---
+
 # Context
 
 “Context” is **everything Verso sends to the model for a run**. It is bounded by the model’s **context window** (token limit).
 
 Beginner mental model:
+
+- # **System prompt** (Verso-built): rules, tools, skills list, time/runtime, and injected workspace files.
+  “Context” is **everything Verso sends to the model for a run**. It is bounded by the model’s **context window** (token limit).
+
+Beginner mental model:
+
 - **System prompt** (Verso-built): rules, tools, skills list, time/runtime, and injected workspace files.
+  > > > > > > > upstream/main
 - **Conversation history**: your messages + the assistant’s messages for this session.
 - **Tool calls/results + attachments**: command output, file reads, images/audio, etc.
 
-Context is *not the same thing* as “memory”: memory can be stored on disk and reloaded later; context is what’s inside the model’s current window.
+Context is _not the same thing_ as “memory”: memory can be stored on disk and reloaded later; context is what’s inside the model’s current window.
 
 ## Quick start (inspect context)
 
@@ -24,7 +33,7 @@ Context is *not the same thing* as “memory”: memory can be stored on disk an
 - `/usage tokens` → append per-reply usage footer to normal replies.
 - `/compact` → summarize older history into a compact entry to free window space.
 
-See also: [Slash commands](/tools/slash-commands), [Token use & costs](/token-use), [Compaction](/concepts/compaction).
+See also: [Slash commands](/tools/slash-commands), [Token use & costs](/reference/token-use), [Compaction](/concepts/compaction).
 
 ## Example output
 
@@ -76,6 +85,7 @@ Top tools (schema size):
 ## What counts toward the context window
 
 Everything the model receives counts, including:
+
 - System prompt (all sections).
 - Conversation history.
 - Tool calls + tool results.
@@ -85,7 +95,14 @@ Everything the model receives counts, including:
 
 ## How Verso builds the system prompt
 
+# The system prompt is **Verso-owned** and rebuilt each run. It includes:
+
+## How Verso builds the system prompt
+
 The system prompt is **Verso-owned** and rebuilt each run. It includes:
+
+> > > > > > > upstream/main
+
 - Tool list + short descriptions.
 - Skills list (metadata only; see below).
 - Workspace location.
@@ -97,55 +114,5 @@ Full breakdown: [System Prompt](/concepts/system-prompt).
 
 ## Injected workspace files (Project Context)
 
+<<<<<<< HEAD
 By default, Verso injects a fixed set of workspace files (if present):
-- `AGENTS.md`
-- `SOUL.md`
-- `TOOLS.md`
-- `IDENTITY.md`
-- `USER.md`
-- `HEARTBEAT.md`
-- `BOOTSTRAP.md` (first-run only)
-
-Large files are truncated per-file using `agents.defaults.bootstrapMaxChars` (default `20000` chars). `/context` shows **raw vs injected** sizes and whether truncation happened.
-
-## Skills: what’s injected vs loaded on-demand
-
-The system prompt includes a compact **skills list** (name + description + location). This list has real overhead.
-
-Skill instructions are *not* included by default. The model is expected to `read` the skill’s `SKILL.md` **only when needed**.
-
-## Tools: there are two costs
-
-Tools affect context in two ways:
-1) **Tool list text** in the system prompt (what you see as “Tooling”).
-2) **Tool schemas** (JSON). These are sent to the model so it can call tools. They count toward context even though you don’t see them as plain text.
-
-`/context detail` breaks down the biggest tool schemas so you can see what dominates.
-
-## Commands, directives, and “inline shortcuts”
-
-Slash commands are handled by the Gateway. There are a few different behaviors:
-- **Standalone commands**: a message that is only `/...` runs as a command.
-- **Directives**: `/think`, `/verbose`, `/reasoning`, `/elevated`, `/model`, `/queue` are stripped before the model sees the message.
-  - Directive-only messages persist session settings.
-  - Inline directives in a normal message act as per-message hints.
-- **Inline shortcuts** (allowlisted senders only): certain `/...` tokens inside a normal message can run immediately (example: “hey /status”), and are stripped before the model sees the remaining text.
-
-Details: [Slash commands](/tools/slash-commands).
-
-## Sessions, compaction, and pruning (what persists)
-
-What persists across messages depends on the mechanism:
-- **Normal history** persists in the session transcript until compacted/pruned by policy.
-- **Compaction** persists a summary into the transcript and keeps recent messages intact.
-- **Pruning** removes old tool results from the *in-memory* prompt for a run, but does not rewrite the transcript.
-
-Docs: [Session](/concepts/session), [Compaction](/concepts/compaction), [Session pruning](/concepts/session-pruning).
-
-## What `/context` actually reports
-
-`/context` prefers the latest **run-built** system prompt report when available:
-- `System prompt (run)` = captured from the last embedded (tool-capable) run and persisted in the session store.
-- `System prompt (estimate)` = computed on the fly when no run report exists (or when running via a CLI backend that doesn’t generate the report).
-
-Either way, it reports sizes and top contributors; it does **not** dump the full system prompt or tool schemas.

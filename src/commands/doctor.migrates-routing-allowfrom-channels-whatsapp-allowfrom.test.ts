@@ -246,10 +246,6 @@ vi.mock("../daemon/service.js", () => ({
   }),
 }));
 
-vi.mock("../telegram/pairing-store.js", () => ({
-  readTelegramAllowFromStore: vi.fn().mockResolvedValue([]),
-}));
-
 vi.mock("../pairing/pairing-store.js", () => ({
   readChannelAllowFromStore: vi.fn().mockResolvedValue([]),
   upsertChannelPairingRequest: vi.fn().mockResolvedValue({ code: "000000", created: false }),
@@ -374,7 +370,7 @@ describe("doctor command", () => {
     expect(written.routing).toBeUndefined();
   });
 
-  it("migrates legacy gateway services", { timeout: 60_000 }, async () => {
+  it("skips legacy gateway services migration", { timeout: 60_000 }, async () => {
     readConfigFileSnapshot.mockResolvedValue({
       path: "/tmp/verso.json",
       exists: true,
@@ -405,8 +401,8 @@ describe("doctor command", () => {
 
     await doctorCommand(runtime);
 
-    expect(uninstallLegacyGatewayServices).toHaveBeenCalledTimes(1);
-    expect(serviceInstall).toHaveBeenCalledTimes(1);
+    expect(uninstallLegacyGatewayServices).not.toHaveBeenCalled();
+    expect(serviceInstall).not.toHaveBeenCalled();
   });
 
   it("offers to update first for git checkouts", async () => {

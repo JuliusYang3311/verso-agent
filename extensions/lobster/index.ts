@@ -1,13 +1,18 @@
-import type { VersoPluginApi } from "../../src/plugins/types.js";
-
+import type {
+  AnyAgentTool,
+  VersoPluginApi,
+  VersoPluginToolFactory,
+} from "../../src/plugins/types.js";
 import { createLobsterTool } from "./src/lobster-tool.js";
 
 export default function register(api: VersoPluginApi) {
   api.registerTool(
-    (ctx) => {
-      if (ctx.sandboxed) return null;
-      return createLobsterTool(api);
-    },
+    ((ctx) => {
+      if (ctx.sandboxed) {
+        return null;
+      }
+      return createLobsterTool(api) as AnyAgentTool;
+    }) as VersoPluginToolFactory,
     { optional: true },
   );
 }

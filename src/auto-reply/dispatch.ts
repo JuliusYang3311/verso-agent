@@ -1,9 +1,9 @@
 import type { VersoConfig } from "../config/config.js";
+import type { DispatchFromConfigResult } from "./reply/dispatch-from-config.js";
 import type { FinalizedMsgContext, MsgContext } from "./templating.js";
 import type { GetReplyOptions } from "./types.js";
-import { finalizeInboundContext } from "./reply/inbound-context.js";
-import type { DispatchFromConfigResult } from "./reply/dispatch-from-config.js";
 import { dispatchReplyFromConfig } from "./reply/dispatch-from-config.js";
+import { finalizeInboundContext } from "./reply/inbound-context.js";
 import {
   createReplyDispatcher,
   createReplyDispatcherWithTyping,
@@ -42,21 +42,19 @@ export async function dispatchInboundMessageWithBufferedDispatcher(params: {
     params.dispatcherOptions,
   );
 
-  try {
-    const result = await dispatchInboundMessage({
-      ctx: params.ctx,
-      cfg: params.cfg,
-      dispatcher,
-      replyResolver: params.replyResolver,
-      replyOptions: {
-        ...params.replyOptions,
-        ...replyOptions,
-      },
-    });
-    return result;
-  } finally {
-    markDispatchIdle();
-  }
+  const result = await dispatchInboundMessage({
+    ctx: params.ctx,
+    cfg: params.cfg,
+    dispatcher,
+    replyResolver: params.replyResolver,
+    replyOptions: {
+      ...params.replyOptions,
+      ...replyOptions,
+    },
+  });
+
+  markDispatchIdle();
+  return result;
 }
 
 export async function dispatchInboundMessageWithDispatcher(params: {

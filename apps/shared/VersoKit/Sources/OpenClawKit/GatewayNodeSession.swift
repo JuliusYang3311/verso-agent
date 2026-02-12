@@ -1,4 +1,4 @@
-import OpenClawProtocol
+import VersoProtocol
 import Foundation
 import OSLog
 
@@ -89,7 +89,7 @@ public actor GatewayNodeSession {
                 latch.resume(BridgeInvokeResponse(
                     id: request.id,
                     ok: false,
-                    error: OpenClawNodeError(
+                    error: VersoNodeError(
                         code: .unavailable,
                         message: "node invoke timed out")
                 ))
@@ -314,7 +314,7 @@ public actor GatewayNodeSession {
         }
     }
 
-    private func decodeInvokeRequest(from payload: OpenClawProtocol.AnyCodable) throws -> NodeInvokeRequestPayload {
+    private func decodeInvokeRequest(from payload: VersoProtocol.AnyCodable) throws -> NodeInvokeRequestPayload {
         do {
             let data = try self.encoder.encode(payload)
             return try self.decoder.decode(NodeInvokeRequestPayload.self, from: data)

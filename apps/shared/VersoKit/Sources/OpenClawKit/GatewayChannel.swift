@@ -1,4 +1,4 @@
-import OpenClawProtocol
+import VersoProtocol
 import Foundation
 import OSLog
 
@@ -102,7 +102,7 @@ public enum GatewayAuthSource: String, Sendable {
 }
 
 // Avoid ambiguity with the app's own AnyCodable type.
-private typealias ProtoAnyCodable = OpenClawProtocol.AnyCodable
+private typealias ProtoAnyCodable = VersoProtocol.AnyCodable
 
 private enum ConnectChallengeError: Error {
     case timeout

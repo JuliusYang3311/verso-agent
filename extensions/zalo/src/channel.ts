@@ -15,13 +15,17 @@ import {
   PAIRING_APPROVED_MESSAGE,
   setAccountEnabledInConfigSection,
 } from "verso/plugin-sdk";
-
-import { listZaloAccountIds, resolveDefaultZaloAccountId, resolveZaloAccount, type ResolvedZaloAccount } from "./accounts.js";
+import {
+  listZaloAccountIds,
+  resolveDefaultZaloAccountId,
+  resolveZaloAccount,
+  type ResolvedZaloAccount,
+} from "./accounts.js";
 import { zaloMessageActions } from "./actions.js";
 import { ZaloConfigSchema } from "./config-schema.js";
 import { zaloOnboardingAdapter } from "./onboarding.js";
-import { resolveZaloProxyFetch } from "./proxy.js";
 import { probeZalo } from "./probe.js";
+import { resolveZaloProxyFetch } from "./proxy.js";
 import { sendMessageZalo } from "./send.js";
 import { collectZaloStatusIssues } from "./status-issues.js";
 
@@ -39,7 +43,9 @@ const meta = {
 
 function normalizeZaloMessagingTarget(raw: string): string | undefined {
   const trimmed = raw?.trim();
-  if (!trimmed) return undefined;
+  if (!trimmed) {
+    return undefined;
+  }
   return trimmed.replace(/^(zalo|zl):/i, "");
 }
 
@@ -155,7 +161,9 @@ export const zaloPlugin: ChannelPlugin<ResolvedZaloAccount> = {
     targetResolver: {
       looksLikeId: (raw) => {
         const trimmed = raw.trim();
-        if (!trimmed) return false;
+        if (!trimmed) {
+          return false;
+        }
         return /^\d{3,}$/.test(trimmed);
       },
       hint: "<chatId>",
@@ -240,9 +248,9 @@ export const zaloPlugin: ChannelPlugin<ResolvedZaloAccount> = {
             ...next.channels?.zalo,
             enabled: true,
             accounts: {
-              ...(next.channels?.zalo?.accounts ?? {}),
+              ...next.channels?.zalo?.accounts,
               [accountId]: {
-                ...(next.channels?.zalo?.accounts?.[accountId] ?? {}),
+                ...next.channels?.zalo?.accounts?.[accountId],
                 enabled: true,
                 ...(input.tokenFile
                   ? { tokenFile: input.tokenFile }
@@ -268,8 +276,12 @@ export const zaloPlugin: ChannelPlugin<ResolvedZaloAccount> = {
   outbound: {
     deliveryMode: "direct",
     chunker: (text, limit) => {
-      if (!text) return [];
-      if (limit <= 0 || text.length <= limit) return [text];
+      if (!text) {
+        return [];
+      }
+      if (limit <= 0 || text.length <= limit) {
+        return [text];
+      }
       const chunks: string[] = [];
       let remaining = text;
       while (remaining.length > limit) {
@@ -277,15 +289,21 @@ export const zaloPlugin: ChannelPlugin<ResolvedZaloAccount> = {
         const lastNewline = window.lastIndexOf("\n");
         const lastSpace = window.lastIndexOf(" ");
         let breakIdx = lastNewline > 0 ? lastNewline : lastSpace;
-        if (breakIdx <= 0) breakIdx = limit;
+        if (breakIdx <= 0) {
+          breakIdx = limit;
+        }
         const rawChunk = remaining.slice(0, breakIdx);
         const chunk = rawChunk.trimEnd();
-        if (chunk.length > 0) chunks.push(chunk);
+        if (chunk.length > 0) {
+          chunks.push(chunk);
+        }
         const brokeOnSeparator = breakIdx < remaining.length && /\s/.test(remaining[breakIdx]);
         const nextStart = Math.min(remaining.length, breakIdx + (brokeOnSeparator ? 1 : 0));
         remaining = remaining.slice(nextStart).trimStart();
       }
-      if (remaining.length) chunks.push(remaining);
+      if (remaining.length) {
+        chunks.push(remaining);
+      }
       return chunks;
     },
     chunkerMode: "text",
@@ -366,7 +384,9 @@ export const zaloPlugin: ChannelPlugin<ResolvedZaloAccount> = {
       try {
         const probe = await probeZalo(token, 2500, fetcher);
         const name = probe.ok ? probe.bot?.name?.trim() : null;
-        if (name) zaloBotLabel = ` (${name})`;
+        if (name) {
+          zaloBotLabel = ` (${name})`;
+        }
         ctx.setStatus({
           accountId: account.accountId,
           bot: probe.bot,

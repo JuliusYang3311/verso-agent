@@ -122,14 +122,7 @@ describe("createGridLayout", () => {
       messageAction("A4"),
       messageAction("A5"),
       messageAction("A6"),
-    ] as [
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-    ];
+    ] as [ReturnType<typeof messageAction>];
 
     const areas = createGridLayout(1686, actions);
 
@@ -157,14 +150,7 @@ describe("createGridLayout", () => {
       messageAction("A4"),
       messageAction("A5"),
       messageAction("A6"),
-    ] as [
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-    ];
+    ] as [ReturnType<typeof messageAction>];
 
     const areas = createGridLayout(843, actions);
 
@@ -183,14 +169,7 @@ describe("createGridLayout", () => {
       messageAction("About", "/about"),
       messageAction("Feedback", "/feedback"),
       messageAction("Contact", "/contact"),
-    ] as [
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-      ReturnType<typeof messageAction>,
-    ];
+    ] as [ReturnType<typeof messageAction>];
 
     const areas = createGridLayout(843, actions);
 

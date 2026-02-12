@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { VersoConfig } from "verso/plugin-sdk";
+import { describe, expect, it } from "vitest";
 import { twitchPlugin } from "./plugin.js";
 
 describe("twitchPlugin.status.buildAccountSnapshot", () => {

@@ -7,14 +7,19 @@ type RestoreEntry = { key: string; value: string | undefined };
 
 function restoreEnv(entries: RestoreEntry[]): void {
   for (const { key, value } of entries) {
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
   }
 }
 
 function loadProfileEnv(): void {
   const profilePath = path.join(os.homedir(), ".profile");
-  if (!fs.existsSync(profilePath)) return;
+  if (!fs.existsSync(profilePath)) {
+    return;
+  }
   try {
     const output = execFileSync(
       "/bin/bash",
@@ -24,11 +29,17 @@ function loadProfileEnv(): void {
     const entries = output.split("\0");
     let applied = 0;
     for (const entry of entries) {
-      if (!entry) continue;
+      if (!entry) {
+        continue;
+      }
       const idx = entry.indexOf("=");
-      if (idx <= 0) continue;
+      if (idx <= 0) {
+        continue;
+      }
       const key = entry.slice(0, idx);
-      if (!key || (process.env[key] ?? "") !== "") continue;
+      if (!key || (process.env[key] ?? "") !== "") {
+        continue;
+      }
       process.env[key] = entry.slice(idx + 1);
       applied += 1;
     }
@@ -109,7 +120,7 @@ export function installTestEnv(): { cleanup: () => void; tempHome: string } {
   // Avoid leaking local dev tooling flags into tests (e.g. --inspect).
   delete process.env.NODE_OPTIONS;
 
-  // Windows: prefer the legacy default state dir so auth/profile tests match real paths.
+  // Windows: prefer the default state dir so auth/profile tests match real paths.
   if (process.platform === "win32") {
     process.env.VERSO_STATE_DIR = path.join(tempHome, ".verso");
   }

@@ -1,6 +1,5 @@
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
-
 import { twitchPlugin } from "./src/plugin.js";
 import { setTwitchRuntime } from "./src/runtime.js";
 
@@ -13,6 +12,7 @@ const plugin = {
   configSchema: emptyPluginConfigSchema(),
   register(api: VersoPluginApi) {
     setTwitchRuntime(api.runtime);
+    // oxlint-disable-next-line typescript/no-explicit-any
     api.registerChannel({ plugin: twitchPlugin as any });
   },
 };

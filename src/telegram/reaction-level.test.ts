@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
 import type { VersoConfig } from "../config/config.js";
 import { resolveTelegramReactionLevel } from "./reaction-level.js";
 

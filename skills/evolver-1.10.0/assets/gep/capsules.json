@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "capsules": [
+    {
+      "type": "Capsule",
+      "schema_version": "1.5.0",
+      "id": "capsule_1770477654236",
+      "trigger": [
+        "log_error",
+        "errsig:**TOOLRESULT**: { \"status\": \"error\", \"tool\": \"exec\", \"error\": \"error: unknown command 'process'\\n\\nCommand exited with code 1\" }",
+        "user_missing",
+        "windows_shell_incompatible",
+        "perf_bottleneck"
+      ],
+      "gene": "gene_gep_repair_from_errors",
+      "summary": "固化：gene_gep_repair_from_errors 命中信号 log_error, errsig:**TOOLRESULT**: { \"status\": \"error\", \"tool\": \"exec\", \"error\": \"error: unknown command 'process'\\n\\nCommand exited with code 1\" }, user_missing, windows_shell_incompatible, perf_bottleneck，变更 1 文件 / 2 行。",
+      "confidence": 0.85,
+      "blast_radius": {
+        "files": 0,
+        "lines": 0
+      },
+      "outcome": {
+        "status": "success",
+        "score": 0.85
+      },
+      "success_streak": 1,
+      "env_fingerprint": {
+        "node_version": "v25.6.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os_release": "24.6.0",
+        "evolver_version": "1.10.0",
+        "cwd": "/Users/veso/Documents/evolver-1.10.0",
+        "captured_at": "2026-02-11T00:06:18.954Z"
+      },
+      "a2a": {
+        "eligible_to_broadcast": false
+      },
+      "asset_id": "sha256:7bdad92c1d61cecb27a09bd84f5800db7903a9366fc30fb4e53a9d6e8fb8c9da"
+    },
+    {
+      "type": "Capsule",
+      "schema_version": "1.5.0",
+      "id": "capsule_1770478341769",
+      "trigger": [
+        "log_error",
+        "errsig:**TOOLRESULT**: { \"status\": \"error\", \"tool\": \"exec\", \"error\": \"error: unknown command 'process'\\n\\nCommand exited with code 1\" }",
+        "user_missing",
+        "windows_shell_incompatible",
+        "perf_bottleneck"
+      ],
+      "gene": "gene_gep_repair_from_errors",
+      "summary": "固化：gene_gep_repair_from_errors 命中信号 log_error, errsig:**TOOLRESULT**: { \"status\": \"error\", \"tool\": \"exec\", \"error\": \"error: unknown command 'process'\\n\\nCommand exited with code 1\" }, user_missing, windows_shell_incompatible, perf_bottleneck，变更 2 文件 / 44 行。",
+      "confidence": 0.85,
+      "blast_radius": {
+        "files": 2,
+        "lines": 44
+      },
+      "outcome": {
+        "status": "success",
+        "score": 0.85
+      },
+      "success_streak": 1,
+      "env_fingerprint": {
+        "node_version": "v22.22.0",
+        "platform": "linux",
+        "arch": "x64",
+        "os_release": "6.1.0-42-cloud-amd64",
+        "evolver_version": "1.7.0",
+        "cwd": "/home/crishaocredits/.openclaw/workspace",
+        "captured_at": "2026-02-07T15:32:21.678Z"
+      },
+      "a2a": {
+        "eligible_to_broadcast": false
+      },
+      "asset_id": "sha256:20d971a3c4cb2b75f9c045376d1aa003361c12a6b89a4b47b7e81dbd4f4d8fe8"
+    },
+    {
+      "type": "Capsule",
+      "schema_version": "1.5.0",
+      "id": "capsule_1770771662555",
+      "trigger": [
+        "protocol_drift",
+        "force_innovation_after_repair_loop"
+      ],
+      "gene": "gene_gep_optimize_prompt_and_assets",
+      "summary": "Trace/guard preferredGeneId selection",
+      "confidence": 0.85,
+      "blast_radius": {
+        "files": 0,
+        "lines": 0
+      },
+      "outcome": {
+        "status": "success",
+        "score": 0.85
+      },
+      "success_streak": 3,
+      "env_fingerprint": {
+        "node_version": "v25.6.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os_release": "24.6.0",
+        "evolver_version": "1.10.0",
+        "cwd": "/Users/veso/Documents/evolver-1.10.0",
+        "captured_at": "2026-02-11T01:16:26.727Z"
+      },
+      "a2a": {
+        "eligible_to_broadcast": true
+      },
+      "asset_id": "sha256:56b00a7cd7f1f2e8aeec18f56f4dff5a39e2b7b8d89094225a8ab3d50b21c0fe"
+    },
+    {
+      "type": "Capsule",
+      "schema_version": "1.5.0",
+      "id": "capsule_1770773439147",
+      "trigger": [
+        "high_tool_usage:exec"
+      ],
+      "gene": "gene_auto_cd91ccbb",
+      "summary": "固化：gene_auto_cd91ccbb 命中信号 high_tool_usage:exec，变更 0 文件 / 0 行。",
+      "confidence": 0.85,
+      "blast_radius": {
+        "files": 0,
+        "lines": 0
+      },
+      "outcome": {
+        "status": "success",
+        "score": 0.85
+      },
+      "success_streak": 1,
+      "env_fingerprint": {
+        "node_version": "v25.6.0",
+        "platform": "darwin",
+        "arch": "arm64",
+        "os_release": "24.6.0",
+        "evolver_version": "1.10.0",
+        "cwd": "/Users/veso/Documents/evolver-1.10.0",
+        "captured_at": "2026-02-11T01:30:39.051Z"
+      },
+      "a2a": {
+        "eligible_to_broadcast": false
+      },
+      "asset_id": "sha256:9a545cb507c5b95c5e62ea596f2346f8584f74006d474580b75fc9687f0665bb"
+    }
+  ]
+}

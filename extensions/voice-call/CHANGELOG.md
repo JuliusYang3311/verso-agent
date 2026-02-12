@@ -1,13 +1,60 @@
 # Changelog
 
+## 2026.2.6-3
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.2.6-2
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.2.6
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.2.4
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.2.2
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.1.31
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
+## 2026.1.30
+
+### Changes
+
+- Version alignment with core Verso release numbers.
+
 ## 2026.1.29
 
 ### Changes
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.26
 
 ### Changes
+
 - Breaking: voice-call TTS now uses core `messages.tts` (plugin TTS config deep‑merges with core).
 - Telephony TTS supports OpenAI + ElevenLabs; Edge TTS is ignored for calls.
 - Removed legacy `tts.model`/`tts.voice`/`tts.instructions` plugin fields.
@@ -16,54 +63,113 @@
 ## 2026.1.23
 
 ### Changes
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.22
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.21
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.20
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.17-1
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.17
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.16
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.15
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 2026.1.14
 
 ### Changes
+
+<<<<<<< HEAD
+
+- # Version alignment with core Verso release numbers.
+
 - Version alignment with core Verso release numbers.
+  > > > > > > > upstream/main
 
 ## 0.1.0
 
 ### Highlights
-- First public release of the @verso/voice-call plugin.
+
+<<<<<<< HEAD
+
+- # First public release of the @verso/voice-call plugin.
+
+- First public release of the @openclaw/voice-call plugin.
+  > > > > > > > upstream/main
 
 ### Features
+
 - Providers: Twilio (Programmable Voice + Media Streams), Telnyx (Call Control v2), and mock provider for local dev.
 - Call flows: outbound notify vs. conversation modes, configurable auto‑hangup, and multi‑turn continuation.
 - Inbound handling: policy controls (disabled/allowlist/open), allowlist matching, and inbound greeting.

@@ -1,5 +1,4 @@
 import type { Command } from "commander";
-
 import { runAcpClientInteractive } from "../acp/client.js";
 import { serveAcpGateway } from "../acp/server.js";
 import { defaultRuntime } from "../runtime.js";
@@ -21,7 +20,7 @@ export function registerAcpCli(program: Command) {
     .option("--verbose, -v", "Verbose logging to stderr", false)
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "docs.molt.bot/cli/acp")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "docs.openclaw.ai/cli/acp")}\n`,
     )
     .action((opts) => {
       try {

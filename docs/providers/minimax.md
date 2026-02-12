@@ -3,7 +3,9 @@ summary: "Use MiniMax M2.1 in Verso"
 read_when:
   - You want MiniMax models in Verso
   - You need MiniMax setup guidance
+title: "MiniMax"
 ---
+
 # MiniMax
 
 MiniMax is an AI company that builds the **M2/M2.1** model family. The current
@@ -35,12 +37,35 @@ MiniMax highlights these improvements in M2.1:
 
 ## Choose a setup
 
-### MiniMax M2.1 — recommended
+### MiniMax OAuth (Coding Plan) — recommended
+
+**Best for:** quick setup with MiniMax Coding Plan via OAuth, no API key required.
+
+Enable the bundled OAuth plugin and authenticate:
+
+```bash
+openclaw plugins enable minimax-portal-auth  # skip if already loaded.
+openclaw gateway restart  # restart if gateway is already running
+openclaw onboard --auth-choice minimax-portal
+```
+
+You will be prompted to select an endpoint:
+
+- **Global** - International users (`api.minimax.io`)
+- **CN** - Users in China (`api.minimaxi.com`)
+
+See [MiniMax OAuth plugin README](https://github.com/openclaw/openclaw/tree/main/extensions/minimax-portal-auth) for details.
+
+### MiniMax M2.1 (API key)
 
 **Best for:** hosted MiniMax with Anthropic-compatible API.
 
 Configure via CLI:
-- Run `verso configure`
+
+- # Run `verso configure`
+
+- Run `openclaw configure`
+  > > > > > > > upstream/main
 - Select **Model/auth**
 - Choose **MiniMax M2.1**
 
@@ -63,18 +88,18 @@ Configure via CLI:
             input: ["text"],
             cost: { input: 15, output: 60, cacheRead: 2, cacheWrite: 10 },
             contextWindow: 200000,
-            maxTokens: 8192
-          }
-        ]
-      }
-    }
-  }
+            maxTokens: 8192,
+          },
+        ],
+      },
+    },
+  },
 }
 ```
 
 ### MiniMax M2.1 as fallback (Opus primary)
 
-**Best for:** keep Opus 4.5 as primary, fail over to MiniMax M2.1.
+**Best for:** keep Opus 4.6 as primary, fail over to MiniMax M2.1.
 
 ```json5
 {
@@ -82,15 +107,15 @@ Configure via CLI:
   agents: {
     defaults: {
       models: {
-        "anthropic/claude-opus-4-5": { alias: "opus" },
-        "minimax/MiniMax-M2.1": { alias: "minimax" }
+        "anthropic/claude-opus-4-6": { alias: "opus" },
+        "minimax/MiniMax-M2.1": { alias: "minimax" },
       },
       model: {
-        primary: "anthropic/claude-opus-4-5",
-        fallbacks: ["minimax/MiniMax-M2.1"]
-      }
-    }
-  }
+        primary: "anthropic/claude-opus-4-6",
+        fallbacks: ["minimax/MiniMax-M2.1"],
+      },
+    },
+  },
 }
 ```
 
@@ -107,8 +132,8 @@ Configure manually via `verso.json`:
   agents: {
     defaults: {
       model: { primary: "lmstudio/minimax-m2.1-gs32" },
-      models: { "lmstudio/minimax-m2.1-gs32": { alias: "Minimax" } }
-    }
+      models: { "lmstudio/minimax-m2.1-gs32": { alias: "Minimax" } },
+    },
   },
   models: {
     mode: "merge",
@@ -125,12 +150,12 @@ Configure manually via `verso.json`:
             input: ["text"],
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: 196608,
-            maxTokens: 8192
-          }
-        ]
-      }
-    }
-  }
+            maxTokens: 8192,
+          },
+        ],
+      },
+    },
+  },
 }
 ```
 
@@ -138,10 +163,10 @@ Configure manually via `verso.json`:
 
 Use the interactive config wizard to set MiniMax without editing JSON:
 
-1) Run `verso configure`.
-2) Select **Model/auth**.
-3) Choose **MiniMax M2.1**.
-4) Pick your default model when prompted.
+1. Run `verso configure`.
+2. Select **Model/auth**.
+3. Choose **MiniMax M2.1**.
+4. Pick your default model when prompted.
 
 ## Configuration options
 
@@ -157,7 +182,7 @@ Use the interactive config wizard to set MiniMax without editing JSON:
 - Model refs are `minimax/<model>`.
 - Coding Plan usage API: `https://api.minimaxi.com/v1/api/openplatform/coding_plan/remains` (requires a coding plan key).
 - Update pricing values in `models.json` if you need exact cost tracking.
-- Referral link for MiniMax Coding Plan (10% off): https://platform.minimax.io/subscribe/coding-plan?code=DbXJTRClnb&source=link
+- Referral link for MiniMax Coding Plan (10% off): [https://platform.minimax.io/subscribe/coding-plan?code=DbXJTRClnb&source=link](https://platform.minimax.io/subscribe/coding-plan?code=DbXJTRClnb&source=link)
 - See [/concepts/model-providers](/concepts/model-providers) for provider rules.
 - Use `verso models list` and `verso models set minimax/MiniMax-M2.1` to switch.
 
@@ -168,16 +193,19 @@ Use the interactive config wizard to set MiniMax without editing JSON:
 This usually means the **MiniMax provider isn’t configured** (no provider entry
 and no MiniMax auth profile/env key found). A fix for this detection is in
 **2026.1.12** (unreleased at the time of writing). Fix by:
+
 - Upgrading to **2026.1.12** (or run from source `main`), then restarting the gateway.
 - Running `verso configure` and selecting **MiniMax M2.1**, or
 - Adding the `models.providers.minimax` block manually, or
 - Setting `MINIMAX_API_KEY` (or a MiniMax auth profile) so the provider can be injected.
 
 Make sure the model id is **case‑sensitive**:
+
 - `minimax/MiniMax-M2.1`
 - `minimax/MiniMax-M2.1-lightning`
 
 Then recheck with:
+
 ```bash
 verso models list
 ```

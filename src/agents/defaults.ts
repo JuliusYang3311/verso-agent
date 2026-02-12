@@ -1,6 +1,5 @@
 // Defaults for agent metadata when upstream does not supply them.
-// Model id uses pi-ai's built-in Anthropic catalog.
-export const DEFAULT_PROVIDER = "anthropic";
-export const DEFAULT_MODEL = "claude-opus-4-5";
-// Context window: Opus 4.5 supports ~200k tokens (per pi-ai models.generated.ts).
-export const DEFAULT_CONTEXT_TOKENS = 200_000;
+export const DEFAULT_PROVIDER = "google-gemini-cli";
+export const DEFAULT_MODEL = "gemini-3-pro-preview";
+// Conservative fallback used when model metadata is unavailable.
+export const DEFAULT_CONTEXT_TOKENS = 1_000_000;

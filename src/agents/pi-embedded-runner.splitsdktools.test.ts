@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import fs from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 import type { VersoConfig } from "../config/config.js";
 import { ensureVersoModelsJson } from "./models-config.js";
@@ -74,7 +74,9 @@ const _ensureModels = (cfg: VersoConfig, agentDir: string) =>
   ensureVersoModelsJson(cfg, agentDir) as unknown;
 
 const _textFromContent = (content: unknown) => {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") {
+    return content;
+  }
   if (Array.isArray(content) && content[0]?.type === "text") {
     return (content[0] as { text?: string }).text;
   }

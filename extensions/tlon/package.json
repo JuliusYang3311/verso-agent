@@ -1,8 +1,8 @@
 {
   "name": "@verso/tlon",
   "version": "2026.1.29",
-  "type": "module",
   "description": "Verso Tlon/Urbit channel plugin",
+  "type": "module",
   "verso": {
     "extensions": [
       "./index.ts"
@@ -22,9 +22,5 @@
       "localPath": "extensions/tlon",
       "defaultChoice": "npm"
     }
-  },
-  "dependencies": {
-    "@urbit/aura": "^3.0.0",
-    "@urbit/http-api": "^3.0.0"
   }
 }

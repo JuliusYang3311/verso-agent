@@ -6,21 +6,27 @@ import { applyCliProfileEnv, parseCliProfileArgs } from "./profile.js";
 describe("parseCliProfileArgs", () => {
   it("leaves gateway --dev for subcommands", () => {
     const res = parseCliProfileArgs(["node", "verso", "gateway", "--dev", "--allow-unconfigured"]);
-    if (!res.ok) throw new Error(res.error);
+    if (!res.ok) {
+      throw new Error(res.error);
+    }
     expect(res.profile).toBeNull();
     expect(res.argv).toEqual(["node", "verso", "gateway", "--dev", "--allow-unconfigured"]);
   });
 
   it("still accepts global --dev before subcommand", () => {
     const res = parseCliProfileArgs(["node", "verso", "--dev", "gateway"]);
-    if (!res.ok) throw new Error(res.error);
+    if (!res.ok) {
+      throw new Error(res.error);
+    }
     expect(res.profile).toBe("dev");
     expect(res.argv).toEqual(["node", "verso", "gateway"]);
   });
 
   it("parses --profile value and strips it", () => {
     const res = parseCliProfileArgs(["node", "verso", "--profile", "work", "status"]);
-    if (!res.ok) throw new Error(res.error);
+    if (!res.ok) {
+      throw new Error(res.error);
+    }
     expect(res.profile).toBe("work");
     expect(res.argv).toEqual(["node", "verso", "status"]);
   });

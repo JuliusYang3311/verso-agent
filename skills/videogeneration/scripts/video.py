@@ -31,6 +31,11 @@ from .schema import (
 from . import video_effects
 from . import utils
 
+# Auto-detect optimal thread count for ffmpeg rendering
+# Use all CPUs minus 1 to leave room for system processes
+import multiprocessing
+OPTIMAL_THREADS = max(1, multiprocessing.cpu_count() - 1)
+
 class SubClippedVideoClip:
     def __init__(self, file_path, start_time=None, end_time=None, width=None, height=None, duration=None):
         self.file_path = file_path
@@ -167,11 +172,34 @@ def combine_videos(
                 ))
             start_time = end_time
 
-    # random subclipped_items order
-    if video_concat_mode.value == VideoConcatMode.random.value:
-        random.shuffle(subclipped_items)
-        
-    logger.debug(f"total subclipped items: {len(subclipped_items)}")
+
+    # Group segments by source video to implement round-robin selection
+    # This ensures maximum diversity - each source is used once before any source is reused
+    source_groups = {}
+    for item in subclipped_items:
+        if item.file_path not in source_groups:
+            source_groups[item.file_path] = []
+        source_groups[item.file_path].append(item)
+    
+    # Shuffle segments within each source group
+    for segments in source_groups.values():
+        random.shuffle(segments)
+    
+    # Create ordered list using round-robin: pick one from each source in rotation
+    # This maximizes source diversity throughout the video
+    diverse_subclipped_items = []
+    source_keys = list(source_groups.keys())
+    random.shuffle(source_keys)  # Randomize which source goes first
+    
+    max_segments_per_source = max(len(segments) for segments in source_groups.values())
+    for round_index in range(max_segments_per_source):
+        for source_key in source_keys:
+            if round_index < len(source_groups[source_key]):
+                diverse_subclipped_items.append(source_groups[source_key][round_index])
+    
+    logger.info(f"organized {len(diverse_subclipped_items)} clips from {len(source_groups)} sources using round-robin selection")
+    subclipped_items = diverse_subclipped_items
+
     
     # Add downloaded clips over and over until the duration of the audio (max_duration) has been reached
     for i, subclipped_item in enumerate(subclipped_items):
@@ -230,7 +258,7 @@ def combine_videos(
                 
             # wirte clip to temp file
             clip_file = f"{output_dir}/temp-clip-{i+1}.mp4"
-            clip.write_videofile(clip_file, logger=None, fps=fps, codec=video_codec)
+            clip.write_videofile(clip_file, logger=None, fps=fps, codec=video_codec, threads=OPTIMAL_THREADS)
             
             close_clip(clip)
         
@@ -289,7 +317,7 @@ def combine_videos(
             # save merged result to temp file
             merged_clip.write_videofile(
                 filename=temp_merged_next,
-                threads=threads,
+                threads=OPTIMAL_THREADS,
                 logger=None,
                 temp_audiofile_path=output_dir,
                 audio_codec=audio_codec,
@@ -517,7 +545,7 @@ def generate_video(
         output_file,
         audio_codec=audio_codec,
         temp_audiofile_path=output_dir,
-        threads=params.n_threads or 2,
+        threads=params.n_threads or OPTIMAL_THREADS,
         logger=None,
         fps=fps,
     )
@@ -565,7 +593,7 @@ def preprocess_video(materials: List[MaterialInfo], clip_duration=4):
 
             # Output the video to a file.
             video_file = f"{material.url}.mp4"
-            final_clip.write_videofile(video_file, fps=30, logger=None)
+            final_clip.write_videofile(video_file, fps=30, logger=None, threads=OPTIMAL_THREADS)
             close_clip(clip)
             material.url = video_file
             logger.success(f"image processed: {video_file}")

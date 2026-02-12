@@ -4,6 +4,7 @@ read_when:
   - You use `verso browser` and want examples for common tasks
   - You want to control a browser running on another machine via a node host
   - You want to use the Chrome extension relay (attach/detach via toolbar button)
+title: "browser"
 ---
 
 # `verso browser`
@@ -11,6 +12,7 @@ read_when:
 Manage Verso’s browser control server and run browser actions (tabs, snapshots, screenshots, navigation, clicks, typing).
 
 Related:
+
 - Browser tool + API: [Browser tool](/tools/browser)
 - Chrome extension relay: [Chrome extension](/tools/chrome-extension)
 
@@ -34,6 +36,7 @@ verso browser --browser-profile verso snapshot
 ## Profiles
 
 Profiles are named browser routing configs. In practice:
+
 - `verso`: launches/attaches to a dedicated Verso-managed Chrome instance (isolated user data dir).
 - `chrome`: controls your existing Chrome tab(s) via the Chrome extension relay.
 

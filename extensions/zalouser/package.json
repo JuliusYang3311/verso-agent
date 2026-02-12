@@ -1,11 +1,11 @@
 {
   "name": "@verso/zalouser",
   "version": "2026.1.29",
-  "type": "module",
   "description": "Verso Zalo Personal Account plugin via zca-cli",
+  "type": "module",
   "dependencies": {
-    "verso": "workspace:*",
-    "@sinclair/typebox": "0.34.47"
+    "@sinclair/typebox": "0.34.47",
+    "verso": "workspace:*"
   },
   "verso": {
     "extensions": [

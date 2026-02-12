@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-
 import {
   resolveDefaultConfigCandidates,
   resolveConfigPath,
@@ -74,8 +73,6 @@ describe("state + config path candidates", () => {
     const previousHomeDrive = process.env.HOMEDRIVE;
     const previousHomePath = process.env.HOMEPATH;
     const previousVersoConfig = process.env.VERSO_CONFIG_PATH;
-    const previousVersoConfig = process.env.VERSO_CONFIG_PATH;
-    const previousVersoState = process.env.VERSO_STATE_DIR;
     const previousVersoState = process.env.VERSO_STATE_DIR;
     try {
       const legacyDir = path.join(root, ".verso");
@@ -91,8 +88,6 @@ describe("state + config path candidates", () => {
         process.env.HOMEPATH = root.slice(parsed.root.length - 1);
       }
       delete process.env.VERSO_CONFIG_PATH;
-      delete process.env.VERSO_CONFIG_PATH;
-      delete process.env.VERSO_STATE_DIR;
       delete process.env.VERSO_STATE_DIR;
 
       vi.resetModules();
@@ -104,20 +99,41 @@ describe("state + config path candidates", () => {
       } else {
         process.env.HOME = previousHome;
       }
-      if (previousUserProfile === undefined) delete process.env.USERPROFILE;
-      else process.env.USERPROFILE = previousUserProfile;
-      if (previousHomeDrive === undefined) delete process.env.HOMEDRIVE;
-      else process.env.HOMEDRIVE = previousHomeDrive;
-      if (previousHomePath === undefined) delete process.env.HOMEPATH;
-      else process.env.HOMEPATH = previousHomePath;
-      if (previousVersoConfig === undefined) delete process.env.VERSO_CONFIG_PATH;
-      else process.env.VERSO_CONFIG_PATH = previousVersoConfig;
-      if (previousVersoConfig === undefined) delete process.env.VERSO_CONFIG_PATH;
-      else process.env.VERSO_CONFIG_PATH = previousVersoConfig;
-      if (previousVersoState === undefined) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = previousVersoState;
-      if (previousVersoState === undefined) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = previousVersoState;
+      if (previousUserProfile === undefined) {
+        delete process.env.USERPROFILE;
+      } else {
+        process.env.USERPROFILE = previousUserProfile;
+      }
+      if (previousHomeDrive === undefined) {
+        delete process.env.HOMEDRIVE;
+      } else {
+        process.env.HOMEDRIVE = previousHomeDrive;
+      }
+      if (previousHomePath === undefined) {
+        delete process.env.HOMEPATH;
+      } else {
+        process.env.HOMEPATH = previousHomePath;
+      }
+      if (previousVersoConfig === undefined) {
+        delete process.env.VERSO_CONFIG_PATH;
+      } else {
+        process.env.VERSO_CONFIG_PATH = previousVersoConfig;
+      }
+      if (previousVersoConfig === undefined) {
+        delete process.env.VERSO_CONFIG_PATH;
+      } else {
+        process.env.VERSO_CONFIG_PATH = previousVersoConfig;
+      }
+      if (previousVersoState === undefined) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = previousVersoState;
+      }
+      if (previousVersoState === undefined) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = previousVersoState;
+      }
       await fs.rm(root, { recursive: true, force: true });
       vi.resetModules();
     }

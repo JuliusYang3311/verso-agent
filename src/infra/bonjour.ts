@@ -1,5 +1,3 @@
-import os from "node:os";
-
 import { logDebug, logWarn } from "../logger.js";
 import { getLogger } from "../logging.js";
 import { ignoreCiaoCancellationRejection } from "./bonjour-ciao.js";
@@ -28,9 +26,15 @@ export type GatewayBonjourAdvertiseOpts = {
 };
 
 function isDisabledByEnv() {
-  if (isTruthyEnvValue(process.env.VERSO_DISABLE_BONJOUR)) return true;
-  if (process.env.NODE_ENV === "test") return true;
-  if (process.env.VITEST) return true;
+  if (isTruthyEnvValue(process.env.VERSO_DISABLE_BONJOUR)) {
+    return true;
+  }
+  if (process.env.NODE_ENV === "test") {
+    return true;
+  }
+  if (process.env.VITEST) {
+    return true;
+  }
   return false;
 }
 
@@ -90,9 +94,12 @@ export async function startGatewayBonjourAdvertiser(
   // mDNS service instance names are single DNS labels; dots in hostnames (like
   // `Mac.localdomain`) can confuse some resolvers/browsers and break discovery.
   // Keep only the first label and normalize away a trailing `.local`.
+  const hostnameRaw =
+    process.env.OPENCLAW_MDNS_HOSTNAME?.trim() ||
+    process.env.CLAWDBOT_MDNS_HOSTNAME?.trim() ||
+    "openclaw";
   const hostname =
-    os
-      .hostname()
+    hostnameRaw
       .replace(/\.local$/i, "")
       .split(".")[0]
       .trim() || "verso";
@@ -211,8 +218,12 @@ export async function startGatewayBonjourAdvertiser(
   const watchdog = setInterval(() => {
     for (const { label, svc } of services) {
       const stateUnknown = (svc as { serviceState?: unknown }).serviceState;
-      if (typeof stateUnknown !== "string") continue;
-      if (stateUnknown === "announced" || stateUnknown === "announcing") continue;
+      if (typeof stateUnknown !== "string") {
+        continue;
+      }
+      if (stateUnknown === "announced" || stateUnknown === "announcing") {
+        continue;
+      }
 
       let key = label;
       try {
@@ -222,7 +233,9 @@ export async function startGatewayBonjourAdvertiser(
       }
       const now = Date.now();
       const last = lastRepairAttempt.get(key) ?? 0;
-      if (now - last < 30_000) continue;
+      if (now - last < 30_000) {
+        continue;
+      }
       lastRepairAttempt.set(key, now);
 
       logWarn(

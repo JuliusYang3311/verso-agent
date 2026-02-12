@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-
 import type { TemplateContext } from "../templating.js";
 import type { FollowupRun, QueueSettings } from "./queue.js";
 import { createMockTypingController } from "./test-helpers.js";
@@ -43,7 +42,6 @@ describe("runReplyAgent block streaming", () => {
     const onBlockReply = vi.fn();
     runEmbeddedPiAgentMock.mockImplementationOnce(async (params) => {
       const block = params.onBlockReply as ((payload: { text?: string }) => void) | undefined;
-      block?.({ text: "Hello" });
       block?.({ text: "Hello" });
       return {
         payloads: [{ text: "Final message" }],

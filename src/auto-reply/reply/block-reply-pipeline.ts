@@ -1,7 +1,7 @@
-import { logVerbose } from "../../globals.js";
 import type { ReplyPayload } from "../types.js";
-import { createBlockReplyCoalescer } from "./block-reply-coalescer.js";
 import type { BlockStreamingCoalescing } from "./block-streaming.js";
+import { logVerbose } from "../../globals.js";
+import { createBlockReplyCoalescer } from "./block-reply-coalescer.js";
 
 export type BlockReplyPipeline = {
   enqueue: (payload: ReplyPayload) => void;
@@ -53,7 +53,9 @@ const withTimeout = async <T>(
   timeoutMs: number,
   timeoutError: Error,
 ): Promise<T> => {
-  if (!timeoutMs || timeoutMs <= 0) return promise;
+  if (!timeoutMs || timeoutMs <= 0) {
+    return promise;
+  }
   let timer: NodeJS.Timeout | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(timeoutError), timeoutMs);
@@ -61,7 +63,9 @@ const withTimeout = async <T>(
   try {
     return await Promise.race([promise, timeoutPromise]);
   } finally {
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
 };
 
@@ -86,21 +90,29 @@ export function createBlockReplyPipeline(params: {
   let didStream = false;
   let didLogTimeout = false;
 
-  const sendPayload = (payload: ReplyPayload, skipSeen?: boolean, associatedKeys?: Set<string>) => {
-    if (aborted) return;
+  const sendPayload = (payload: ReplyPayload, skipSeen?: boolean) => {
+    if (aborted) {
+      return;
+    }
     const payloadKey = createBlockReplyPayloadKey(payload);
     if (!skipSeen) {
-      if (seenKeys.has(payloadKey)) return;
+      if (seenKeys.has(payloadKey)) {
+        return;
+      }
       seenKeys.add(payloadKey);
     }
-    if (sentKeys.has(payloadKey) || pendingKeys.has(payloadKey)) return;
+    if (sentKeys.has(payloadKey) || pendingKeys.has(payloadKey)) {
+      return;
+    }
     pendingKeys.add(payloadKey);
 
     const timeoutError = new Error(`block reply delivery timed out after ${timeoutMs}ms`);
     const abortController = new AbortController();
     sendChain = sendChain
       .then(async () => {
-        if (aborted) return false;
+        if (aborted) {
+          return false;
+        }
         await withTimeout(
           onBlockReply(payload, {
             abortSignal: abortController.signal,
@@ -112,13 +124,10 @@ export function createBlockReplyPipeline(params: {
         return true;
       })
       .then((didSend) => {
-        if (!didSend) return;
-        sentKeys.add(payloadKey);
-        if (associatedKeys) {
-          for (const key of associatedKeys) {
-            sentKeys.add(key);
-          }
+        if (!didSend) {
+          return;
         }
+        sentKeys.add(payloadKey);
         didStream = true;
       })
       .catch((err) => {
@@ -153,7 +162,9 @@ export function createBlockReplyPipeline(params: {
 
   const bufferPayload = (payload: ReplyPayload) => {
     buffer?.onEnqueue?.(payload);
-    if (!buffer?.shouldBuffer(payload)) return false;
+    if (!buffer?.shouldBuffer(payload)) {
+      return false;
+    }
     const payloadKey = createBlockReplyPayloadKey(payload);
     if (
       seenKeys.has(payloadKey) ||
@@ -170,7 +181,9 @@ export function createBlockReplyPipeline(params: {
   };
 
   const flushBuffered = () => {
-    if (!bufferedPayloads.length) return;
+    if (!bufferedPayloads.length) {
+      return;
+    }
     for (const payload of bufferedPayloads) {
       const finalPayload = buffer?.finalize?.(payload) ?? payload;
       sendPayload(finalPayload, true);
@@ -180,24 +193,28 @@ export function createBlockReplyPipeline(params: {
   };
 
   const enqueue = (payload: ReplyPayload) => {
-    if (aborted) return;
-    if (bufferPayload(payload)) return;
+    if (aborted) {
+      return;
+    }
+    if (bufferPayload(payload)) {
+      return;
+    }
     const hasMedia = Boolean(payload.mediaUrl) || (payload.mediaUrls?.length ?? 0) > 0;
-    const payloadKey = createBlockReplyPayloadKey(payload);
     if (hasMedia) {
       void coalescer?.flush({ force: true });
-      sendPayload(payload, false, new Set([payloadKey]));
+      sendPayload(payload);
       return;
     }
     if (coalescer) {
+      const payloadKey = createBlockReplyPayloadKey(payload);
       if (seenKeys.has(payloadKey) || pendingKeys.has(payloadKey) || bufferedKeys.has(payloadKey)) {
         return;
       }
       bufferedKeys.add(payloadKey);
-      coalescer.enqueue(payload, payloadKey);
+      coalescer.enqueue(payload);
       return;
     }
-    sendPayload(payload, false, new Set([payloadKey]));
+    sendPayload(payload);
   };
 
   const flush = async (options?: { force?: boolean }) => {

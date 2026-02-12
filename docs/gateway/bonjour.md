@@ -3,7 +3,9 @@ summary: "Bonjour/mDNS discovery + debugging (Gateway beacons, clients, and comm
 read_when:
   - Debugging Bonjour discovery issues on macOS/iOS
   - Changing mDNS service types, TXT records, or discovery UX
+title: "Bonjour Discovery"
 ---
+
 # Bonjour / mDNS discovery
 
 Verso uses Bonjour (mDNS / DNS‑SD) as a **LAN‑only convenience** to discover
@@ -18,10 +20,10 @@ boundary. You can keep the same discovery UX by switching to **unicast DNS‑SD*
 
 High‑level steps:
 
-1) Run a DNS server on the gateway host (reachable over Tailnet).
-2) Publish DNS‑SD records for `_verso-gw._tcp` under a dedicated zone
+1. Run a DNS server on the gateway host (reachable over Tailnet).
+2. Publish DNS‑SD records for `_verso-gw._tcp` under a dedicated zone
    (example: `verso.internal.`).
-3) Configure Tailscale **split DNS** so `verso.internal` resolves via that
+3. Configure Tailscale **split DNS** so `verso.internal` resolves via that
    DNS server for clients (including iOS).
 
 Verso standardizes on `verso.internal.` for this mode. iOS/Android nodes
@@ -32,7 +34,7 @@ browse both `local.` and `verso.internal.` automatically.
 ```json5
 {
   gateway: { bind: "tailnet" }, // tailnet-only (recommended)
-  discovery: { wideArea: { enabled: true } } // enables verso.internal DNS-SD publishing
+  discovery: { wideArea: { enabled: true } }, // enables verso.internal DNS-SD publishing
 }
 ```
 
@@ -43,6 +45,7 @@ verso dns setup --apply
 ```
 
 This installs CoreDNS and configures it to:
+
 - listen on port 53 only on the gateway’s Tailscale interfaces
 - serve `verso.internal.` from `~/.verso/dns/verso.internal.db`
 
@@ -69,7 +72,11 @@ The Gateway WS port (default `18789`) binds to loopback by default. For LAN/tail
 access, bind explicitly and keep auth enabled.
 
 For tailnet‑only setups:
-- Set `gateway.bind: "tailnet"` in `~/.verso/verso.json`.
+
+- # Set `gateway.bind: "tailnet"` in `~/.verso/verso.json`.
+
+- Set `gateway.bind: "tailnet"` in `~/.openclaw/openclaw.json`.
+  > > > > > > > upstream/main
 - Restart the Gateway (or restart the macOS menubar app).
 
 ## What advertises
@@ -101,10 +108,13 @@ The Gateway advertises small non‑secret hints to make UI flows convenient:
 Useful built‑in tools:
 
 - Browse instances:
+
   ```bash
   dns-sd -B _verso-gw._tcp local.
   ```
+
 - Resolve one instance (replace `<instance>`):
+
   ```bash
   dns-sd -L "<instance>" _verso-gw._tcp local.
   ```
@@ -126,6 +136,7 @@ The Gateway writes a rolling log file (printed on startup as
 The iOS node uses `NWBrowser` to discover `_verso-gw._tcp`.
 
 To capture logs:
+
 - Settings → Gateway → Advanced → **Discovery Debug Logs**
 - Settings → Gateway → Advanced → **Discovery Logs** → reproduce → **Copy**
 

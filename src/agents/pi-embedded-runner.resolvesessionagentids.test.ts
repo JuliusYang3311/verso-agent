@@ -73,7 +73,9 @@ const _ensureModels = (cfg: VersoConfig, agentDir: string) =>
   ensureVersoModelsJson(cfg, agentDir) as unknown;
 
 const _textFromContent = (content: unknown) => {
-  if (typeof content === "string") return content;
+  if (typeof content === "string") {
+    return content;
+  }
   if (Array.isArray(content) && content[0]?.type === "text") {
     return (content[0] as { text?: string }).text;
   }

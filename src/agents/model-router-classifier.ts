@@ -5,8 +5,8 @@
 
 import { completeSimple, getModel, type Api, type Model } from "@mariozechner/pi-ai";
 import type { VersoConfig } from "../config/config.js";
-import { resolveApiKeyForProvider } from "./model-auth.js";
 import { logVerbose } from "../globals.js";
+import { resolveApiKeyForProvider } from "./model-auth.js";
 import { stripThinkingTagsFromText } from "./pi-embedded-utils.js";
 
 /**
@@ -64,8 +64,12 @@ export async function callTaskClassifier(
   if (!modelObj) {
     // Fallback: If pi-ai doesn't know the provider (e.g. custom-openai), construct it manually
     // This supports custom models defined in openclaw.json that aren't in pi-ai's static registry
-    if (provider === "custom-openai" || (auth.baseUrl && auth.mode === "api-key")) {
-      const providerApi = cfg?.models?.providers?.[provider]?.api || "openai-completions";
+    if (
+      provider === "custom-openai" ||
+      provider === "openai-codex" ||
+      (auth.baseUrl && auth.mode === "api-key")
+    ) {
+      const providerApi = cfg?.models?.providers?.[provider]?.api || "openai-responses";
       modelObj = {
         id: model,
         provider: "openai", // Alias to openai for pi-ai internal logic

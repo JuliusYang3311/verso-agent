@@ -1,4 +1,9 @@
-import type { AgentCompactionConfig, AgentDefaultsConfig } from "./types.agent-defaults.js";
+import type { ChatType } from "../channels/chat-type.js";
+import type {
+  AgentCompactionConfig,
+  AgentDefaultsConfig,
+  PersistenceMode,
+} from "./types.agent-defaults.js";
 import type { HumanDelayConfig, IdentityConfig } from "./types.base.js";
 import type { GroupChatConfig } from "./types.messages.js";
 import type {
@@ -7,6 +12,8 @@ import type {
   SandboxPruneSettings,
 } from "./types.sandbox.js";
 import type { AgentToolsConfig, MemorySearchConfig } from "./types.tools.js";
+
+export type { PersistenceMode } from "./types.agent-defaults.js";
 
 export type AgentModelConfig =
   | string
@@ -24,6 +31,12 @@ export type AgentConfig = {
   workspace?: string;
   agentDir?: string;
   model?: AgentModelConfig;
+  /** Per-agent persistence override for session storage. */
+  persistence?: PersistenceMode;
+  /** Optional allowlist of skills for this agent (omit = all skills; empty = none). */
+  skills?: string[];
+  /** Compaction tuning and pre-compaction memory flush behavior. */
+  compaction?: AgentCompactionConfig;
   memorySearch?: MemorySearchConfig;
   /** Human-like delay between block replies for this agent. */
   humanDelay?: HumanDelayConfig;
@@ -60,8 +73,6 @@ export type AgentConfig = {
     prune?: SandboxPruneSettings;
   };
   tools?: AgentToolsConfig;
-  /** Compaction tuning and pre-compaction memory flush behavior for this agent. */
-  compaction?: AgentCompactionConfig;
 };
 
 export type AgentsConfig = {
@@ -74,7 +85,7 @@ export type AgentBinding = {
   match: {
     channel: string;
     accountId?: string;
-    peer?: { kind: "dm" | "group" | "channel"; id: string };
+    peer?: { kind: ChatType; id: string };
     guildId?: string;
     teamId?: string;
   };

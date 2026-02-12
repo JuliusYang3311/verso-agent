@@ -11,10 +11,10 @@ import { setVerbose } from "../../globals.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
-import { hasExplicitOptions } from "../command-options.js";
-import { formatHelpExamples } from "../help-format.js";
-import { createDefaultDeps } from "../deps.js";
 import { runCommandWithRuntime } from "../cli-utils.js";
+import { hasExplicitOptions } from "../command-options.js";
+import { createDefaultDeps } from "../deps.js";
+import { formatHelpExamples } from "../help-format.js";
 import { collectOption } from "./helpers.js";
 
 export function registerAgentCommands(program: Command, args: { agentChannelOptions: string }) {
@@ -68,7 +68,7 @@ ${formatHelpExamples([
   ],
 ])}
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.molt.bot/cli/agent")}`,
+${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.openclaw.ai/cli/agent")}`,
     )
     .action(async (opts) => {
       const verboseLevel = typeof opts.verbose === "string" ? opts.verbose.toLowerCase() : "";
@@ -86,7 +86,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.molt.bot/cli/agent"
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "docs.molt.bot/cli/agents")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/agents", "docs.openclaw.ai/cli/agents")}\n`,
     );
 
   agents

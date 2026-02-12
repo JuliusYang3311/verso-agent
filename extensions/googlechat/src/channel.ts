@@ -18,7 +18,6 @@ import {
   type VersoConfig,
 } from "verso/plugin-sdk";
 import { GoogleChatConfigSchema } from "verso/plugin-sdk";
-
 import {
   listGoogleChatAccountIds,
   resolveDefaultGoogleChatAccountId,
@@ -27,9 +26,9 @@ import {
 } from "./accounts.js";
 import { googlechatMessageActions } from "./actions.js";
 import { sendGoogleChatMessage, uploadGoogleChatAttachment, probeGoogleChat } from "./api.js";
+import { resolveGoogleChatWebhookPath, startGoogleChatMonitor } from "./monitor.js";
 import { googlechatOnboardingAdapter } from "./onboarding.js";
 import { getGoogleChatRuntime } from "./runtime.js";
-import { resolveGoogleChatWebhookPath, startGoogleChatMonitor } from "./monitor.js";
 import {
   isGoogleChatSpaceTarget,
   isGoogleChatUserTarget,
@@ -59,8 +58,8 @@ export const googlechatDock: ChannelDock = {
   outbound: { textChunkLimit: 4000 },
   config: {
     resolveAllowFrom: ({ cfg, accountId }) =>
-      (resolveGoogleChatAccount({ cfg: cfg as VersoConfig, accountId }).config.dm?.allowFrom ??
-        []
+      (
+        resolveGoogleChatAccount({ cfg: cfg as VersoConfig, accountId }).config.dm?.allowFrom ?? []
       ).map((entry) => String(entry)),
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
@@ -166,10 +165,11 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
       credentialSource: account.credentialSource,
     }),
     resolveAllowFrom: ({ cfg, accountId }) =>
-      (resolveGoogleChatAccount({
-        cfg: cfg as VersoConfig,
-        accountId,
-      }).config.dm?.allowFrom ?? []
+      (
+        resolveGoogleChatAccount({
+          cfg: cfg as VersoConfig,
+          accountId,
+        }).config.dm?.allowFrom ?? []
       ).map((entry) => String(entry)),
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
@@ -342,8 +342,8 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
           ...next,
           channels: {
             ...next.channels,
-            "googlechat": {
-              ...(next.channels?.["googlechat"] ?? {}),
+            googlechat: {
+              ...next.channels?.["googlechat"],
               enabled: true,
               ...configPatch,
             },
@@ -354,13 +354,13 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
         ...next,
         channels: {
           ...next.channels,
-          "googlechat": {
-            ...(next.channels?.["googlechat"] ?? {}),
+          googlechat: {
+            ...next.channels?.["googlechat"],
             enabled: true,
             accounts: {
-              ...(next.channels?.["googlechat"]?.accounts ?? {}),
+              ...next.channels?.["googlechat"]?.accounts,
               [accountId]: {
-                ...(next.channels?.["googlechat"]?.accounts?.[accountId] ?? {}),
+                ...next.channels?.["googlechat"]?.accounts?.[accountId],
                 enabled: true,
                 ...configPatch,
               },
@@ -372,8 +372,7 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
   },
   outbound: {
     deliveryMode: "direct",
-    chunker: (text, limit) =>
-      getGoogleChatRuntime().channel.text.chunkMarkdownText(text, limit),
+    chunker: (text, limit) => getGoogleChatRuntime().channel.text.chunkMarkdownText(text, limit),
     chunkerMode: "markdown",
     textChunkLimit: 4000,
     resolveTarget: ({ to, allowFrom, mode }) => {
@@ -445,18 +444,22 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
       const maxBytes = resolveChannelMediaMaxBytes({
         cfg: cfg as VersoConfig,
         resolveChannelLimitMb: ({ cfg, accountId }) =>
-          (cfg.channels?.["googlechat"] as { accounts?: Record<string, { mediaMaxMb?: number }>; mediaMaxMb?: number } | undefined)
-            ?.accounts?.[accountId]?.mediaMaxMb ??
+          (
+            cfg.channels?.["googlechat"] as
+              | { accounts?: Record<string, { mediaMaxMb?: number }>; mediaMaxMb?: number }
+              | undefined
+          )?.accounts?.[accountId]?.mediaMaxMb ??
           (cfg.channels?.["googlechat"] as { mediaMaxMb?: number } | undefined)?.mediaMaxMb,
         accountId,
       });
-      const loaded = await runtime.channel.media.fetchRemoteMedia(mediaUrl, {
+      const loaded = await runtime.channel.media.fetchRemoteMedia({
+        url: mediaUrl,
         maxBytes: maxBytes ?? (account.config.mediaMaxMb ?? 20) * 1024 * 1024,
       });
       const upload = await uploadGoogleChatAttachment({
         account,
         space,
-        filename: loaded.filename ?? "attachment",
+        filename: loaded.fileName ?? "attachment",
         buffer: loaded.buffer,
         contentType: loaded.contentType,
       });
@@ -466,7 +469,7 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
         text,
         thread,
         attachments: upload.attachmentUploadToken
-          ? [{ attachmentUploadToken: upload.attachmentUploadToken, contentName: loaded.filename }]
+          ? [{ attachmentUploadToken: upload.attachmentUploadToken, contentName: loaded.fileName }]
           : undefined,
       });
       return {
@@ -484,13 +487,15 @@ export const googlechatPlugin: ChannelPlugin<ResolvedGoogleChatAccount> = {
       lastStopAt: null,
       lastError: null,
     },
-    collectStatusIssues: (accounts) =>
+    collectStatusIssues: (accounts): ChannelStatusIssue[] =>
       accounts.flatMap((entry) => {
         const accountId = String(entry.accountId ?? DEFAULT_ACCOUNT_ID);
         const enabled = entry.enabled !== false;
         const configured = entry.configured === true;
-        if (!enabled || !configured) return [];
-        const issues = [];
+        if (!enabled || !configured) {
+          return [];
+        }
+        const issues: ChannelStatusIssue[] = [];
         if (!entry.audience) {
           issues.push({
             channel: "googlechat",

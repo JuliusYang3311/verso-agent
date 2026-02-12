@@ -3,6 +3,7 @@ summary: "CLI reference for `verso reset` (reset local state/config)"
 read_when:
   - You want to wipe local state while keeping the CLI installed
   - You want a dry-run of what would be removed
+title: "reset"
 ---
 
 # `verso reset`
@@ -14,4 +15,3 @@ verso reset
 verso reset --dry-run
 verso reset --scope config+creds+sessions --yes --non-interactive
 ```
-

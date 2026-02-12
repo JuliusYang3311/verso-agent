@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import type { VersoConfig } from "../config/config.js";
 import { resolveHumanDelayConfig } from "./identity.js";
 

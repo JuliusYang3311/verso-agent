@@ -1,22 +1,14 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { chunkMarkdown, listMemoryFiles, normalizeExtraMemoryPaths } from "./internal.js";
 
 describe("normalizeExtraMemoryPaths", () => {
   it("trims, resolves, and dedupes paths", () => {
     const workspaceDir = path.join(os.tmpdir(), "memory-test-workspace");
     const absPath = path.resolve(path.sep, "shared-notes");
-    const result = normalizeExtraMemoryPaths(workspaceDir, [
-      " notes ",
-      "./notes",
-      absPath,
-      absPath,
-      "",
-    ]);
+    const result = normalizeExtraMemoryPaths(workspaceDir, [" notes ", "./notes", absPath, ""]);
     expect(result).toEqual([path.resolve(workspaceDir, "notes"), absPath]);
   });
 });

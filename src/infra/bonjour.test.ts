@@ -1,7 +1,5 @@
 import os from "node:os";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import * as logging from "../logging.js";
 
 const mocks = vi.hoisted(() => ({
@@ -65,7 +63,9 @@ describe("gateway bonjour advertiser", () => {
 
   afterEach(() => {
     for (const key of Object.keys(process.env)) {
-      if (!(key in prevEnv)) delete process.env[key];
+      if (!(key in prevEnv)) {
+        delete process.env[key];
+      }
     }
     for (const [key, value] of Object.entries(prevEnv)) {
       process.env[key] = value;
@@ -86,6 +86,7 @@ describe("gateway bonjour advertiser", () => {
     process.env.NODE_ENV = "development";
 
     vi.spyOn(os, "hostname").mockReturnValue("test-host");
+    process.env.OPENCLAW_MDNS_HOSTNAME = "test-host";
 
     const destroy = vi.fn().mockResolvedValue(undefined);
     const advertise = vi.fn().mockImplementation(
@@ -180,6 +181,7 @@ describe("gateway bonjour advertiser", () => {
     process.env.NODE_ENV = "development";
 
     vi.spyOn(os, "hostname").mockReturnValue("test-host");
+    process.env.OPENCLAW_MDNS_HOSTNAME = "test-host";
 
     const destroy = vi.fn().mockResolvedValue(undefined);
     const advertise = vi.fn().mockResolvedValue(undefined);
@@ -217,6 +219,7 @@ describe("gateway bonjour advertiser", () => {
     process.env.NODE_ENV = "development";
 
     vi.spyOn(os, "hostname").mockReturnValue("test-host");
+    process.env.OPENCLAW_MDNS_HOSTNAME = "test-host";
 
     const destroy = vi.fn().mockResolvedValue(undefined);
     const advertise = vi.fn().mockResolvedValue(undefined);
@@ -261,6 +264,7 @@ describe("gateway bonjour advertiser", () => {
 
     vi.useFakeTimers();
     vi.spyOn(os, "hostname").mockReturnValue("test-host");
+    process.env.OPENCLAW_MDNS_HOSTNAME = "test-host";
 
     const destroy = vi.fn().mockResolvedValue(undefined);
     const advertise = vi
@@ -308,6 +312,7 @@ describe("gateway bonjour advertiser", () => {
     process.env.NODE_ENV = "development";
 
     vi.spyOn(os, "hostname").mockReturnValue("test-host");
+    process.env.OPENCLAW_MDNS_HOSTNAME = "test-host";
 
     const destroy = vi.fn().mockResolvedValue(undefined);
     const advertise = vi.fn(() => {
@@ -366,8 +371,8 @@ describe("gateway bonjour advertiser", () => {
     const [gatewayCall] = createService.mock.calls as Array<[ServiceCall]>;
     expect(gatewayCall?.[0]?.name).toBe("Mac (Verso)");
     expect(gatewayCall?.[0]?.domain).toBe("local");
-    expect(gatewayCall?.[0]?.hostname).toBe("Mac");
-    expect((gatewayCall?.[0]?.txt as Record<string, string>)?.lanHost).toBe("Mac.local");
+    expect(gatewayCall?.[0]?.hostname).toBe("openclaw");
+    expect((gatewayCall?.[0]?.txt as Record<string, string>)?.lanHost).toBe("openclaw.local");
 
     await started.stop();
   });

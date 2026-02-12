@@ -3,6 +3,7 @@ summary: "Updating Verso safely (global install or source), plus rollback strate
 read_when:
   - Updating Verso
   - Something breaks after an update
+title: "Updating"
 ---
 
 # Updating
@@ -16,18 +17,26 @@ detects existing installs, upgrades in place, and runs `verso doctor` when
 needed.
 
 ```bash
-curl -fsSL https://molt.bot/install.sh | bash
+curl -fsSL https://openclaw.ai/install.sh | bash
 ```
 
 Notes:
+
 - Add `--no-onboard` if you don’t want the onboarding wizard to run again.
 - For **source installs**, use:
+
   ```bash
-  curl -fsSL https://molt.bot/install.sh | bash -s -- --install-method git --no-onboard
+  curl -fsSL https://openclaw.ai/install.sh | bash -s -- --install-method git --no-onboard
   ```
+
   The installer will `git pull --rebase` **only** if the repo is clean.
+
 - For **global installs**, the script uses `npm install -g verso@latest` under the hood.
-- Legacy note: `verso` remains available as a compatibility shim.
+- # Legacy note: `verso` remains available as a compatibility shim.
+
+- For **global installs**, the script uses `npm install -g openclaw@latest` under the hood.
+- Legacy note: `clawdbot` remains available as a compatibility shim.
+  > > > > > > > upstream/main
 
 ## Before you update
 
@@ -49,6 +58,7 @@ npm i -g verso@latest
 ```bash
 pnpm add -g verso@latest
 ```
+
 We do **not** recommend Bun for the Gateway runtime (WhatsApp/Telegram bugs).
 
 To switch update channels (git + npm installs):
@@ -74,6 +84,7 @@ verso health
 ```
 
 Notes:
+
 - If your Gateway runs as a service, `verso gateway restart` is preferred over killing PIDs.
 - If you’re pinned to a specific version, see “Rollback / pinning” below.
 
@@ -86,6 +97,7 @@ verso update
 ```
 
 It runs a safe-ish update flow:
+
 - Requires a clean worktree.
 - Switches to the selected channel (tag or branch).
 - Fetches + rebases against the configured upstream (dev channel).
@@ -97,9 +109,15 @@ If you installed via **npm/pnpm** (no git metadata), `verso update` will try to 
 ## Update (Control UI / RPC)
 
 The Control UI has **Update & Restart** (RPC: `update.run`). It:
-1) Runs the same source-update flow as `verso update` (git checkout only).
+
+1. Runs the same source-update flow as `verso update` (git checkout only).
+2. Writes a restart sentinel with a structured report (stdout/stderr tail).
+3. # Restarts the gateway and pings the last active session with the report.
+
+1) Runs the same source-update flow as `openclaw update` (git checkout only).
 2) Writes a restart sentinel with a structured report (stdout/stderr tail).
 3) Restarts the gateway and pings the last active session with the report.
+   > > > > > > > upstream/main
 
 If the rebase fails, the gateway aborts and restarts without applying the update.
 
@@ -120,11 +138,13 @@ git pull
 pnpm install
 pnpm build
 pnpm ui:build # auto-installs UI deps on first run
+<<<<<<< HEAD
 verso doctor
 verso health
 ```
 
 Notes:
+
 - `pnpm build` matters when you run the packaged `verso` binary ([`verso.mjs`](https://github.com/verso/verso/blob/main/verso.mjs)) or use Node to run `dist/`.
 - If you run from a repo checkout without a global install, use `pnpm verso ...` for CLI commands.
 - If you run directly from TypeScript (`pnpm verso ...`), a rebuild is usually unnecessary, but **config migrations still apply** → run doctor.
@@ -134,9 +154,29 @@ Notes:
 
 Doctor is the “safe update” command. It’s intentionally boring: repair + migrate + warn.
 
-Note: if you’re on a **source install** (git checkout), `verso doctor` will offer to run `verso update` first.
+# Note: if you’re on a **source install** (git checkout), `verso doctor` will offer to run `verso update` first.
+
+openclaw doctor
+openclaw health
+
+````
+
+Notes:
+
+- `pnpm build` matters when you run the packaged `openclaw` binary ([`openclaw.mjs`](https://github.com/openclaw/openclaw/blob/main/openclaw.mjs)) or use Node to run `dist/`.
+- If you run from a repo checkout without a global install, use `pnpm openclaw ...` for CLI commands.
+- If you run directly from TypeScript (`pnpm openclaw ...`), a rebuild is usually unnecessary, but **config migrations still apply** → run doctor.
+- Switching between global and git installs is easy: install the other flavor, then run `openclaw doctor` so the gateway service entrypoint is rewritten to the current install.
+
+## Always Run: `openclaw doctor`
+
+Doctor is the “safe update” command. It’s intentionally boring: repair + migrate + warn.
+
+Note: if you’re on a **source install** (git checkout), `openclaw doctor` will offer to run `openclaw update` first.
+>>>>>>> upstream/main
 
 Typical things it does:
+
 - Migrate deprecated config keys / legacy config file locations.
 - Audit DM policies and warn on risky “open” settings.
 - Check Gateway health and can offer to restart.
@@ -150,18 +190,35 @@ Details: [Doctor](/gateway/doctor)
 CLI (works regardless of OS):
 
 ```bash
+<<<<<<< HEAD
 verso gateway status
 verso gateway stop
 verso gateway restart
 verso gateway --port 18789
 verso logs --follow
-```
+````
 
 If you’re supervised:
+
 - macOS launchd (app-bundled LaunchAgent): `launchctl kickstart -k gui/$UID/bot.molt.gateway` (use `bot.molt.<profile>`; legacy `com.verso.*` still works)
 - Linux systemd user service: `systemctl --user restart verso-gateway[-<profile>].service`
 - Windows (WSL2): `systemctl --user restart verso-gateway[-<profile>].service`
-  - `launchctl`/`systemctl` only work if the service is installed; otherwise run `verso gateway install`.
+  - # `launchctl`/`systemctl` only work if the service is installed; otherwise run `verso gateway install`.
+    openclaw gateway status
+    openclaw gateway stop
+    openclaw gateway restart
+    openclaw gateway --port 18789
+    openclaw logs --follow
+
+````
+
+If you’re supervised:
+
+- macOS launchd (app-bundled LaunchAgent): `launchctl kickstart -k gui/$UID/bot.molt.gateway` (use `bot.molt.<profile>`; legacy `com.openclaw.*` still works)
+- Linux systemd user service: `systemctl --user restart openclaw-gateway[-<profile>].service`
+- Windows (WSL2): `systemctl --user restart openclaw-gateway[-<profile>].service`
+  - `launchctl`/`systemctl` only work if the service is installed; otherwise run `openclaw gateway install`.
+>>>>>>> upstream/main
 
 Runbook + exact service labels: [Gateway runbook](/gateway)
 
@@ -173,7 +230,7 @@ Install a known-good version (replace `<version>` with the last working one):
 
 ```bash
 npm i -g verso@<version>
-```
+````
 
 ```bash
 pnpm add -g verso@<version>

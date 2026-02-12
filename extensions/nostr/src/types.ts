@@ -1,7 +1,6 @@
 import type { VersoConfig } from "verso/plugin-sdk";
 import { getPublicKeyFromPrivate } from "./nostr-bus.js";
 import { DEFAULT_RELAYS } from "./nostr-bus.js";
-import type { NostrProfile } from "./config-schema.js";
 
 export interface NostrAccountConfig {
   enabled?: boolean;
@@ -48,7 +47,9 @@ export function listNostrAccountIds(cfg: VersoConfig): string[] {
  */
 export function resolveDefaultNostrAccountId(cfg: VersoConfig): string {
   const ids = listNostrAccountIds(cfg);
-  if (ids.includes(DEFAULT_ACCOUNT_ID)) return DEFAULT_ACCOUNT_ID;
+  if (ids.includes(DEFAULT_ACCOUNT_ID)) {
+    return DEFAULT_ACCOUNT_ID;
+  }
   return ids[0] ?? DEFAULT_ACCOUNT_ID;
 }
 

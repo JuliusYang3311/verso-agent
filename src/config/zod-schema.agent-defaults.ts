@@ -37,6 +37,8 @@ export const AgentDefaultsSchema = z
             alias: z.string().optional(),
             /** Provider-specific API parameters (e.g., GLM-4.7 thinking mode). */
             params: z.record(z.string(), z.unknown()).optional(),
+            /** Enable streaming for this model (default: true, false for Ollama to avoid SDK issue #1205). */
+            streaming: z.boolean().optional(),
           })
           .strict(),
       )
@@ -89,6 +91,7 @@ export const AgentDefaultsSchema = z
     compaction: z
       .object({
         mode: z.union([z.literal("default"), z.literal("safeguard")]).optional(),
+        maxSessionTokens: z.number().int().positive().optional(),
         reserveTokensFloor: z.number().int().nonnegative().optional(),
         maxHistoryShare: z.number().min(0.1).max(0.9).optional(),
         memoryFlush: z
@@ -103,6 +106,7 @@ export const AgentDefaultsSchema = z
       })
       .strict()
       .optional(),
+    persistence: z.enum(["persistent", "transient", "singleton"]).optional(),
     router: z
       .object({
         enabled: z.boolean().optional(),
@@ -159,6 +163,7 @@ export const AgentDefaultsSchema = z
               .strict(),
           ])
           .optional(),
+        thinking: z.string().optional(),
       })
       .strict()
       .optional(),

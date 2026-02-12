@@ -1,3 +1,5 @@
+import type { VersoConfig } from "../config/config.js";
+import type { WizardPrompter, WizardSelectOption } from "../wizard/prompts.js";
 import { ensureAuthProfileStore, listProfilesForProvider } from "../agents/auth-profiles.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { getCustomProviderApiKey, resolveEnvApiKey } from "../agents/model-auth.js";
@@ -9,9 +11,8 @@ import {
   normalizeProviderId,
   resolveConfiguredModelRef,
 } from "../agents/model-selection.js";
-import type { VersoConfig } from "../config/config.js";
-import type { WizardPrompter, WizardSelectOption } from "../wizard/prompts.js";
 import { formatTokenK } from "./models/shared.js";
+import { OPENAI_CODEX_DEFAULT_MODEL } from "./openai-codex-model-default.js";
 
 const KEEP_VALUE = "__keep__";
 const MANUAL_VALUE = "__manual__";
@@ -41,15 +42,23 @@ function hasAuthForProvider(
   cfg: VersoConfig,
   store: ReturnType<typeof ensureAuthProfileStore>,
 ) {
-  if (listProfilesForProvider(store, provider).length > 0) return true;
-  if (resolveEnvApiKey(provider)) return true;
-  if (getCustomProviderApiKey(cfg, provider)) return true;
+  if (listProfilesForProvider(store, provider).length > 0) {
+    return true;
+  }
+  if (resolveEnvApiKey(provider)) {
+    return true;
+  }
+  if (getCustomProviderApiKey(cfg, provider)) {
+    return true;
+  }
   return false;
 }
 
 function resolveConfiguredModelRaw(cfg: VersoConfig): string {
   const raw = cfg.agents?.defaults?.model as { primary?: string } | string | undefined;
-  if (typeof raw === "string") return raw.trim();
+  if (typeof raw === "string") {
+    return raw.trim();
+  }
   return raw?.primary?.trim() ?? "";
 }
 
@@ -65,7 +74,9 @@ function normalizeModelKeys(values: string[]): string[] {
   const next: string[] = [];
   for (const raw of values) {
     const value = String(raw ?? "").trim();
-    if (!value || seen.has(value)) continue;
+    if (!value || seen.has(value)) {
+      continue;
+    }
     seen.add(value);
     next.push(value);
   }
@@ -84,7 +95,9 @@ async function promptManualModel(params: {
     validate: params.allowBlank ? undefined : (value) => (value?.trim() ? undefined : "Required"),
   });
   const model = String(modelInput ?? "").trim();
-  if (!model) return {};
+  if (!model) {
+    return {};
+  }
   return { model };
 }
 
@@ -140,7 +153,7 @@ export async function promptDefaultModel(
     });
   }
 
-  const providers = Array.from(new Set(models.map((entry) => entry.provider))).sort((a, b) =>
+  const providers = Array.from(new Set(models.map((entry) => entry.provider))).toSorted((a, b) =>
     a.localeCompare(b),
   );
 
@@ -177,13 +190,15 @@ export async function promptDefaultModel(
   const authCache = new Map<string, boolean>();
   const hasAuth = (provider: string) => {
     const cached = authCache.get(provider);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
     const value = hasAuthForProvider(provider, cfg, authStore);
     authCache.set(provider, value);
     return value;
   };
 
-  const options: WizardSelectOption<string>[] = [];
+  const options: WizardSelectOption[] = [];
   if (allowKeep) {
     options.push({
       value: KEEP_VALUE,
@@ -207,15 +222,27 @@ export async function promptDefaultModel(
     reasoning?: boolean;
   }) => {
     const key = modelKey(entry.provider, entry.id);
-    if (seen.has(key)) return;
+    if (seen.has(key)) {
+      return;
+    }
     // Skip internal router models that can't be directly called via API.
-    if (HIDDEN_ROUTER_MODELS.has(key)) return;
+    if (HIDDEN_ROUTER_MODELS.has(key)) {
+      return;
+    }
     const hints: string[] = [];
-    if (entry.contextWindow) hints.push(`ctx ${formatTokenK(entry.contextWindow)}`);
-    if (entry.reasoning) hints.push("reasoning");
+    if (entry.contextWindow) {
+      hints.push(`ctx ${formatTokenK(entry.contextWindow)}`);
+    }
+    if (entry.reasoning) {
+      hints.push("reasoning");
+    }
     const aliases = aliasIndex.byKey.get(key);
-    if (aliases?.length) hints.push(`alias: ${aliases.join(", ")}`);
-    if (!hasAuth(entry.provider)) hints.push("auth missing");
+    if (aliases?.length) {
+      hints.push(`alias: ${aliases.join(", ")}`);
+    }
+    if (!hasAuth(entry.provider)) {
+      hints.push("auth missing");
+    }
 
     // Revert to showing full Key as requested
     const label = key;
@@ -228,7 +255,9 @@ export async function promptDefaultModel(
     seen.add(key);
   };
 
-  for (const entry of models) addModelOption(entry);
+  for (const entry of models) {
+    addModelOption(entry);
+  }
 
   if (configuredKey && !seen.has(configuredKey)) {
     options.push({
@@ -257,7 +286,9 @@ export async function promptDefaultModel(
     initialValue,
   });
 
-  if (selection === KEEP_VALUE) return {};
+  if (selection === KEEP_VALUE) {
+    return {};
+  }
   if (selection === MANUAL_VALUE) {
     return promptManualModel({
       prompter: params.prompter,
@@ -302,13 +333,15 @@ export async function promptModelAllowlist(params: {
         params.message ??
         "Allowlist models (comma-separated provider/model; blank to keep current)",
       initialValue: existingKeys.join(", "),
-      placeholder: "openai-codex/gpt-5.2, anthropic/claude-opus-4-5",
+      placeholder: `${OPENAI_CODEX_DEFAULT_MODEL}, anthropic/claude-opus-4-6`,
     });
     const parsed = String(raw ?? "")
       .split(",")
       .map((value) => value.trim())
       .filter((value) => value.length > 0);
-    if (parsed.length === 0) return {};
+    if (parsed.length === 0) {
+      return {};
+    }
     return { models: normalizeModelKeys(parsed) };
   }
 
@@ -322,13 +355,15 @@ export async function promptModelAllowlist(params: {
   const authCache = new Map<string, boolean>();
   const hasAuth = (provider: string) => {
     const cached = authCache.get(provider);
-    if (cached !== undefined) return cached;
+    if (cached !== undefined) {
+      return cached;
+    }
     const value = hasAuthForProvider(provider, cfg, authStore);
     authCache.set(provider, value);
     return value;
   };
 
-  const options: WizardSelectOption<string>[] = [];
+  const options: WizardSelectOption[] = [];
   const seen = new Set<string>();
   const addModelOption = (entry: {
     provider: string;
@@ -338,15 +373,29 @@ export async function promptModelAllowlist(params: {
     reasoning?: boolean;
   }) => {
     const key = modelKey(entry.provider, entry.id);
-    if (seen.has(key)) return;
-    if (HIDDEN_ROUTER_MODELS.has(key)) return;
+    if (seen.has(key)) {
+      return;
+    }
+    if (HIDDEN_ROUTER_MODELS.has(key)) {
+      return;
+    }
     const hints: string[] = [];
-    if (entry.name && entry.name !== entry.id) hints.push(entry.name);
-    if (entry.contextWindow) hints.push(`ctx ${formatTokenK(entry.contextWindow)}`);
-    if (entry.reasoning) hints.push("reasoning");
+    if (entry.name && entry.name !== entry.id) {
+      hints.push(entry.name);
+    }
+    if (entry.contextWindow) {
+      hints.push(`ctx ${formatTokenK(entry.contextWindow)}`);
+    }
+    if (entry.reasoning) {
+      hints.push("reasoning");
+    }
     const aliases = aliasIndex.byKey.get(key);
-    if (aliases?.length) hints.push(`alias: ${aliases.join(", ")}`);
-    if (!hasAuth(entry.provider)) hints.push("auth missing");
+    if (aliases?.length) {
+      hints.push(`alias: ${aliases.join(", ")}`);
+    }
+    if (!hasAuth(entry.provider)) {
+      hints.push("auth missing");
+    }
     options.push({
       value: key,
       label: key,
@@ -359,11 +408,15 @@ export async function promptModelAllowlist(params: {
     ? catalog.filter((entry) => allowedKeySet.has(modelKey(entry.provider, entry.id)))
     : catalog;
 
-  for (const entry of filteredCatalog) addModelOption(entry);
+  for (const entry of filteredCatalog) {
+    addModelOption(entry);
+  }
 
   const supplementalKeys = allowedKeySet ? allowedKeys : existingKeys;
   for (const key of supplementalKeys) {
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {
+      continue;
+    }
     options.push({
       value: key,
       label: key,
@@ -372,7 +425,9 @@ export async function promptModelAllowlist(params: {
     seen.add(key);
   }
 
-  if (options.length === 0) return {};
+  if (options.length === 0) {
+    return {};
+  }
 
   const selection = await params.prompter.multiselect({
     message: params.message ?? "Models in /model picker (multi-select)",
@@ -380,13 +435,19 @@ export async function promptModelAllowlist(params: {
     initialValues: initialKeys.length > 0 ? initialKeys : undefined,
   });
   const selected = normalizeModelKeys(selection.map((value) => String(value)));
-  if (selected.length > 0) return { models: selected };
-  if (existingKeys.length === 0) return { models: [] };
+  if (selected.length > 0) {
+    return { models: selected };
+  }
+  if (existingKeys.length === 0) {
+    return { models: [] };
+  }
   const confirmClear = await params.prompter.confirm({
     message: "Clear the model allowlist? (shows all models)",
     initialValue: false,
   });
-  if (!confirmClear) return {};
+  if (!confirmClear) {
+    return {};
+  }
   return { models: [] };
 }
 
@@ -421,7 +482,9 @@ export function applyModelAllowlist(cfg: VersoConfig, models: string[]): VersoCo
   const defaults = cfg.agents?.defaults;
   const normalized = normalizeModelKeys(models);
   if (normalized.length === 0) {
-    if (!defaults?.models) return cfg;
+    if (!defaults?.models) {
+      return cfg;
+    }
     const { models: _ignored, ...restDefaults } = defaults;
     return {
       ...cfg,
@@ -455,7 +518,9 @@ export function applyModelFallbacksFromSelection(
   selection: string[],
 ): VersoConfig {
   const normalized = normalizeModelKeys(selection);
-  if (normalized.length <= 1) return cfg;
+  if (normalized.length <= 1) {
+    return cfg;
+  }
 
   const resolved = resolveConfiguredModelRef({
     cfg,
@@ -463,7 +528,9 @@ export function applyModelFallbacksFromSelection(
     defaultModel: DEFAULT_MODEL,
   });
   const resolvedKey = modelKey(resolved.provider, resolved.model);
-  if (!normalized.includes(resolvedKey)) return cfg;
+  if (!normalized.includes(resolvedKey)) {
+    return cfg;
+  }
 
   const defaults = cfg.agents?.defaults;
   const existingModel = defaults?.model;
@@ -486,6 +553,138 @@ export function applyModelFallbacksFromSelection(
           primary: existingPrimary ?? resolvedKey,
           fallbacks,
         },
+      },
+    },
+  };
+}
+export async function promptEmbeddingModel(params: {
+  config: VersoConfig;
+  prompter: WizardPrompter;
+  allowKeep?: boolean;
+  preferredProvider?: string;
+}): Promise<{
+  provider: "openai" | "gemini" | "local" | "auto" | "anthropic";
+  model: string;
+  clearRemote?: boolean;
+}> {
+  const current = params.config.agents?.defaults?.memorySearch;
+  const options: WizardSelectOption<string>[] = [
+    {
+      value: "openai/text-embedding-3-small",
+      label: "OpenAI: text-embedding-3-small",
+      hint: "Recommended for OpenAI",
+    },
+    {
+      value: "gemini/gemini-embedding-001",
+      label: "Google: gemini-embedding-001",
+      hint: "Recommended for Google",
+    },
+    {
+      value: "local/hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf",
+      label: "Local: Gemma 300M",
+      hint: "Runs locally (requires node-llama-cpp)",
+    },
+    { value: "auto/auto", label: "Auto", hint: "Attempt best available" },
+    { value: "manual", label: "Manual", hint: "Enter custom provider/model" },
+  ];
+
+  if (params.allowKeep && current?.model) {
+    options.unshift({
+      value: KEEP_VALUE,
+      label: `Keep current (${current.provider ?? "auto"}/${current.model})`,
+    });
+  }
+
+  const preferredProvider =
+    params.preferredProvider === "google"
+      ? "gemini"
+      : params.preferredProvider === "lmstudio"
+        ? "local"
+        : params.preferredProvider;
+  let initialValue: string | undefined = params.allowKeep ? KEEP_VALUE : "auto/auto";
+
+  // Synchronization: If the user just switched their main provider (e.g. to OpenAI/Google/Local),
+  // and the current embedding is either a DIFFERENT provider OR using a proxy (remote),
+  // don't default to KEEP_VALUE - suggest a clean native model for the new main provider instead.
+  if (
+    params.allowKeep &&
+    preferredProvider &&
+    (preferredProvider === "openai" ||
+      preferredProvider === "gemini" ||
+      preferredProvider === "anthropic" ||
+      preferredProvider === "local") &&
+    (current?.provider !== preferredProvider || (current as any)?.remote?.baseUrl)
+  ) {
+    const model =
+      preferredProvider === "gemini"
+        ? "gemini-embedding-001"
+        : preferredProvider === "local"
+          ? "local"
+          : "text-embedding-3-small";
+    initialValue = `${preferredProvider}/${model}`;
+  }
+
+  const selection = await params.prompter.select({
+    message: "Memory embedding model",
+    options,
+    initialValue,
+  });
+
+  if (selection === KEEP_VALUE) {
+    return {
+      provider: (current?.provider ?? "auto") as any,
+      model: current?.model ?? "auto",
+    };
+  }
+  if (selection === "manual") {
+    const input = await params.prompter.text({
+      message: "Embedding model (provider/model)",
+      placeholder: "openai/text-embedding-3-large",
+      validate: (v) => (v?.includes("/") ? undefined : "Required format: provider/model"),
+    });
+    const [p, m] = (input || "").split("/");
+    return { provider: p as any, model: m };
+  }
+
+  const [p, m] = (selection as string).split("/");
+  return { provider: p as any, model: m };
+}
+
+export function applyEmbeddingModel(
+  cfg: VersoConfig,
+  params: { provider: string; model: string; clearRemote?: boolean },
+): VersoConfig {
+  const defaults = cfg.agents?.defaults;
+  const memorySearch = defaults?.memorySearch ? { ...defaults.memorySearch } : {};
+  const nextMemorySearch = {
+    ...memorySearch,
+    enabled: memorySearch.enabled ?? true,
+    provider: params.provider as any,
+    model: params.model,
+  };
+
+  // If provider changed, or if clearRemote is true, we ALWAYS clear remote settings.
+  // ALSO: If switching to/keeping gemini/anthropic natively, we clear remote if it was there,
+  // to ensure "Synchronization" with the main provider choice.
+  if (
+    params.clearRemote ||
+    memorySearch.provider !== params.provider ||
+    (((params.provider as any) === "gemini" ||
+      (params.provider as any) === "anthropic" ||
+      (params.provider as any) === "openai" ||
+      (params.provider as any) === "local") &&
+      "remote" in nextMemorySearch)
+  ) {
+    delete (nextMemorySearch as any).remote;
+  }
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...defaults,
+        memorySearch: nextMemorySearch,
       },
     },
   };

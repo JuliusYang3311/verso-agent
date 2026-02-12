@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import { extractLocationData, extractMediaPlaceholder, extractText } from "./inbound.js";
 
 describe("web inbound helpers", () => {
@@ -155,7 +154,6 @@ describe("web inbound helpers", () => {
               "END:VCARD",
             ].join("\n"),
           },
-          {},
           {},
         ],
       },

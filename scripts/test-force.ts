@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --import tsx
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
 import { forceFreePort, type PortProcess } from "../src/cli/ports.js";
 
 const DEFAULT_PORT = 18789;
@@ -44,10 +44,7 @@ function runTests() {
 }
 
 function main() {
-  const port = Number.parseInt(
-    process.env.VERSO_GATEWAY_PORT ?? `${DEFAULT_PORT}`,
-    10,
-  );
+  const port = Number.parseInt(process.env.VERSO_GATEWAY_PORT ?? `${DEFAULT_PORT}`, 10);
 
   console.log(`🧹 test:force - clearing gateway on port ${port}`);
   const killed = killGatewayListeners(port);

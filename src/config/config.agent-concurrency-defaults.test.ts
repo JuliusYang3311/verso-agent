@@ -43,9 +43,13 @@ describe("agent concurrency defaults", () => {
 
   it("injects defaults on load", async () => {
     await withTempHome(async (home) => {
-      const configDir = path.join(home, ".verso");
+      const configDir = path.join(home, ".openclaw");
       await fs.mkdir(configDir, { recursive: true });
-      await fs.writeFile(path.join(configDir, "verso.json"), JSON.stringify({}, null, 2), "utf-8");
+      await fs.writeFile(
+        path.join(configDir, "openclaw.json"),
+        JSON.stringify({}, null, 2),
+        "utf-8",
+      );
 
       vi.resetModules();
       const { loadConfig } = await import("./config.js");

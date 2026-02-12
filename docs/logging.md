@@ -4,6 +4,7 @@ read_when:
   - You need a beginner-friendly overview of logging
   - You want to configure log levels or formats
   - You are troubleshooting and need to find logs quickly
+title: "Logging"
 ---
 
 # Logging
@@ -107,9 +108,7 @@ All logging configuration lives under `logging` in `~/.verso/verso.json`.
     "consoleLevel": "info",
     "consoleStyle": "pretty",
     "redactSensitive": "tools",
-    "redactPatterns": [
-      "sk-.*"
-    ]
+    "redactPatterns": ["sk-.*"]
   }
 }
 ```
@@ -163,9 +162,11 @@ diagnostics + the exporter plugin are enabled.
 ### Diagnostic event catalog
 
 Model usage:
+
 - `model.usage`: tokens, cost, duration, context, provider/model/channel, session ids.
 
 Message flow:
+
 - `webhook.received`: webhook ingress per channel.
 - `webhook.processed`: webhook handled + duration.
 - `webhook.error`: webhook handler errors.
@@ -173,6 +174,7 @@ Message flow:
 - `message.processed`: outcome + duration + optional error.
 
 Queue + session:
+
 - `queue.lane.enqueue`: command queue lane enqueue + depth.
 - `queue.lane.dequeue`: command queue lane dequeue + wait time.
 - `session.state`: session state transition + reason.
@@ -212,6 +214,7 @@ VERSO_DIAGNOSTICS=telegram.http,telegram.payload
 ```
 
 Notes:
+
 - Flag logs go to the standard log file (same as `logging.file`).
 - Output is still redacted according to `logging.redactSensitive`.
 - Full guide: [/diagnostics/flags](/diagnostics/flags).
@@ -249,7 +252,11 @@ works with any OpenTelemetry collector/backend that accepts OTLP/HTTP.
 ```
 
 Notes:
-- You can also enable the plugin with `verso plugins enable diagnostics-otel`.
+
+- # You can also enable the plugin with `verso plugins enable diagnostics-otel`.
+
+- You can also enable the plugin with `openclaw plugins enable diagnostics-otel`.
+  > > > > > > > upstream/main
 - `protocol` currently supports `http/protobuf` only. `grpc` is ignored.
 - Metrics include token usage, cost, context size, run duration, and message-flow
   counters/histograms (webhooks, queueing, session state, queue depth/wait).
@@ -262,6 +269,7 @@ Notes:
 ### Exported metrics (names + types)
 
 Model usage:
+
 - `verso.tokens` (counter, attrs: `verso.token`, `verso.channel`,
   `verso.provider`, `verso.model`)
 - `verso.cost.usd` (counter, attrs: `verso.channel`, `verso.provider`,
@@ -272,6 +280,7 @@ Model usage:
   `verso.channel`, `verso.provider`, `verso.model`)
 
 Message flow:
+
 - `verso.webhook.received` (counter, attrs: `verso.channel`,
   `verso.webhook`)
 - `verso.webhook.error` (counter, attrs: `verso.channel`,
@@ -286,6 +295,7 @@ Message flow:
   `verso.outcome`)
 
 Queues + sessions:
+
 - `verso.queue.lane.enqueue` (counter, attrs: `verso.lane`)
 - `verso.queue.lane.dequeue` (counter, attrs: `verso.lane`)
 - `verso.queue.depth` (histogram, attrs: `verso.lane` or
@@ -314,30 +324,3 @@ Queues + sessions:
 - `verso.session.stuck`
   - `verso.state`, `verso.ageMs`, `verso.queueDepth`,
     `verso.sessionKey`, `verso.sessionId`
-
-### Sampling + flushing
-
-- Trace sampling: `diagnostics.otel.sampleRate` (0.0–1.0, root spans only).
-- Metric export interval: `diagnostics.otel.flushIntervalMs` (min 1000ms).
-
-### Protocol notes
-
-- OTLP/HTTP endpoints can be set via `diagnostics.otel.endpoint` or
-  `OTEL_EXPORTER_OTLP_ENDPOINT`.
-- If the endpoint already contains `/v1/traces` or `/v1/metrics`, it is used as-is.
-- If the endpoint already contains `/v1/logs`, it is used as-is for logs.
-- `diagnostics.otel.logs` enables OTLP log export for the main logger output.
-
-### Log export behavior
-
-- OTLP logs use the same structured records written to `logging.file`.
-- Respect `logging.level` (file log level). Console redaction does **not** apply
-  to OTLP logs.
-- High-volume installs should prefer OTLP collector sampling/filtering.
-
-## Troubleshooting tips
-
-- **Gateway not reachable?** Run `verso doctor` first.
-- **Logs empty?** Check that the Gateway is running and writing to the file path
-  in `logging.file`.
-- **Need more detail?** Set `logging.level` to `debug` or `trace` and retry.

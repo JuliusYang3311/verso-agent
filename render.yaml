@@ -13,7 +13,7 @@ services:
         value: /data/.verso
       - key: CLAWDBOT_WORKSPACE_DIR
         value: /data/workspace
-      - key: CLAWDBOT_GATEWAY_TOKEN
+      - key: OPENCLAW_GATEWAY_TOKEN
         generateValue: true
     disk:
       name: verso-data

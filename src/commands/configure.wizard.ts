@@ -1,32 +1,32 @@
-import { formatCliCommand } from "../cli/command-format.js";
 import type { VersoConfig } from "../config/config.js";
-import { readConfigFileSnapshot, resolveGatewayPort, writeConfigFile } from "../config/config.js";
-import { logConfigUpdated } from "../config/logging.js";
-import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import type { RuntimeEnv } from "../runtime.js";
-import { defaultRuntime } from "../runtime.js";
-import { note } from "../terminal/note.js";
-import { resolveUserPath } from "../utils.js";
-import { createClackPrompter } from "../wizard/clack-prompter.js";
-import { WizardCancelledError } from "../wizard/prompts.js";
-import { removeChannelConfigWizard } from "./configure.channels.js";
-import { promptContextConfig } from "./configure.context.js";
-import { promptThinkingConfig } from "./configure.thinking.js";
-import { maybeInstallDaemon } from "./configure.daemon.js";
-import { promptGatewayConfig } from "./configure.gateway.js";
-import { promptAuthConfig } from "./configure.gateway-auth.js";
-import { promptRouterConfig } from "./configure.router.js";
-import { promptBrowserConfig } from "./configure.browser.js";
-import { promptNodeHostConfig } from "./configure.nodehost.js";
-import { promptCryptoConfig } from "./configure.crypto.js";
-import { promptGoogleConfig } from "./configure.google.js";
-import { promptMoltbookConfig } from "./configure.moltbook.js";
-import { promptVideoGenerationConfig } from "./configure.videogeneration.js";
 import type {
   ChannelsWizardMode,
   ConfigureWizardParams,
   WizardSection,
 } from "./configure.shared.js";
+import { formatCliCommand } from "../cli/command-format.js";
+import { readConfigFileSnapshot, resolveGatewayPort, writeConfigFile } from "../config/config.js";
+import { logConfigUpdated } from "../config/logging.js";
+import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
+import { defaultRuntime } from "../runtime.js";
+import { note } from "../terminal/note.js";
+import { resolveUserPath } from "../utils.js";
+import { createClackPrompter } from "../wizard/clack-prompter.js";
+import { WizardCancelledError } from "../wizard/prompts.js";
+import { promptBrowserConfig } from "./configure.browser.js";
+import { removeChannelConfigWizard } from "./configure.channels.js";
+import { promptCompactionConfig } from "./configure.compaction.js";
+import { promptCryptoConfig } from "./configure.crypto.js";
+import { maybeInstallDaemon } from "./configure.daemon.js";
+import { promptEvolverConfig } from "./configure.evolver.js";
+import { promptAuthConfig } from "./configure.gateway-auth.js";
+import { promptGatewayConfig } from "./configure.gateway.js";
+import { promptGhostConfig } from "./configure.ghost.js";
+import { promptGoogleConfig } from "./configure.google.js";
+import { promptMoltbookConfig } from "./configure.moltbook.js";
+import { promptNodeHostConfig } from "./configure.nodehost.js";
+import { promptRouterConfig } from "./configure.router.js";
 import {
   CONFIGURE_SECTION_OPTIONS,
   confirm,
@@ -35,8 +35,11 @@ import {
   select,
   text,
 } from "./configure.shared.js";
-import { healthCommand } from "./health.js";
+import { promptThinkingConfig } from "./configure.thinking.js";
+import { promptTwitterConfig } from "./configure.twitter.js";
+import { promptVideoGenerationConfig } from "./configure.videogeneration.js";
 import { formatHealthCheckFailure } from "./health-format.js";
+import { healthCommand } from "./health.js";
 import { noteChannelStatus, setupChannels } from "./onboard-channels.js";
 import {
   applyWizardMetadata,
@@ -109,7 +112,7 @@ async function promptWebToolsConfig(
     [
       "Web search lets your agent look things up online using the `web_search` tool.",
       "It requires a Brave Search API key (you can store it in the config or set BRAVE_API_KEY in the Gateway environment).",
-      "Docs: https://docs.molt.bot/tools/web",
+      "Docs: https://docs.openclaw.ai/tools/web",
     ].join("\n"),
     "Web search",
   );
@@ -145,7 +148,7 @@ async function promptWebToolsConfig(
         [
           "No key stored yet, so web_search will stay unavailable.",
           "Store a key here or set BRAVE_API_KEY in the Gateway environment.",
-          "Docs: https://docs.molt.bot/tools/web",
+          "Docs: https://docs.openclaw.ai/tools/web",
         ].join("\n"),
         "Web search",
       );
@@ -198,7 +201,7 @@ export async function runConfigureWizard(
           [
             ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
             "",
-            "Docs: https://docs.molt.bot/gateway/configuration",
+            "Docs: https://docs.openclaw.ai/gateway/configuration",
           ].join("\n"),
           "Config issues",
         );
@@ -249,7 +252,7 @@ export async function runConfigureWizard(
         ],
       }),
       runtime,
-    ) as "local" | "remote";
+    );
 
     if (mode === "remote") {
       let remoteConfig = await promptRemoteGatewayConfig(baseConfig, prompter);
@@ -327,8 +330,8 @@ export async function runConfigureWizard(
         nextConfig = await promptAuthConfig(nextConfig, runtime, prompter);
       }
 
-      if (selected.includes("context")) {
-        nextConfig = await promptContextConfig(nextConfig, runtime);
+      if (selected.includes("compaction")) {
+        nextConfig = await promptCompactionConfig(nextConfig, runtime);
       }
 
       if (selected.includes("thinking")) {
@@ -353,6 +356,10 @@ export async function runConfigureWizard(
 
       if (selected.includes("google")) {
         nextConfig = await promptGoogleConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("ghost")) {
+        nextConfig = await promptGhostConfig(nextConfig, runtime);
       }
 
       if (selected.includes("gateway")) {
@@ -388,6 +395,14 @@ export async function runConfigureWizard(
 
       if (selected.includes("videogeneration")) {
         nextConfig = await promptVideoGenerationConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("twitter")) {
+        nextConfig = await promptTwitterConfig(nextConfig, runtime);
+      }
+
+      if (selected.includes("evolver")) {
+        nextConfig = await promptEvolverConfig(nextConfig, runtime);
       }
 
       await persistConfig();
@@ -433,8 +448,8 @@ export async function runConfigureWizard(
           note(
             [
               "Docs:",
-              "https://docs.molt.bot/gateway/health",
-              "https://docs.molt.bot/gateway/troubleshooting",
+              "https://docs.openclaw.ai/gateway/health",
+              "https://docs.openclaw.ai/gateway/troubleshooting",
             ].join("\n"),
             "Health check help",
           );
@@ -446,7 +461,9 @@ export async function runConfigureWizard(
 
       while (true) {
         const choice = await promptConfigureSection(runtime, ranSection);
-        if (choice === "__continue") break;
+        if (choice === "__continue") {
+          break;
+        }
         ranSection = true;
 
         if (choice === "workspace") {
@@ -477,8 +494,8 @@ export async function runConfigureWizard(
           await persistConfig();
         }
 
-        if (choice === "context") {
-          nextConfig = await promptContextConfig(nextConfig, runtime);
+        if (choice === "compaction") {
+          nextConfig = await promptCompactionConfig(nextConfig, runtime);
           await persistConfig();
         }
 
@@ -509,6 +526,11 @@ export async function runConfigureWizard(
 
         if (choice === "google") {
           nextConfig = await promptGoogleConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "ghost") {
+          nextConfig = await promptGhostConfig(nextConfig, runtime);
           await persistConfig();
         }
 
@@ -558,6 +580,16 @@ export async function runConfigureWizard(
           await persistConfig();
         }
 
+        if (choice === "twitter") {
+          nextConfig = await promptTwitterConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
+        if (choice === "evolver") {
+          nextConfig = await promptEvolverConfig(nextConfig, runtime);
+          await persistConfig();
+        }
+
         if (choice === "daemon") {
           if (!didConfigureGateway) {
             const portInput = guardCancel(
@@ -602,8 +634,8 @@ export async function runConfigureWizard(
             note(
               [
                 "Docs:",
-                "https://docs.molt.bot/gateway/health",
-                "https://docs.molt.bot/gateway/troubleshooting",
+                "https://docs.openclaw.ai/gateway/health",
+                "https://docs.openclaw.ai/gateway/troubleshooting",
               ].join("\n"),
               "Health check help",
             );
@@ -661,7 +693,7 @@ export async function runConfigureWizard(
         `Web UI: ${links.httpUrl}`,
         `Gateway WS: ${links.wsUrl}`,
         gatewayStatusLine,
-        "Docs: https://docs.molt.bot/web/control-ui",
+        "Docs: https://docs.openclaw.ai/web/control-ui",
       ].join("\n"),
       "Control UI",
     );

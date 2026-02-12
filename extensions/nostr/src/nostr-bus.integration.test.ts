@@ -1,10 +1,6 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createMetrics, createNoopMetrics, type MetricEvent } from "./metrics.js";
 import { createSeenTracker } from "./seen-tracker.js";
-import {
-  createMetrics,
-  createNoopMetrics,
-  type MetricEvent,
-} from "./metrics.js";
 
 // ============================================================================
 // Seen Tracker Integration Tests
@@ -227,10 +223,7 @@ describe("Metrics", () => {
       const metrics = createMetrics();
 
       metrics.emit("event.received");
-      metrics.emit("event.received");
       metrics.emit("event.processed");
-      metrics.emit("event.duplicate");
-      metrics.emit("event.duplicate");
       metrics.emit("event.duplicate");
 
       const snapshot = metrics.getSnapshot();
@@ -244,7 +237,6 @@ describe("Metrics", () => {
 
       metrics.emit("relay.connect", 1, { relay: "wss://relay1.com" });
       metrics.emit("relay.connect", 1, { relay: "wss://relay2.com" });
-      metrics.emit("relay.error", 1, { relay: "wss://relay1.com" });
       metrics.emit("relay.error", 1, { relay: "wss://relay1.com" });
 
       const snapshot = metrics.getSnapshot();
@@ -321,7 +313,6 @@ describe("Metrics", () => {
     it("tracks decrypt success/failure", () => {
       const metrics = createMetrics();
 
-      metrics.emit("decrypt.success");
       metrics.emit("decrypt.success");
       metrics.emit("decrypt.failure");
 
@@ -417,8 +408,6 @@ describe("Health Scoring", () => {
     metrics.emit("relay.connect", 1, { relay: "wss://good-relay.com" });
     metrics.emit("relay.connect", 1, { relay: "wss://bad-relay.com" });
 
-    metrics.emit("relay.error", 1, { relay: "wss://bad-relay.com" });
-    metrics.emit("relay.error", 1, { relay: "wss://bad-relay.com" });
     metrics.emit("relay.error", 1, { relay: "wss://bad-relay.com" });
 
     const snapshot = metrics.getSnapshot();

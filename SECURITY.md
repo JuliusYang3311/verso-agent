@@ -4,14 +4,30 @@ If you believe you've found a security issue in Verso, please report it privatel
 
 ## Reporting
 
-- Email: `steipete@gmail.com`
-- What to include: reproduction steps, impact assessment, and (if possible) a minimal PoC.
+For full reporting instructions - including which repo to report to and how - see our [Trust page](https://trust.openclaw.ai).
+
+Include: reproduction steps, impact assessment, and (if possible) a minimal PoC.
+
+## Security & Trust
+
+**Jamieson O'Reilly** ([@theonejvo](https://twitter.com/theonejvo)) is Security & Trust at Verso. Jamieson is the founder of [Dvuln](https://dvuln.com) and brings extensive experience in offensive security, penetration testing, and security program development.
+
+## Bug Bounties
+
+Verso is a labor of love. There is no bug bounty program and no budget for paid reports. Please still disclose responsibly so we can fix issues quickly.
+The best way to help the project right now is by sending PRs.
+
+## Out of Scope
+
+- Public Internet Exposure
+- Using Verso in ways that the docs recommend not to
+- Prompt injection attacks
 
 ## Operational Guidance
 
 For threat model + hardening guidance (including `verso security audit --deep` and `--fix`), see:
 
-- `https://docs.molt.bot/gateway/security`
+- `https://docs.openclaw.ai/gateway/security`
 
 ### Web Interface Safety
 

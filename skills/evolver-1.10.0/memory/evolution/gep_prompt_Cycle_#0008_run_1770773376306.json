@@ -1,0 +1,15 @@
+{
+  "type": "GepPromptArtifact",
+  "at": "2026-02-11T01:29:36.344Z",
+  "cycle_id": "Cycle #0008",
+  "run_id": "run_1770773376306",
+  "prompt_path": "/Users/veso/Documents/evolver-1.10.0/memory/evolution/gep_prompt_Cycle_#0008_run_1770773376306.txt",
+  "meta": {
+    "agent": "main",
+    "drift_enabled": false,
+    "review_mode": false,
+    "dry_run": false,
+    "mutation_id": "mut_1770773376305",
+    "personality_key": "rigor=0.7|creativity=0.3|verbosity=0.3|risk_tolerance=0.4|obedience=0.9"
+  }
+}

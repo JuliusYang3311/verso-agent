@@ -3,6 +3,7 @@ summary: "CLI reference for `verso devices` (device pairing + token rotation/rev
 read_when:
   - You are approving device pairing requests
   - You need to rotate or revoke device tokens
+title: "devices"
 ---
 
 # `verso devices`
@@ -59,6 +60,9 @@ verso devices revoke --device <deviceId> --role node
 - `--password <password>`: Gateway password (password auth).
 - `--timeout <ms>`: RPC timeout.
 - `--json`: JSON output (recommended for scripting).
+
+Note: when you set `--url`, the CLI does not fall back to config or environment credentials.
+Pass `--token` or `--password` explicitly. Missing explicit credentials is an error.
 
 ## Notes
 

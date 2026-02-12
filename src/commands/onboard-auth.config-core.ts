@@ -1,4 +1,15 @@
-import { buildXiaomiProvider, XIAOMI_DEFAULT_MODEL_ID } from "../agents/models-config.providers.js";
+import type { VersoConfig } from "../config/config.js";
+import type { ModelApi } from "../config/types.models.js";
+import {
+  buildCloudflareAiGatewayModelDefinition,
+  resolveCloudflareAiGatewayBaseUrl,
+} from "../agents/cloudflare-ai-gateway.js";
+import {
+  buildQianfanProvider,
+  buildXiaomiProvider,
+  QIANFAN_DEFAULT_MODEL_ID,
+  XIAOMI_DEFAULT_MODEL_ID,
+} from "../agents/models-config.providers.js";
 import {
   buildSyntheticModelDefinition,
   SYNTHETIC_BASE_URL,
@@ -11,22 +22,26 @@ import {
   VENICE_DEFAULT_MODEL_REF,
   VENICE_MODEL_CATALOG,
 } from "../agents/venice-models.js";
-import type { VersoConfig } from "../config/config.js";
 import {
+  CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF,
   OPENROUTER_DEFAULT_MODEL_REF,
   VERCEL_AI_GATEWAY_DEFAULT_MODEL_REF,
   XIAOMI_DEFAULT_MODEL_REF,
   ZAI_DEFAULT_MODEL_REF,
+  XAI_DEFAULT_MODEL_REF,
 } from "./onboard-auth.credentials.js";
 import {
-  buildKimiCodeModelDefinition,
   buildMoonshotModelDefinition,
-  KIMI_CODE_BASE_URL,
-  KIMI_CODE_MODEL_ID,
-  KIMI_CODE_MODEL_REF,
+  buildXaiModelDefinition,
+  QIANFAN_BASE_URL,
+  QIANFAN_DEFAULT_MODEL_REF,
+  KIMI_CODING_MODEL_REF,
   MOONSHOT_BASE_URL,
+  MOONSHOT_CN_BASE_URL,
   MOONSHOT_DEFAULT_MODEL_ID,
   MOONSHOT_DEFAULT_MODEL_REF,
+  XAI_BASE_URL,
+  XAI_DEFAULT_MODEL_ID,
 } from "./onboard-auth.models.js";
 
 export function applyZaiConfig(cfg: VersoConfig): VersoConfig {
@@ -143,7 +158,7 @@ export function applyMoonshotProviderConfig(cfg: VersoConfig): VersoConfig {
   const models = { ...cfg.agents?.defaults?.models };
   models[MOONSHOT_DEFAULT_MODEL_REF] = {
     ...models[MOONSHOT_DEFAULT_MODEL_REF],
-    alias: models[MOONSHOT_DEFAULT_MODEL_REF]?.alias ?? "Kimi K2",
+    alias: models[MOONSHOT_DEFAULT_MODEL_REF]?.alias ?? "Kimi",
   };
 
   const providers = { ...cfg.models?.providers };
@@ -161,6 +176,49 @@ export function applyMoonshotProviderConfig(cfg: VersoConfig): VersoConfig {
   providers.moonshot = {
     ...existingProviderRest,
     baseUrl: MOONSHOT_BASE_URL,
+    api: "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyMoonshotProviderConfigCn(cfg: VersoConfig): VersoConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[MOONSHOT_DEFAULT_MODEL_REF] = {
+    ...models[MOONSHOT_DEFAULT_MODEL_REF],
+    alias: models[MOONSHOT_DEFAULT_MODEL_REF]?.alias ?? "Kimi",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.moonshot;
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModel = buildMoonshotModelDefinition();
+  const hasDefaultModel = existingModels.some((model) => model.id === MOONSHOT_DEFAULT_MODEL_ID);
+  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as Record<
+    string,
+    unknown
+  > as { apiKey?: string };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers.moonshot = {
+    ...existingProviderRest,
+    baseUrl: MOONSHOT_CN_BASE_URL,
     api: "openai-completions",
     ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
     models: mergedModels.length > 0 ? mergedModels : [defaultModel],
@@ -204,32 +262,58 @@ export function applyMoonshotConfig(cfg: VersoConfig): VersoConfig {
   };
 }
 
-export function applyKimiCodeProviderConfig(cfg: VersoConfig): VersoConfig {
+export function applyMoonshotConfigCn(cfg: VersoConfig): VersoConfig {
+  const next = applyMoonshotProviderConfigCn(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: MOONSHOT_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
+export function applyCloudflareAiGatewayProviderConfig(
+  cfg: VersoConfig,
+  params: { accountId?: string; gatewayId?: string },
+): VersoConfig {
   const models = { ...cfg.agents?.defaults?.models };
-  models[KIMI_CODE_MODEL_REF] = {
-    ...models[KIMI_CODE_MODEL_REF],
-    alias: models[KIMI_CODE_MODEL_REF]?.alias ?? "Kimi Code",
+  models[CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF] = {
+    ...models[CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF],
+    alias: models[CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF]?.alias ?? "Cloudflare AI Gateway",
   };
 
   const providers = { ...cfg.models?.providers };
-  const existingProvider = providers["kimi-code"];
-  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
-  const defaultModel = buildKimiCodeModelDefinition();
-  const hasDefaultModel = existingModels.some((model) => model.id === KIMI_CODE_MODEL_ID);
-  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
-  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as Record<
-    string,
-    unknown
-  > as { apiKey?: string };
-  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
-  const normalizedApiKey = resolvedApiKey?.trim();
-  providers["kimi-code"] = {
-    ...existingProviderRest,
-    baseUrl: KIMI_CODE_BASE_URL,
-    api: "openai-completions",
-    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
-    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
-  };
+  const accountId = params.accountId?.trim() ?? "";
+  const gatewayId = params.gatewayId?.trim() ?? "";
+  const baseUrl =
+    accountId && gatewayId ? resolveCloudflareAiGatewayBaseUrl({ accountId, gatewayId }) : "";
+  if (baseUrl) {
+    const existingProvider = providers["cloudflare-ai-gateway"] as
+      | Record<string, unknown>
+      | undefined;
+    const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+    const defaultModel = buildCloudflareAiGatewayModelDefinition();
+    const hasDefaultModel = existingModels.some((model) => model.id === defaultModel.id);
+    const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+    providers["cloudflare-ai-gateway"] = {
+      ...existingProvider,
+      baseUrl,
+      api: "anthropic-messages",
+      models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+    };
+  }
 
   return {
     ...cfg,
@@ -243,6 +327,54 @@ export function applyKimiCodeProviderConfig(cfg: VersoConfig): VersoConfig {
     models: {
       mode: cfg.models?.mode ?? "merge",
       providers,
+    },
+  };
+}
+
+export function applyCloudflareAiGatewayConfig(
+  cfg: VersoConfig,
+  params: { accountId?: string; gatewayId?: string },
+): VersoConfig {
+  const next = applyCloudflareAiGatewayProviderConfig(cfg, params);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: CLOUDFLARE_AI_GATEWAY_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
+export function applyKimiCodeProviderConfig(cfg: VersoConfig): VersoConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[KIMI_CODE_MODEL_REF] = {
+    ...models[KIMI_CODE_MODEL_REF],
+    alias: models[KIMI_CODE_MODEL_REF]?.alias ?? "Kimi Code",
+  };
+  models[KIMI_CODING_MODEL_REF] = {
+    ...models[KIMI_CODING_MODEL_REF],
+    alias: models[KIMI_CODING_MODEL_REF]?.alias ?? "Kimi K2.5",
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
     },
   };
 }
@@ -262,7 +394,7 @@ export function applyKimiCodeConfig(cfg: VersoConfig): VersoConfig {
                 fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
               }
             : undefined),
-          primary: KIMI_CODE_MODEL_REF,
+          primary: KIMI_CODING_MODEL_REF,
         },
       },
     },
@@ -484,6 +616,71 @@ export function applyVeniceConfig(cfg: VersoConfig): VersoConfig {
   };
 }
 
+export function applyXaiProviderConfig(cfg: VersoConfig): VersoConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[XAI_DEFAULT_MODEL_REF] = {
+    ...models[XAI_DEFAULT_MODEL_REF],
+    alias: models[XAI_DEFAULT_MODEL_REF]?.alias ?? "Grok",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.xai;
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModel = buildXaiModelDefinition();
+  const hasDefaultModel = existingModels.some((model) => model.id === XAI_DEFAULT_MODEL_ID);
+  const mergedModels = hasDefaultModel ? existingModels : [...existingModels, defaultModel];
+  const { apiKey: existingApiKey, ...existingProviderRest } = (existingProvider ?? {}) as Record<
+    string,
+    unknown
+  > as { apiKey?: string };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers.xai = {
+    ...existingProviderRest,
+    baseUrl: XAI_BASE_URL,
+    api: "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : [defaultModel],
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyXaiConfig(cfg: VersoConfig): VersoConfig {
+  const next = applyXaiProviderConfig(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: XAI_DEFAULT_MODEL_REF,
+        },
+      },
+    },
+  };
+}
+
 export function applyAuthProfileConfig(
   cfg: VersoConfig,
   params: {
@@ -529,6 +726,83 @@ export function applyAuthProfileConfig(
       ...cfg.auth,
       profiles,
       ...(order ? { order } : {}),
+    },
+  };
+}
+
+export function applyQianfanProviderConfig(cfg: VersoConfig): VersoConfig {
+  const models = { ...cfg.agents?.defaults?.models };
+  models[QIANFAN_DEFAULT_MODEL_REF] = {
+    ...models[QIANFAN_DEFAULT_MODEL_REF],
+    alias: models[QIANFAN_DEFAULT_MODEL_REF]?.alias ?? "QIANFAN",
+  };
+
+  const providers = { ...cfg.models?.providers };
+  const existingProvider = providers.qianfan;
+  const defaultProvider = buildQianfanProvider();
+  const existingModels = Array.isArray(existingProvider?.models) ? existingProvider.models : [];
+  const defaultModels = defaultProvider.models ?? [];
+  const hasDefaultModel = existingModels.some((model) => model.id === QIANFAN_DEFAULT_MODEL_ID);
+  const mergedModels =
+    existingModels.length > 0
+      ? hasDefaultModel
+        ? existingModels
+        : [...existingModels, ...defaultModels]
+      : defaultModels;
+  const {
+    apiKey: existingApiKey,
+    baseUrl: existingBaseUrl,
+    api: existingApi,
+    ...existingProviderRest
+  } = (existingProvider ?? {}) as Record<string, unknown> as {
+    apiKey?: string;
+    baseUrl?: string;
+    api?: ModelApi;
+  };
+  const resolvedApiKey = typeof existingApiKey === "string" ? existingApiKey : undefined;
+  const normalizedApiKey = resolvedApiKey?.trim();
+  providers.qianfan = {
+    ...existingProviderRest,
+    baseUrl: existingBaseUrl ?? QIANFAN_BASE_URL,
+    api: existingApi ?? "openai-completions",
+    ...(normalizedApiKey ? { apiKey: normalizedApiKey } : {}),
+    models: mergedModels.length > 0 ? mergedModels : defaultProvider.models,
+  };
+
+  return {
+    ...cfg,
+    agents: {
+      ...cfg.agents,
+      defaults: {
+        ...cfg.agents?.defaults,
+        models,
+      },
+    },
+    models: {
+      mode: cfg.models?.mode ?? "merge",
+      providers,
+    },
+  };
+}
+
+export function applyQianfanConfig(cfg: VersoConfig): VersoConfig {
+  const next = applyQianfanProviderConfig(cfg);
+  const existingModel = next.agents?.defaults?.model;
+  return {
+    ...next,
+    agents: {
+      ...next.agents,
+      defaults: {
+        ...next.agents?.defaults,
+        model: {
+          ...(existingModel && "fallbacks" in (existingModel as Record<string, unknown>)
+            ? {
+                fallbacks: (existingModel as { fallbacks?: string[] }).fallbacks,
+              }
+            : undefined),
+          primary: QIANFAN_DEFAULT_MODEL_REF,
+        },
+      },
     },
   };
 }

@@ -5,8 +5,8 @@
 
 import type { VersoConfig } from "../config/config.js";
 import type { RouterConfig } from "../config/types.router.js";
-import { parseModelRef, type ModelRef } from "./model-selection.js";
 import { logVerbose } from "../globals.js";
+import { parseModelRef, type ModelRef } from "./model-selection.js";
 
 const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 30000;
 
@@ -21,14 +21,14 @@ const DYNAMIC_SELECTION_PROMPT = `Select the best model ID from the VALID MODELS
 3. DO NOT include any other text.
 4. **PRIORITY RULE**: Unless the User Input requires high reasoning (e.g., coding, complex document analysis, creative writing) or specifically mentions a powerful model, ALWAYS prefer the most cost-effective model (typically 'flash' models) that can complete the task. Reserve 'pro' models for high-complexity work.
 5. **MODEL HIERARCHY & COST RULES**:
-   - **Versioning**: Higher version number = More advanced (e.g., 3.0 > 2.5).
-   - **Tiers**: 'Pro' is superior to 'Flash' in reasoning but ~2x more expensive.
-   - **Generations**: Newer generation > Older generation in performance.
+   - **Gemini Series**: Ultra/Pro > Flash > Nano (Performance & Cost: High to Low).
+   - **Claude Series**: Opus > Sonnet > Haiku (Performance & Cost: High to Low).
+   - **OpenAI Series**: Codex > Pro > (No suffix) > Mini > Nano (Performance & Cost: High to Low).
    - **Cost Scaling**:
-     - Flash < Pro (within same gen).
-     - Older Gen < Newer Gen (typically).
-     - Top-tier capability is significantly more expensive than mid-tier.
-   - **Selection Strategy**: Under the premise of meeting task requirements, choose the cheapest model. Only select Pro/Newer models if the complexity demands it.
+     - Flash < Pro/Sonnet (within same gen).
+     - Faster models are typically cheaper.
+     - Top-tier capability (Opus, Ultra, Codex) is significantly more expensive.
+   - **Selection Strategy**: Choose the most cost-effective model that fully satisfies the user's intent. Prefer 'Flash' or 'Mini' for simple queries and 'Pro', 'Opus', or 'Codex' for complex reasoning/coding.
 
 ### EXAMPLES:
 Input: "hello"
@@ -96,8 +96,12 @@ export type SelectDynamicModelParams = {
 
 export async function selectDynamicModel(params: SelectDynamicModelParams): Promise<string | null> {
   const { input, candidates, callClassifier, classifierModel } = params;
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
+  if (candidates.length === 0) {
+    return null;
+  }
+  if (candidates.length === 1) {
+    return candidates[0];
+  }
 
   // Determine the classifier model to use.
   // If not explicitly provided or invalid, select from the candidates list (already filtered to allowed models).
@@ -129,7 +133,9 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
   }
 
   const parsed = parseModelRef(effectiveClassifier, "google");
-  if (!parsed) return candidates[0]; // fallback
+  if (!parsed) {
+    return candidates[0];
+  } // fallback
 
   let attempts = 0;
   const maxAttempts = 3;
@@ -192,7 +198,9 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
       continue;
     } catch (err) {
       logVerbose(`[RouterLoop] Error during classification attempt ${attempts}: ${err}`);
-      if (attempts >= maxAttempts) break; // Break only if max attempts reached? No, break immediately on unexpected error makes sense but we want to know why.
+      if (attempts >= maxAttempts) {
+        break;
+      } // Break only if max attempts reached? No, break immediately on unexpected error makes sense but we want to know why.
       // actually, if it's a transient network error we might want to continue?
       // But for now, let's just log it so we see it.
       continue;
@@ -222,8 +230,12 @@ function resolveAvailableModels(cfg: VersoConfig): string[] {
       // Legacy/Simple support if needed
       set.add(m);
     } else {
-      if (m.primary) set.add(m.primary);
-      if (m.fallbacks) m.fallbacks.forEach((f) => set.add(f));
+      if (m.primary) {
+        set.add(m.primary);
+      }
+      if (m.fallbacks) {
+        m.fallbacks.forEach((f) => set.add(f));
+      }
     }
   }
 

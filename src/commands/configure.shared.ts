@@ -5,7 +5,6 @@ import {
   select as clackSelect,
   text as clackText,
 } from "@clack/prompts";
-
 import { stylePromptHint, stylePromptMessage, stylePromptTitle } from "../terminal/prompt-style.js";
 
 export const CONFIGURE_WIZARD_SECTIONS = [
@@ -14,7 +13,7 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "router",
   "browser",
   "nodehost",
-  "context",
+  "compaction",
   "thinking",
   "web",
   "gateway",
@@ -24,7 +23,10 @@ export const CONFIGURE_WIZARD_SECTIONS = [
   "crypto",
   "moltbook",
   "google",
+  "ghost",
   "videogeneration",
+  "twitter",
+  "evolver",
   "health",
 ] as const;
 
@@ -47,7 +49,11 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   { value: "router", label: "Router", hint: "Smart model routing by task type" },
   { value: "browser", label: "Browser", hint: "Headless browser & snapshot settings" },
   { value: "nodehost", label: "Node Host", hint: "Browser proxy for remote agents" },
-  { value: "context", label: "Context", hint: "Context window, compaction, memory flush" },
+  {
+    value: "compaction",
+    label: "Compaction",
+    hint: "Max session tokens, compaction, memory flush",
+  },
   { value: "thinking", label: "Thinking", hint: "Internal thought process settings" },
   { value: "web", label: "Web tools", hint: "Configure Brave search + fetch" },
   { value: "gateway", label: "Gateway", hint: "Port, bind, auth, tailscale" },
@@ -65,10 +71,21 @@ export const CONFIGURE_SECTION_OPTIONS: Array<{
   { value: "crypto", label: "Crypto", hint: "Wallet & Exchange keys" },
   { value: "moltbook", label: "Moltbook", hint: "Connect to the Agent Social Network" },
   { value: "google", label: "Google Workspace", hint: "Gmail, Docs, Calendar, OAuth" },
+  { value: "ghost", label: "Ghost", hint: "API URL, Content/Admin API keys" },
   {
     value: "videogeneration",
     label: "Video Generation",
     hint: "Pexels/Pixabay API keys for stock video",
+  },
+  {
+    value: "twitter",
+    label: "Twitter",
+    hint: "Consumer key/secret, access token/secret",
+  },
+  {
+    value: "evolver",
+    label: "Evolver",
+    hint: "Configure evolver path + workspace + review/rollback",
   },
   {
     value: "health",

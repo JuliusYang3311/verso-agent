@@ -1,20 +1,29 @@
-import { DEFAULT_PROVIDER } from "../agents/defaults.js";
-import { parseModelRef } from "../agents/model-selection.js";
 import type { VersoConfig } from "../config/config.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
+import { DEFAULT_PROVIDER } from "../agents/defaults.js";
+import { parseModelRef } from "../agents/model-selection.js";
+import { ensureModelAllowlistEntry } from "./model-allowlist.js";
 
 const SUPPORTED_EMBEDDING_PROVIDERS = new Set(["openai", "gemini", "google"]);
 
 function normalizeEmbeddingProvider(provider: string): "openai" | "gemini" | undefined {
-  if (provider === "openai") return "openai";
-  if (provider === "gemini") return "gemini";
-  if (provider === "google") return "gemini";
+  if (provider === "openai") {
+    return "openai";
+  }
+  if (provider === "gemini") {
+    return "gemini";
+  }
+  if (provider === "google") {
+    return "gemini";
+  }
   return undefined;
 }
 
 export function syncEmbeddingProviderWithModel(config: VersoConfig, model: string): VersoConfig {
   const parsed = parseModelRef(model, DEFAULT_PROVIDER);
-  if (!parsed) return config;
+  if (!parsed) {
+    return config;
+  }
 
   if (parsed.provider === "custom-openai") {
     const providerConfig = config.models?.providers?.[parsed.provider];
@@ -41,7 +50,9 @@ export function syncEmbeddingProviderWithModel(config: VersoConfig, model: strin
   }
 
   const embeddingProvider = normalizeEmbeddingProvider(parsed.provider);
-  if (!embeddingProvider) return config;
+  if (!embeddingProvider) {
+    return config;
+  }
 
   // Clear remote config if switching to a standard provider to avoid stale custom settings
   return {
@@ -86,6 +97,10 @@ export async function applyDefaultModelChoice(params: {
   }
 
   const next = params.applyProviderConfig(params.config);
+  const nextWithModel = ensureModelAllowlistEntry({
+    cfg: next,
+    modelRef: params.defaultModel,
+  });
   await params.noteAgentModel(params.defaultModel);
-  return { config: next, agentModelOverride: params.defaultModel };
+  return { config: nextWithModel, agentModelOverride: params.defaultModel };
 }

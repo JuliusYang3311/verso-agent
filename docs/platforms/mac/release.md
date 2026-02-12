@@ -3,6 +3,7 @@ summary: "Verso macOS release checklist (Sparkle feed, packaging, signing)"
 read_when:
   - Cutting or validating a Verso macOS release
   - Updating the Sparkle appcast or feed assets
+title: "macOS Release"
 ---
 
 # Verso macOS release (Sparkle)
@@ -10,6 +11,7 @@ read_when:
 This app now ships Sparkle auto-updates. Release builds must be Developer ID–signed, zipped, and published with a signed appcast entry.
 
 ## Prereqs
+
 - Developer ID Application cert installed (example: `Developer ID Application: <Developer Name> (<TEAMID>)`).
 - Sparkle private key path set in the environment as `SPARKLE_PRIVATE_KEY_FILE` (path to your Sparkle ed25519 private key; public key baked into Info.plist). If it is missing, check `~/.profile`.
 - Notary credentials (keychain profile or API key) for `xcrun notarytool` if you want Gatekeeper-safe DMG/zip distribution.
@@ -21,7 +23,9 @@ This app now ships Sparkle auto-updates. Release builds must be Developer ID–s
 - Sparkle tools are fetched automatically via SwiftPM at `apps/macos/.build/artifacts/sparkle/Sparkle/bin/` (`sign_update`, `generate_appcast`, etc.).
 
 ## Build & package
+
 Notes:
+
 - `APP_BUILD` maps to `CFBundleVersion`/`sparkle:version`; keep it numeric + monotonic (no `-beta`), or Sparkle compares it as equal.
 - Defaults to the current architecture (`$(uname -m)`). For release/universal builds, set `BUILD_ARCHS="arm64 x86_64"` (or `BUILD_ARCHS=all`).
 - Use `scripts/package-mac-dist.sh` for release artifacts (zip + DMG + notarization). Use `scripts/package-mac-app.sh` for local/dev packaging.
@@ -30,7 +34,7 @@ Notes:
 # From repo root; set release IDs so Sparkle feed is enabled.
 # APP_BUILD must be numeric + monotonic for Sparkle compare.
 BUNDLE_ID=bot.molt.mac \
-APP_VERSION=2026.1.29 \
+APP_VERSION=2026.2.9 \
 APP_BUILD="$(git rev-list --count HEAD)" \
 BUILD_CONFIG=release \
 SIGN_IDENTITY="Developer ID Application: <Developer Name> (<TEAMID>)" \
@@ -48,7 +52,7 @@ scripts/create-dmg.sh dist/Verso.app dist/Verso-2026.1.29.dmg
 #     --apple-id "<apple-id>" --team-id "<team-id>" --password "<app-specific-password>"
 NOTARIZE=1 NOTARYTOOL_PROFILE=verso-notary \
 BUNDLE_ID=bot.molt.mac \
-APP_VERSION=2026.1.29 \
+APP_VERSION=2026.2.9 \
 APP_BUILD="$(git rev-list --count HEAD)" \
 BUILD_CONFIG=release \
 SIGN_IDENTITY="Developer ID Application: <Developer Name> (<TEAMID>)" \
@@ -59,19 +63,38 @@ ditto -c -k --keepParent apps/macos/.build/release/Verso.app.dSYM dist/Verso-202
 ```
 
 ## Appcast entry
+
 Use the release note generator so Sparkle renders formatted HTML notes:
+
 ```bash
 SPARKLE_PRIVATE_KEY_FILE=/path/to/ed25519-private-key scripts/make_appcast.sh dist/Verso-2026.1.29.zip https://raw.githubusercontent.com/verso/verso/main/appcast.xml
 ```
+
 Generates HTML release notes from `CHANGELOG.md` (via [`scripts/changelog-to-html.sh`](https://github.com/verso/verso/blob/main/scripts/changelog-to-html.sh)) and embeds them in the appcast entry.
 Commit the updated `appcast.xml` alongside the release assets (zip + dSYM) when publishing.
 
 ## Publish & verify
+
 - Upload `Verso-2026.1.29.zip` (and `Verso-2026.1.29.dSYM.zip`) to the GitHub release for tag `v2026.1.29`.
 - Ensure the raw appcast URL matches the baked feed: `https://raw.githubusercontent.com/verso/verso/main/appcast.xml`.
 - Sanity checks:
-  - `curl -I https://raw.githubusercontent.com/verso/verso/main/appcast.xml` returns 200.
+  - # `curl -I https://raw.githubusercontent.com/verso/verso/main/appcast.xml` returns 200.
+    SPARKLE_PRIVATE_KEY_FILE=/path/to/ed25519-private-key scripts/make_appcast.sh dist/Verso-2026.2.9.zip https://raw.githubusercontent.com/openclaw/openclaw/main/appcast.xml
+
+```
+
+Generates HTML release notes from `CHANGELOG.md` (via [`scripts/changelog-to-html.sh`](https://github.com/openclaw/openclaw/blob/main/scripts/changelog-to-html.sh)) and embeds them in the appcast entry.
+Commit the updated `appcast.xml` alongside the release assets (zip + dSYM) when publishing.
+
+## Publish & verify
+
+- Upload `Verso-2026.2.9.zip` (and `Verso-2026.2.9.dSYM.zip`) to the GitHub release for tag `v2026.2.9`.
+- Ensure the raw appcast URL matches the baked feed: `https://raw.githubusercontent.com/openclaw/openclaw/main/appcast.xml`.
+- Sanity checks:
+  - `curl -I https://raw.githubusercontent.com/openclaw/openclaw/main/appcast.xml` returns 200.
+>>>>>>> upstream/main
   - `curl -I <enclosure url>` returns 200 after assets upload.
   - On a previous public build, run “Check for Updates…” from the About tab and verify Sparkle installs the new build cleanly.
 
 Definition of done: signed app + appcast are published, update flow works from an older installed version, and release assets are attached to the GitHub release.
+```

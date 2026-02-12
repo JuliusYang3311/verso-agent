@@ -1,4 +1,4 @@
-import MoltbotKit
+import VersoKit
 import SwiftUI
 import WebKit
 

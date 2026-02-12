@@ -6,15 +6,14 @@ import {
   normalizeAccountId,
   type ChannelOnboardingAdapter,
   type ChannelOnboardingDmPolicy,
+  type VersoConfig,
   type WizardPrompter,
 } from "verso/plugin-sdk";
-
 import {
   listNextcloudTalkAccountIds,
   resolveDefaultNextcloudTalkAccountId,
   resolveNextcloudTalkAccount,
 } from "./accounts.js";
-import type { CoreConfig, DmPolicy } from "./types.js";
 
 const channel = "nextcloud-talk" as const;
 
@@ -160,7 +159,11 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
   allowFromKey: "channels.nextcloud-talk.allowFrom",
   getCurrent: (cfg) => cfg.channels?.["nextcloud-talk"]?.dmPolicy ?? "pairing",
   setPolicy: (cfg, policy) => setNextcloudTalkDmPolicy(cfg as CoreConfig, policy as DmPolicy),
-  promptAllowFrom: promptNextcloudTalkAllowFromForAccount,
+  promptAllowFrom: promptNextcloudTalkAllowFromForAccount as (params: {
+    cfg: VersoConfig;
+    prompter: WizardPrompter;
+    accountId?: string | undefined;
+  }) => Promise<VersoConfig>,
 };
 
 export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
@@ -197,7 +200,7 @@ export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
         prompter,
         label: "Nextcloud Talk",
         currentId: accountId,
-        listAccountIds: listNextcloudTalkAccountIds,
+        listAccountIds: listNextcloudTalkAccountIds as (cfg: VersoConfig) => string[],
         defaultAccountId,
       });
     }
@@ -221,7 +224,9 @@ export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
           message: "Enter Nextcloud instance URL (e.g., https://cloud.example.com)",
           validate: (value) => {
             const v = String(value ?? "").trim();
-            if (!v) return "Required";
+            if (!v) {
+              return "Required";
+            }
             if (!v.startsWith("http://") && !v.startsWith("https://")) {
               return "URL must start with http:// or https://";
             }
@@ -309,7 +314,8 @@ export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
                 ...next.channels?.["nextcloud-talk"]?.accounts,
                 [accountId]: {
                   ...next.channels?.["nextcloud-talk"]?.accounts?.[accountId],
-                  enabled: next.channels?.["nextcloud-talk"]?.accounts?.[accountId]?.enabled ?? true,
+                  enabled:
+                    next.channels?.["nextcloud-talk"]?.accounts?.[accountId]?.enabled ?? true,
                   baseUrl,
                   ...(secret ? { botSecret: secret } : {}),
                 },

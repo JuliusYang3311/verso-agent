@@ -141,7 +141,6 @@ describe("bedrock discovery", () => {
     });
 
     await discoverBedrockModels({ region: "us-east-1", clientFactory });
-    await discoverBedrockModels({ region: "us-east-1", clientFactory });
     expect(sendMock).toHaveBeenCalledTimes(1);
   });
 

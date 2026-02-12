@@ -3,7 +3,9 @@ summary: "Move (migrate) a Verso install from one machine to another"
 read_when:
   - You are moving Verso to a new laptop/server
   - You want to preserve sessions, auth, and channel logins (WhatsApp, etc.)
+title: "Migration Guide"
 ---
+
 # Migrating Verso to a new machine
 
 This guide migrates a Verso Gateway from one machine to another **without redoing onboarding**.
@@ -11,7 +13,17 @@ This guide migrates a Verso Gateway from one machine to another **without redoin
 The migration is simple conceptually:
 
 - Copy the **state directory** (`$VERSO_STATE_DIR`, default: `~/.verso/`) — this includes config, auth, sessions, and channel state.
-- Copy your **workspace** (`~/verso/` by default) — this includes your agent files (memory, prompts, etc.).
+- # Copy your **workspace** (`~/verso/` by default) — this includes your agent files (memory, prompts, etc.).
+
+# Migrating Verso to a new machine
+
+This guide migrates a Verso Gateway from one machine to another **without redoing onboarding**.
+
+The migration is simple conceptually:
+
+- Copy the **state directory** (`$OPENCLAW_STATE_DIR`, default: `~/.openclaw/`) — this includes config, auth, sessions, and channel state.
+- Copy your **workspace** (`~/.openclaw/workspace/` by default) — this includes your agent files (memory, prompts, etc.).
+  > > > > > > > upstream/main
 
 But there are common footguns around **profiles**, **permissions**, and **partial copies**.
 

@@ -4,7 +4,9 @@ read_when:
   - Pairing or reconnecting the iOS node
   - Running the iOS app from source
   - Debugging gateway discovery or canvas commands
+title: "iOS App"
 ---
+
 # iOS App (Node)
 
 Availability: internal preview. The iOS app is not publicly distributed yet.
@@ -25,22 +27,22 @@ Availability: internal preview. The iOS app is not publicly distributed yet.
 
 ## Quick start (pair + connect)
 
-1) Start the Gateway:
+1. Start the Gateway:
 
 ```bash
 verso gateway --port 18789
 ```
 
-2) In the iOS app, open Settings and pick a discovered gateway (or enable Manual Host and enter host/port).
+2. In the iOS app, open Settings and pick a discovered gateway (or enable Manual Host and enter host/port).
 
-3) Approve the pairing request on the gateway host:
+3. Approve the pairing request on the gateway host:
 
 ```bash
 verso nodes pending
 verso nodes approve <requestId>
 ```
 
-4) Verify connection:
+4. Verify connection:
 
 ```bash
 verso nodes status
@@ -71,7 +73,16 @@ verso nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":
 ```
 
 Notes:
-- The Gateway canvas host serves `/__verso__/canvas/` and `/__verso__/a2ui/`.
+
+- # The Gateway canvas host serves `/__verso__/canvas/` and `/__verso__/a2ui/`.
+  openclaw nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":"http://<gateway-host>:18793/**openclaw**/canvas/"}'
+
+````
+
+Notes:
+
+- The Gateway canvas host serves `/__openclaw__/canvas/` and `/__openclaw__/a2ui/`.
+>>>>>>> upstream/main
 - The iOS node auto-navigates to A2UI on connect when a canvas host URL is advertised.
 - Return to the built-in scaffold with `canvas.navigate` and `{"url":""}`.
 
@@ -79,7 +90,7 @@ Notes:
 
 ```bash
 verso nodes invoke --node "iOS Node" --command canvas.eval --params '{"javaScript":"(() => { const {ctx} = window.__verso; ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle=\"#ff2d55\"; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); return \"ok\"; })()"}'
-```
+````
 
 ```bash
 verso nodes invoke --node "iOS Node" --command canvas.snapshot --params '{"maxWidth":900,"format":"jpeg"}'

@@ -4,7 +4,9 @@ read_when:
   - You are changing markdown formatting or chunking for outbound channels
   - You are adding a new channel formatter or style mapping
   - You are debugging formatting regressions across channels
+title: "Markdown Formatting"
 ---
+
 # Markdown formatting
 
 Verso formats outbound Markdown by converting it into a shared intermediate
@@ -39,7 +41,7 @@ stay consistent across channels.
 Input Markdown:
 
 ```markdown
-Hello **world** — see [docs](https://docs.molt.bot).
+Hello **world** — see [docs](https://docs.openclaw.ai).
 ```
 
 IR (schematic):
@@ -47,12 +49,8 @@ IR (schematic):
 ```json
 {
   "text": "Hello world — see docs.",
-  "styles": [
-    { "start": 6, "end": 11, "style": "bold" }
-  ],
-  "links": [
-    { "start": 19, "end": 23, "href": "https://docs.molt.bot" }
-  ]
+  "styles": [{ "start": 6, "end": 11, "style": "bold" }],
+  "links": [{ "start": 19, "end": 23, "href": "https://docs.openclaw.ai" }]
 }
 ```
 

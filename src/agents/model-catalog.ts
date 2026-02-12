@@ -22,11 +22,11 @@ type DiscoveredModel = {
   api?: string;
 };
 
-type PiSdkModule = typeof import("@mariozechner/pi-coding-agent");
+type PiSdkModule = typeof import("./pi-model-discovery.js");
 
 let modelCatalogPromise: Promise<ModelCatalogEntry[]> | null = null;
 let hasLoggedModelCatalogError = false;
-const defaultImportPiSdk = () => import("@mariozechner/pi-coding-agent");
+const defaultImportPiSdk = () => import("./pi-model-discovery.js");
 let importPiSdk = defaultImportPiSdk;
 
 export function resetModelCatalogCacheForTest() {
@@ -47,14 +47,18 @@ export async function loadModelCatalog(params?: {
   if (params?.useCache === false) {
     modelCatalogPromise = null;
   }
-  if (modelCatalogPromise) return modelCatalogPromise;
+  if (modelCatalogPromise) {
+    return modelCatalogPromise;
+  }
 
   modelCatalogPromise = (async () => {
     const models: ModelCatalogEntry[] = [];
     const sortModels = (entries: ModelCatalogEntry[]) =>
       entries.sort((a, b) => {
         const p = a.provider.localeCompare(b.provider);
-        if (p !== 0) return p;
+        if (p !== 0) {
+          return p;
+        }
         return a.name.localeCompare(b.name);
       });
     try {
@@ -75,9 +79,13 @@ export async function loadModelCatalog(params?: {
       const entries = Array.isArray(registry) ? registry : registry.getAll();
       for (const entry of entries) {
         const id = String(entry?.id ?? "").trim();
-        if (!id) continue;
+        if (!id) {
+          continue;
+        }
         const provider = String(entry?.provider ?? "").trim();
-        if (!provider) continue;
+        if (!provider) {
+          continue;
+        }
         const name = String(entry?.name ?? id).trim() || id;
         const contextWindow =
           typeof entry?.contextWindow === "number" && entry.contextWindow > 0
@@ -98,12 +106,16 @@ export async function loadModelCatalog(params?: {
         { models?: Array<{ id: string }> }
       >;
       for (const [providerId, conf] of Object.entries(providers)) {
-        if (!conf?.models || !Array.isArray(conf.models)) continue;
+        if (!conf?.models || !Array.isArray(conf.models)) {
+          continue;
+        }
         const normalizedProvider = providerId.trim().toLowerCase();
 
         for (const modelConf of conf.models) {
           const id = String(modelConf.id ?? "").trim();
-          if (!id) continue;
+          if (!id) {
+            continue;
+          }
 
           // Avoid duplicates if SDK already found it
           const existing = models.find(

@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { isTruthyEnvValue } from "./env.js";
-
 import { resolveBrewPathDirs } from "./brew.js";
+import { isTruthyEnvValue } from "./env.js";
 
 type EnsureVersoPathOpts = {
   execPath?: string;
@@ -60,7 +59,9 @@ function candidateBinDirs(opts: EnsureVersoPathOpts): string[] {
   try {
     const execDir = path.dirname(execPath);
     const siblingVerso = path.join(execDir, "verso");
-    if (isExecutable(siblingVerso)) candidates.push(execDir);
+    if (isExecutable(siblingVerso)) {
+      candidates.push(execDir);
+    }
   } catch {
     // ignore
   }
@@ -68,11 +69,15 @@ function candidateBinDirs(opts: EnsureVersoPathOpts): string[] {
   // Project-local installs (best effort): if a `node_modules/.bin/verso` exists near cwd,
   // include it. This helps when running under launchd or other minimal PATH environments.
   const localBinDir = path.join(cwd, "node_modules", ".bin");
-  if (isExecutable(path.join(localBinDir, "verso"))) candidates.push(localBinDir);
+  if (isExecutable(path.join(localBinDir, "verso"))) {
+    candidates.push(localBinDir);
+  }
 
   const miseDataDir = process.env.MISE_DATA_DIR ?? path.join(homeDir, ".local", "share", "mise");
   const miseShims = path.join(miseDataDir, "shims");
-  if (isDirectory(miseShims)) candidates.push(miseShims);
+  if (isDirectory(miseShims)) {
+    candidates.push(miseShims);
+  }
 
   candidates.push(...resolveBrewPathDirs({ homeDir }));
 
@@ -80,7 +85,9 @@ function candidateBinDirs(opts: EnsureVersoPathOpts): string[] {
   if (platform === "darwin") {
     candidates.push(path.join(homeDir, "Library", "pnpm"));
   }
-  if (process.env.XDG_BIN_HOME) candidates.push(process.env.XDG_BIN_HOME);
+  if (process.env.XDG_BIN_HOME) {
+    candidates.push(process.env.XDG_BIN_HOME);
+  }
   candidates.push(path.join(homeDir, ".local", "bin"));
   candidates.push(path.join(homeDir, ".local", "share", "pnpm"));
   candidates.push(path.join(homeDir, ".bun", "bin"));
@@ -95,13 +102,19 @@ function candidateBinDirs(opts: EnsureVersoPathOpts): string[] {
  * under launchd/minimal environments (and inside the macOS app bundle).
  */
 export function ensureVersoCliOnPath(opts: EnsureVersoPathOpts = {}) {
-  if (isTruthyEnvValue(process.env.VERSO_PATH_BOOTSTRAPPED)) return;
+  if (isTruthyEnvValue(process.env.VERSO_PATH_BOOTSTRAPPED)) {
+    return;
+  }
   process.env.VERSO_PATH_BOOTSTRAPPED = "1";
 
   const existing = opts.pathEnv ?? process.env.PATH ?? "";
   const prepend = candidateBinDirs(opts);
-  if (prepend.length === 0) return;
+  if (prepend.length === 0) {
+    return;
+  }
 
   const merged = mergePath({ existing, prepend });
-  if (merged) process.env.PATH = merged;
+  if (merged) {
+    process.env.PATH = merged;
+  }
 }

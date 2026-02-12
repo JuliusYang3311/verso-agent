@@ -2,7 +2,7 @@ import type { ReplyPayload } from "../types.js";
 import type { BlockStreamingCoalescing } from "./block-streaming.js";
 
 export type BlockReplyCoalescer = {
-  enqueue: (payload: ReplyPayload, sourceKey?: string) => void;
+  enqueue: (payload: ReplyPayload) => void;
   flush: (options?: { force?: boolean }) => Promise<void>;
   hasBuffered: () => boolean;
   stop: () => void;
@@ -11,22 +11,24 @@ export type BlockReplyCoalescer = {
 export function createBlockReplyCoalescer(params: {
   config: BlockStreamingCoalescing;
   shouldAbort: () => boolean;
-  onFlush: (payload: ReplyPayload, sourceKeys?: Set<string>) => Promise<void> | void;
+  onFlush: (payload: ReplyPayload) => Promise<void> | void;
 }): BlockReplyCoalescer {
   const { config, shouldAbort, onFlush } = params;
   const minChars = Math.max(1, Math.floor(config.minChars));
   const maxChars = Math.max(minChars, Math.floor(config.maxChars));
   const idleMs = Math.max(0, Math.floor(config.idleMs));
   const joiner = config.joiner ?? "";
+  const flushOnEnqueue = config.flushOnEnqueue === true;
 
   let bufferText = "";
   let bufferReplyToId: ReplyPayload["replyToId"];
   let bufferAudioAsVoice: ReplyPayload["audioAsVoice"];
-  let bufferSourceKeys = new Set<string>();
   let idleTimer: NodeJS.Timeout | undefined;
 
   const clearIdleTimer = () => {
-    if (!idleTimer) return;
+    if (!idleTimer) {
+      return;
+    }
     clearTimeout(idleTimer);
     idleTimer = undefined;
   };
@@ -35,11 +37,12 @@ export function createBlockReplyCoalescer(params: {
     bufferText = "";
     bufferReplyToId = undefined;
     bufferAudioAsVoice = undefined;
-    bufferSourceKeys = new Set<string>();
   };
 
   const scheduleIdleFlush = () => {
-    if (idleMs <= 0) return;
+    if (idleMs <= 0) {
+      return;
+    }
     clearIdleTimer();
     idleTimer = setTimeout(() => {
       void flush({ force: false });
@@ -52,8 +55,10 @@ export function createBlockReplyCoalescer(params: {
       resetBuffer();
       return;
     }
-    if (!bufferText) return;
-    if (!options?.force && bufferText.length < minChars) {
+    if (!bufferText) {
+      return;
+    }
+    if (!options?.force && !flushOnEnqueue && bufferText.length < minChars) {
       scheduleIdleFlush();
       return;
     }
@@ -62,22 +67,38 @@ export function createBlockReplyCoalescer(params: {
       replyToId: bufferReplyToId,
       audioAsVoice: bufferAudioAsVoice,
     };
-    const keys = new Set(bufferSourceKeys);
     resetBuffer();
-    await onFlush(payload, keys);
+    await onFlush(payload);
   };
 
-  const enqueue = (payload: ReplyPayload, sourceKey?: string) => {
-    if (shouldAbort()) return;
+  const enqueue = (payload: ReplyPayload) => {
+    if (shouldAbort()) {
+      return;
+    }
     const hasMedia = Boolean(payload.mediaUrl) || (payload.mediaUrls?.length ?? 0) > 0;
     const text = payload.text ?? "";
     const hasText = text.trim().length > 0;
     if (hasMedia) {
       void flush({ force: true });
-      void onFlush(payload, sourceKey ? new Set([sourceKey]) : undefined);
+      void onFlush(payload);
       return;
     }
-    if (!hasText) return;
+    if (!hasText) {
+      return;
+    }
+
+    // When flushOnEnqueue is set (chunkMode="newline"), each enqueued payload is treated
+    // as a separate paragraph and flushed immediately so delivery matches streaming boundaries.
+    if (flushOnEnqueue) {
+      if (bufferText) {
+        void flush({ force: true });
+      }
+      bufferReplyToId = payload.replyToId;
+      bufferAudioAsVoice = payload.audioAsVoice;
+      bufferText = text;
+      void flush({ force: true });
+      return;
+    }
 
     if (
       bufferText &&
@@ -91,28 +112,21 @@ export function createBlockReplyCoalescer(params: {
       bufferAudioAsVoice = payload.audioAsVoice;
     }
 
-    if (sourceKey) {
-      bufferSourceKeys.add(sourceKey);
-    }
-
     const nextText = bufferText ? `${bufferText}${joiner}${text}` : text;
     if (nextText.length > maxChars) {
       if (bufferText) {
         void flush({ force: true });
         bufferReplyToId = payload.replyToId;
         bufferAudioAsVoice = payload.audioAsVoice;
-        if (sourceKey) {
-          bufferSourceKeys.add(sourceKey);
-        }
         if (text.length >= maxChars) {
-          void onFlush(payload, sourceKey ? new Set([sourceKey]) : undefined);
+          void onFlush(payload);
           return;
         }
         bufferText = text;
         scheduleIdleFlush();
         return;
       }
-      void onFlush(payload, sourceKey ? new Set([sourceKey]) : undefined);
+      void onFlush(payload);
       return;
     }
 

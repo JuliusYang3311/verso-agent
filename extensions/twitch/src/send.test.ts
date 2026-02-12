@@ -10,9 +10,9 @@
  * - Registry integration
  */
 
+import type { VersoConfig } from "verso/plugin-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sendMessageTwitchInternal } from "./send.js";
-import type { VersoConfig } from "verso/plugin-sdk";
 
 // Mock dependencies
 vi.mock("./config.js", () => ({

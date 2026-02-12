@@ -25,7 +25,7 @@ ATTACH_ONLY=1
 log()  { printf '%s\n' "$*"; }
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-# Ensure local node binaries (rolldown, tsc, pnpm) are discoverable for the steps below.
+# Ensure local node binaries (rolldown, pnpm) are discoverable for the steps below.
 export PATH="${ROOT_DIR}/node_modules/.bin:${PATH}"
 
 run_step() {
@@ -93,7 +93,7 @@ for arg in "$@"; do
       log "  --no-attach-only Launch app without attach-only override"
       log ""
       log "Env:"
-      log "  CLAWDBOT_GATEWAY_WAIT_SECONDS=0  Wait time before gateway port check (unsigned only)"
+      log "  OPENCLAW_GATEWAY_WAIT_SECONDS=0  Wait time before gateway port check (unsigned only)"
       log ""
       log "Unsigned recovery:"
       log "  node verso.mjs daemon install --force --runtime node"
@@ -145,7 +145,7 @@ kill_all_verso() {
 }
 
 stop_launch_agent() {
-  launchctl bootout gui/"$UID"/bot.molt.mac 2>/dev/null || true
+  launchctl bootout gui/"$UID"/ai.openclaw.mac 2>/dev/null || true
 }
 
 # 1) Kill all running instances first.

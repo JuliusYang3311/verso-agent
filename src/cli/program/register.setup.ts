@@ -4,8 +4,8 @@ import { setupCommand } from "../../commands/setup.js";
 import { defaultRuntime } from "../../runtime.js";
 import { formatDocsLink } from "../../terminal/links.js";
 import { theme } from "../../terminal/theme.js";
-import { hasExplicitOptions } from "../command-options.js";
 import { runCommandWithRuntime } from "../cli-utils.js";
+import { hasExplicitOptions } from "../command-options.js";
 
 export function registerSetupCommand(program: Command) {
   program
@@ -14,7 +14,7 @@ export function registerSetupCommand(program: Command) {
     .addHelpText(
       "after",
       () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/setup", "docs.molt.bot/cli/setup")}\n`,
+        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/setup", "docs.openclaw.ai/cli/setup")}\n`,
     )
     .option(
       "--workspace <dir>",

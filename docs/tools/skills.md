@@ -3,18 +3,26 @@ summary: "Skills: managed vs workspace, gating rules, and config/env wiring"
 read_when:
   - Adding or modifying skills
   - Changing skill gating or load rules
+title: "Skills"
 ---
+
+# Skills (Verso)
+
+# Verso uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Verso loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
+
 # Skills (Verso)
 
 Verso uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Verso loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
+
+> > > > > > > upstream/main
 
 ## Locations and precedence
 
 Skills are loaded from **three** places:
 
-1) **Bundled skills**: shipped with the install (npm package or Verso.app)
-2) **Managed/local skills**: `~/.verso/skills`
-3) **Workspace skills**: `<workspace>/skills`
+1. **Bundled skills**: shipped with the install (npm package or Verso.app)
+2. **Managed/local skills**: `~/.verso/skills`
+3. **Workspace skills**: `<workspace>/skills`
 
 If a skill name conflicts, precedence is:
 
@@ -66,7 +74,7 @@ that up as `<workspace>/skills` on the next session.
 
 ## Security notes
 
-- Treat third-party skills as **trusted code**. Read them before enabling.
+- Treat third-party skills as **untrusted code**. Read them before enabling.
 - Prefer sandboxed runs for untrusted inputs and risky tools. See [Sandboxing](/gateway/sandboxing).
 - `skills.entries.*.env` and `skills.entries.*.apiKey` inject secrets into the **host** process
   for that agent turn (not the sandbox). Keep secrets out of prompts and logs.
@@ -84,6 +92,7 @@ description: Generate or edit images via Gemini 3 Pro Image
 ```
 
 Notes:
+
 - We follow the AgentSkills spec for layout/intent.
 - The parser used by the embedded agent supports **single-line** frontmatter keys only.
 - `metadata` should be a **single-line JSON object**.
@@ -107,11 +116,35 @@ Verso **filters skills at load time** using `metadata` (single-line JSON):
 ---
 name: nano-banana-pro
 description: Generate or edit images via Gemini 3 Pro Image
-metadata: {"verso":{"requires":{"bins":["uv"],"env":["GEMINI_API_KEY"],"config":["browser.enabled"]},"primaryEnv":"GEMINI_API_KEY"}}
+metadata:
+  {
+    "verso":
+      {
+        "requires": { "bins": ["uv"], "env": ["GEMINI_API_KEY"], "config": ["browser.enabled"] },
+        "primaryEnv": "GEMINI_API_KEY",
+      },
+  }
 ---
 ```
 
-Fields under `metadata.verso`:
+# Fields under `metadata.verso`:
+
+metadata:
+{
+"openclaw":
+{
+"requires": { "bins": ["uv"], "env": ["GEMINI_API_KEY"], "config": ["browser.enabled"] },
+"primaryEnv": "GEMINI_API_KEY",
+},
+}
+
+---
+
+````
+
+Fields under `metadata.openclaw`:
+
+>>>>>>> upstream/main
 - `always: true` — always include the skill (skip other gates).
 - `emoji` — optional emoji used by the macOS Skills UI.
 - `homepage` — optional URL shown as “Website” in the macOS Skills UI.
@@ -124,6 +157,7 @@ Fields under `metadata.verso`:
 - `install` — optional array of installer specs used by the macOS Skills UI (brew/node/go/uv/download).
 
 Note on sandboxing:
+
 - `requires.bins` is checked on the **host** at skill load time.
 - If an agent is sandboxed, the binary must also exist **inside the container**.
   Install it via `agents.defaults.sandbox.docker.setupCommand` (or a custom image).
@@ -138,11 +172,13 @@ Installer example:
 ---
 name: gemini
 description: Use Gemini CLI for coding assistance and Google search lookups.
+<<<<<<< HEAD
 metadata: {"verso":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"Install Gemini CLI (brew)"}]}}
 ---
-```
+````
 
 Notes:
+
 - If multiple installers are listed, the gateway picks a **single** preferred option (brew when available, otherwise node).
 - If all installers are `download`, Verso lists each entry so you can see the available artifacts.
 - Installer specs can include `os: ["darwin"|"linux"|"win32"]` to filter options by platform.
@@ -150,7 +186,7 @@ Notes:
   This only affects **skill installs**; the Gateway runtime should still be Node
   (Bun is not recommended for WhatsApp/Telegram).
 - Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew’s `bin` when possible.
- - Download installs: `url` (required), `archive` (`tar.gz` | `tar.bz2` | `zip`), `extract` (default: auto when archive detected), `stripComponents`, `targetDir` (default: `~/.verso/tools/<skillKey>`).
+- Download installs: `url` (required), `archive` (`tar.gz` | `tar.bz2` | `zip`), `extract` (default: auto when archive detected), `stripComponents`, `targetDir` (default: `~/.verso/tools/<skillKey>`).
 
 If no `metadata.verso` is present, the skill is always eligible (unless
 disabled in config or blocked by `skills.allowBundled` for bundled skills).
@@ -167,17 +203,17 @@ Bundled/managed skills can be toggled and supplied with env values:
         enabled: true,
         apiKey: "GEMINI_KEY_HERE",
         env: {
-          GEMINI_API_KEY: "GEMINI_KEY_HERE"
+          GEMINI_API_KEY: "GEMINI_KEY_HERE",
         },
         config: {
           endpoint: "https://example.invalid",
-          model: "nano-pro"
-        }
+          model: "nano-pro",
+        },
       },
       peekaboo: { enabled: true },
-      sag: { enabled: false }
-    }
-  }
+      sag: { enabled: false },
+    },
+  },
 }
 ```
 
@@ -187,6 +223,7 @@ Config keys match the **skill name** by default. If a skill defines
 `metadata.verso.skillKey`, use that key under `skills.entries`.
 
 Rules:
+
 - `enabled: false` disables the skill even if it’s bundled/installed.
 - `env`: injected **only if** the variable isn’t already set in the process.
 - `apiKey`: convenience for skills that declare `metadata.verso.primaryEnv`.
@@ -197,9 +234,15 @@ Rules:
 ## Environment injection (per agent run)
 
 When an agent run starts, Verso:
+
+1. Reads skill metadata.
+2. # Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
+   When an agent run starts, Verso:
+
 1) Reads skill metadata.
 2) Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
-   `process.env`.
+   > > > > > > > upstream/main
+   > > > > > > > `process.env`.
 3) Builds the system prompt with **eligible** skills.
 4) Restores the original environment after the run ends.
 
@@ -226,9 +269,9 @@ By default, Verso watches skill folders and bumps the skills snapshot when `SKIL
   skills: {
     load: {
       watch: true,
-      watchDebounceMs: 250
-    }
-  }
+      watchDebounceMs: 250,
+    },
+  },
 }
 ```
 
@@ -246,6 +289,7 @@ total = 195 + Σ (97 + len(name_escaped) + len(description_escaped) + len(locati
 ```
 
 Notes:
+
 - XML escaping expands `& < > " '` into entities (`&amp;`, `&lt;`, etc.), increasing length.
 - Token counts vary by model tokenizer. A rough OpenAI-style estimate is ~4 chars/token, so **97 chars ≈ 24 tokens** per skill plus your actual field lengths.
 

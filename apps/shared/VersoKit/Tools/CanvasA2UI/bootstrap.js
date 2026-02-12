@@ -151,7 +151,7 @@ const openclawTheme = {
   },
 };
 
-class OpenClawA2UIHost extends LitElement {
+class VersoA2UIHost extends LitElement {
   static properties = {
     surfaces: { state: true },
     pendingAction: { state: true },
@@ -486,5 +486,5 @@ class OpenClawA2UIHost extends LitElement {
 }
 
 if (!customElements.get("openclaw-a2ui-host")) {
-  customElements.define("openclaw-a2ui-host", OpenClawA2UIHost);
+  customElements.define("openclaw-a2ui-host", VersoA2UIHost);
 }

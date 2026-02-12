@@ -1,18 +1,18 @@
-import { resolveVersoPackageRoot } from "../../infra/verso-root.js";
-import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
 import {
   formatDoctorNonInteractiveHint,
   type RestartSentinelPayload,
   writeRestartSentinel,
 } from "../../infra/restart-sentinel.js";
+import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
+import { normalizeUpdateChannel } from "../../infra/update-channels.js";
 import { runGatewayUpdate } from "../../infra/update-runner.js";
+import { resolveVersoPackageRoot } from "../../infra/verso-root.js";
 import {
   ErrorCodes,
   errorShape,
   formatValidationErrors,
   validateUpdateRunParams,
 } from "../protocol/index.js";
-import type { GatewayRequestHandlers } from "./types.js";
 
 export const updateHandlers: GatewayRequestHandlers = {
   "update.run": async ({ params, respond }) => {
@@ -48,6 +48,8 @@ export const updateHandlers: GatewayRequestHandlers = {
 
     let result: Awaited<ReturnType<typeof runGatewayUpdate>>;
     try {
+      const config = loadConfig();
+      const configChannel = normalizeUpdateChannel(config.update?.channel);
       const root =
         (await resolveVersoPackageRoot({
           moduleUrl: import.meta.url,
@@ -58,6 +60,7 @@ export const updateHandlers: GatewayRequestHandlers = {
         timeoutMs,
         cwd: root,
         argv1: process.argv[1],
+        channel: configChannel ?? undefined,
       });
     } catch (err) {
       result = {

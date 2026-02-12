@@ -10,7 +10,6 @@ import {
   readReactionParams,
   readStringParam,
 } from "verso/plugin-sdk";
-
 import { listEnabledGoogleChatAccounts, resolveGoogleChatAccount } from "./accounts.js";
 import {
   createGoogleChatReaction,
@@ -33,12 +32,15 @@ function listEnabledAccounts(cfg: VersoConfig) {
 function isReactionsEnabled(accounts: ReturnType<typeof listEnabledAccounts>, cfg: VersoConfig) {
   for (const account of accounts) {
     const gate = createActionGate(
-      (account.config.actions ?? (cfg.channels?.["googlechat"] as { actions?: unknown })?.actions) as Record<
+      (account.config.actions ??
+        (cfg.channels?.["googlechat"] as { actions?: unknown })?.actions) as Record<
         string,
         boolean | undefined
       >,
     );
-    if (gate("reactions")) return true;
+    if (gate("reactions")) {
+      return true;
+    }
   }
   return false;
 }
@@ -61,9 +63,13 @@ export const googlechatMessageActions: ChannelMessageActionAdapter = {
   },
   extractToolSend: ({ args }) => {
     const action = typeof args.action === "string" ? args.action.trim() : "";
-    if (action !== "sendMessage") return null;
+    if (action !== "sendMessage") {
+      return null;
+    }
     const to = typeof args.to === "string" ? args.to : undefined;
-    if (!to) return null;
+    if (!to) {
+      return null;
+    }
     const accountId = typeof args.accountId === "string" ? args.accountId.trim() : undefined;
     return { to, accountId };
   },
@@ -89,11 +95,11 @@ export const googlechatMessageActions: ChannelMessageActionAdapter = {
       if (mediaUrl) {
         const core = getGoogleChatRuntime();
         const maxBytes = (account.config.mediaMaxMb ?? 20) * 1024 * 1024;
-        const loaded = await core.channel.media.fetchRemoteMedia(mediaUrl, { maxBytes });
+        const loaded = await core.channel.media.fetchRemoteMedia({ url: mediaUrl, maxBytes });
         const upload = await uploadGoogleChatAttachment({
           account,
           space,
-          filename: loaded.filename ?? "attachment",
+          filename: loaded.fileName ?? "attachment",
           buffer: loaded.buffer,
           contentType: loaded.contentType,
         });
@@ -103,7 +109,12 @@ export const googlechatMessageActions: ChannelMessageActionAdapter = {
           text: content,
           thread: threadId ?? undefined,
           attachments: upload.attachmentUploadToken
-            ? [{ attachmentUploadToken: upload.attachmentUploadToken, contentName: loaded.filename }]
+            ? [
+                {
+                  attachmentUploadToken: upload.attachmentUploadToken,
+                  contentName: loaded.fileName,
+                },
+              ]
             : undefined,
         });
         return jsonResult({ ok: true, to: space });
@@ -128,12 +139,18 @@ export const googlechatMessageActions: ChannelMessageActionAdapter = {
         const appUsers = resolveAppUserNames(account);
         const toRemove = reactions.filter((reaction) => {
           const userName = reaction.user?.name?.trim();
-          if (appUsers.size > 0 && !appUsers.has(userName ?? "")) return false;
-          if (emoji) return reaction.emoji?.unicode === emoji;
+          if (appUsers.size > 0 && !appUsers.has(userName ?? "")) {
+            return false;
+          }
+          if (emoji) {
+            return reaction.emoji?.unicode === emoji;
+          }
           return true;
         });
         for (const reaction of toRemove) {
-          if (!reaction.name) continue;
+          if (!reaction.name) {
+            continue;
+          }
           await deleteGoogleChatReaction({ account, reactionName: reaction.name });
         }
         return jsonResult({ ok: true, removed: toRemove.length });

@@ -42,7 +42,9 @@ vi.mock("../infra/exec-approvals.js", async (importOriginal) => {
 
 describe("createVersoCodingTools safeBins", () => {
   it("threads tools.exec.safeBins into exec allowlist checks", async () => {
-    if (process.platform === "win32") return;
+    if (process.platform === "win32") {
+      return;
+    }
 
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "verso-safe-bins-"));
     const cfg: VersoConfig = {
@@ -66,10 +68,22 @@ describe("createVersoCodingTools safeBins", () => {
     expect(execTool).toBeDefined();
 
     const marker = `safe-bins-${Date.now()}`;
-    const result = await execTool!.execute("call1", {
-      command: `echo ${marker}`,
-      workdir: tmpDir,
-    });
+    const prevShellEnvTimeoutMs = process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS;
+    process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS = "1000";
+    const result = await (async () => {
+      try {
+        return await execTool!.execute("call1", {
+          command: `echo ${marker}`,
+          workdir: tmpDir,
+        });
+      } finally {
+        if (prevShellEnvTimeoutMs === undefined) {
+          delete process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS;
+        } else {
+          process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS = prevShellEnvTimeoutMs;
+        }
+      }
+    })();
     const text = result.content.find((content) => content.type === "text")?.text ?? "";
 
     expect(result.details.status).toBe("completed");

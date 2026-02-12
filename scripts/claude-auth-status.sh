@@ -122,7 +122,7 @@ check_verso_auth() {
         return $?
     fi
 
-    if [ ! -f "$CLAWDBOT_AUTH" ]; then
+    if [ ! -f "$OPENCLAW_AUTH" ]; then
         echo "MISSING"
         return 1
     fi
@@ -131,7 +131,7 @@ check_verso_auth() {
     expires=$(jq -r '
         [.profiles | to_entries[] | select(.value.provider == "anthropic") | .value.expires]
         | max // 0
-    ' "$CLAWDBOT_AUTH" 2>/dev/null || echo "0")
+    ' "$OPENCLAW_AUTH" 2>/dev/null || echo "0")
 
     calc_status_from_expires "$expires"
 }
@@ -239,11 +239,11 @@ else
         | map(select(.value.provider == "anthropic"))
         | sort_by(.value.expires) | reverse
         | .[0].key // "none"
-    ' "$CLAWDBOT_AUTH" 2>/dev/null || echo "none")
+    ' "$OPENCLAW_AUTH" 2>/dev/null || echo "none")
     expires=$(jq -r '
         [.profiles | to_entries[] | select(.value.provider == "anthropic") | .value.expires]
         | max // 0
-    ' "$CLAWDBOT_AUTH" 2>/dev/null || echo "0")
+    ' "$OPENCLAW_AUTH" 2>/dev/null || echo "0")
     api_keys=0
 fi
 

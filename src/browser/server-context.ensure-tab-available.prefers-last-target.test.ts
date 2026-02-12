@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-
 import type { BrowserServerState } from "./server-context.js";
 import { createBrowserRouteContext } from "./server-context.js";
 
@@ -52,12 +51,11 @@ describe("browser server-context ensureTabAvailable", () => {
       } as unknown as Response;
     });
 
-    // @ts-expect-error test override
     global.fetch = fetchMock;
 
     const state: BrowserServerState = {
       // unused in these tests
-      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      // oxlint-disable-next-line typescript/no-explicit-any
       server: null as any,
       port: 0,
       resolved: {
@@ -99,22 +97,24 @@ describe("browser server-context ensureTabAvailable", () => {
     const fetchMock = vi.fn();
     const responses = [
       [{ id: "A", type: "page", url: "https://a.example", webSocketDebuggerUrl: "ws://x/a" }],
-      [{ id: "A", type: "page", url: "https://a.example", webSocketDebuggerUrl: "ws://x/a" }],
     ];
 
     fetchMock.mockImplementation(async (url: unknown) => {
       const u = String(url);
-      if (!u.includes("/json/list")) throw new Error(`unexpected fetch: ${u}`);
+      if (!u.includes("/json/list")) {
+        throw new Error(`unexpected fetch: ${u}`);
+      }
       const next = responses.shift();
-      if (!next) throw new Error("no more responses");
+      if (!next) {
+        throw new Error("no more responses");
+      }
       return { ok: true, json: async () => next } as unknown as Response;
     });
 
-    // @ts-expect-error test override
     global.fetch = fetchMock;
 
     const state: BrowserServerState = {
-      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      // oxlint-disable-next-line typescript/no-explicit-any
       server: null as any,
       port: 0,
       resolved: {
@@ -152,16 +152,20 @@ describe("browser server-context ensureTabAvailable", () => {
     const responses = [[]];
     fetchMock.mockImplementation(async (url: unknown) => {
       const u = String(url);
-      if (!u.includes("/json/list")) throw new Error(`unexpected fetch: ${u}`);
+      if (!u.includes("/json/list")) {
+        throw new Error(`unexpected fetch: ${u}`);
+      }
       const next = responses.shift();
-      if (!next) throw new Error("no more responses");
+      if (!next) {
+        throw new Error("no more responses");
+      }
       return { ok: true, json: async () => next } as unknown as Response;
     });
-    // @ts-expect-error test override
+
     global.fetch = fetchMock;
 
     const state: BrowserServerState = {
-      // biome-ignore lint/suspicious/noExplicitAny: test stub
+      // oxlint-disable-next-line typescript/no-explicit-any
       server: null as any,
       port: 0,
       resolved: {

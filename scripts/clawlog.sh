@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Configuration
-SUBSYSTEM="bot.molt"
+SUBSYSTEM="ai.openclaw"
 DEFAULT_LEVEL="info"
 
 # Colors for output

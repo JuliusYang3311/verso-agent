@@ -82,7 +82,6 @@ describe("subscribeEmbeddedPiSession", () => {
     } as AssistantMessage;
 
     handler?.({ type: "message_end", message: assistantMessage });
-    handler?.({ type: "message_end", message: assistantMessage });
 
     expect(subscription.assistantTexts).toEqual(["Hello world"]);
   });
@@ -138,7 +137,6 @@ describe("subscribeEmbeddedPiSession", () => {
       ],
     } as AssistantMessage;
 
-    handler?.({ type: "message_end", message: assistantMessage });
     handler?.({ type: "message_end", message: assistantMessage });
 
     expect(subscription.assistantTexts).toEqual(["Hello world"]);

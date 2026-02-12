@@ -1,5 +1,5 @@
 import Testing
-@testable import Moltbot
+@testable import Verso
 
 @Suite struct CameraControllerClampTests {
     @Test func clampQualityDefaultsAndBounds() {

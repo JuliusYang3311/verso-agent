@@ -1,9 +1,16 @@
 {
-  "name": "@verso/nostr",
-  "version": "2026.1.29",
-  "type": "module",
+  "name": "@openclaw/nostr",
+  "version": "2026.2.9",
   "description": "Verso Nostr channel plugin for NIP-04 encrypted DMs",
-  "verso": {
+  "type": "module",
+  "dependencies": {
+    "nostr-tools": "^2.23.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ],
@@ -18,14 +25,9 @@
       "quickstartAllowFrom": true
     },
     "install": {
-      "npmSpec": "@verso/nostr",
+      "npmSpec": "@openclaw/nostr",
       "localPath": "extensions/nostr",
       "defaultChoice": "npm"
     }
-  },
-  "dependencies": {
-    "verso": "workspace:*",
-    "nostr-tools": "^2.20.0",
-    "zod": "^4.3.6"
   }
 }

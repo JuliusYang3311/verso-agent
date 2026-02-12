@@ -92,13 +92,26 @@ def cleanup_old_videos(output_base: Path, retention_days: int):
             continue
 
 
+def cleanup_cache_videos():
+    """Remove cached source videos after each run."""
+    cache_dir = utils.storage_dir("cache_videos")
+    if not os.path.exists(cache_dir):
+        return
+    try:
+        for entry in os.listdir(cache_dir):
+            path = os.path.join(cache_dir, entry)
+            if os.path.isfile(path):
+                os.remove(path)
+    except Exception as e:
+        print(f"⚠️  Could not clean cache_videos: {e}")
+
+
 def get_output_dir(config: dict, topic: str, custom_dir: str = None) -> tuple:
     """Get the output base path and a descriptive task directory."""
+    # Determine base directory
     if custom_dir:
-        output_dir = Path(custom_dir)
-        return output_dir, output_dir
-    
-    if config.get("outputPath"):
+        base = Path(custom_dir)
+    elif config.get("outputPath"):
         base = Path(config["outputPath"]).expanduser()
     else:
         projects_tmp = Path.home() / "Projects" / "tmp"
@@ -449,7 +462,10 @@ Examples:
         print(f"📁 Final video(s) directly in: {output_base}")
     else:
         print("❌ Video generation failed")
+        cleanup_cache_videos()
         sys.exit(1)
+
+    cleanup_cache_videos()
 
 
 if __name__ == "__main__":

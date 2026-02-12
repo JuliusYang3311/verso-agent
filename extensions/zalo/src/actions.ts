@@ -4,7 +4,6 @@ import type {
   VersoConfig,
 } from "verso/plugin-sdk";
 import { jsonResult, readStringParam } from "verso/plugin-sdk";
-
 import { listEnabledZaloAccounts } from "./accounts.js";
 import { sendMessageZalo } from "./send.js";
 
@@ -26,9 +25,13 @@ export const zaloMessageActions: ChannelMessageActionAdapter = {
   supportsButtons: () => false,
   extractToolSend: ({ args }) => {
     const action = typeof args.action === "string" ? args.action.trim() : "";
-    if (action !== "sendMessage") return null;
+    if (action !== "sendMessage") {
+      return null;
+    }
     const to = typeof args.to === "string" ? args.to : undefined;
-    if (!to) return null;
+    if (!to) {
+      return null;
+    }
     const accountId = typeof args.accountId === "string" ? args.accountId.trim() : undefined;
     return { to, accountId };
   },

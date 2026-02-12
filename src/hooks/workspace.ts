@@ -1,16 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-
-import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
 import type { VersoConfig } from "../config/config.js";
-import { CONFIG_DIR, resolveUserPath } from "../utils.js";
-import { resolveBundledHooksDir } from "./bundled-dir.js";
-import { shouldIncludeHook } from "./config.js";
-import {
-  parseFrontmatter,
-  resolveVersoMetadata,
-  resolveHookInvocationPolicy,
-} from "./frontmatter.js";
 import type {
   Hook,
   HookEligibilityContext,
@@ -19,6 +9,16 @@ import type {
   HookSource,
   ParsedHookFrontmatter,
 } from "./types.js";
+import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
+import { MANIFEST_KEY } from "../compat/legacy-names.js";
+import { CONFIG_DIR, resolveUserPath } from "../utils.js";
+import { resolveBundledHooksDir } from "./bundled-dir.js";
+import { shouldIncludeHook } from "./config.js";
+import {
+  parseFrontmatter,
+  resolveVersoMetadata,
+  resolveHookInvocationPolicy,
+} from "./frontmatter.js";
 
 type HookPackageManifest = {
   name?: string;
@@ -35,7 +35,9 @@ function filterHookEntries(
 
 function readHookPackageManifest(dir: string): HookPackageManifest | null {
   const manifestPath = path.join(dir, "package.json");
-  if (!fs.existsSync(manifestPath)) return null;
+  if (!fs.existsSync(manifestPath)) {
+    return null;
+  }
   try {
     const raw = fs.readFileSync(manifestPath, "utf-8");
     return JSON.parse(raw) as HookPackageManifest;
@@ -46,7 +48,9 @@ function readHookPackageManifest(dir: string): HookPackageManifest | null {
 
 function resolvePackageHooks(manifest: HookPackageManifest): string[] {
   const raw = manifest.verso?.hooks ?? manifest[LEGACY_MANIFEST_KEY]?.hooks;
-  if (!Array.isArray(raw)) return [];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
   return raw.map((entry) => (typeof entry === "string" ? entry.trim() : "")).filter(Boolean);
 }
 
@@ -57,7 +61,9 @@ function loadHookFromDir(params: {
   nameHint?: string;
 }): Hook | null {
   const hookMdPath = path.join(params.hookDir, "HOOK.md");
-  if (!fs.existsSync(hookMdPath)) return null;
+  if (!fs.existsSync(hookMdPath)) {
+    return null;
+  }
 
   try {
     const content = fs.readFileSync(hookMdPath, "utf-8");
@@ -84,7 +90,7 @@ function loadHookFromDir(params: {
     return {
       name,
       description,
-      source: params.source as Hook["source"],
+      source: params.source,
       pluginId: params.pluginId,
       filePath: hookMdPath,
       baseDir: params.hookDir,
@@ -102,16 +108,22 @@ function loadHookFromDir(params: {
 function loadHooksFromDir(params: { dir: string; source: HookSource; pluginId?: string }): Hook[] {
   const { dir, source, pluginId } = params;
 
-  if (!fs.existsSync(dir)) return [];
+  if (!fs.existsSync(dir)) {
+    return [];
+  }
 
   const stat = fs.statSync(dir);
-  if (!stat.isDirectory()) return [];
+  if (!stat.isDirectory()) {
+    return [];
+  }
 
   const hooks: Hook[] = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory()) {
+      continue;
+    }
 
     const hookDir = path.join(dir, entry.name);
     const manifest = readHookPackageManifest(hookDir);
@@ -126,7 +138,9 @@ function loadHooksFromDir(params: { dir: string; source: HookSource; pluginId?: 
           pluginId,
           nameHint: path.basename(resolvedHookDir),
         });
-        if (hook) hooks.push(hook);
+        if (hook) {
+          hooks.push(hook);
+        }
       }
       continue;
     }
@@ -137,7 +151,9 @@ function loadHooksFromDir(params: { dir: string; source: HookSource; pluginId?: 
       pluginId,
       nameHint: entry.name,
     });
-    if (hook) hooks.push(hook);
+    if (hook) {
+      hooks.push(hook);
+    }
   }
 
   return hooks;
@@ -215,10 +231,18 @@ function loadHookEntries(
 
   const merged = new Map<string, Hook>();
   // Precedence: extra < bundled < managed < workspace (workspace wins)
-  for (const hook of extraHooks) merged.set(hook.name, hook);
-  for (const hook of bundledHooks) merged.set(hook.name, hook);
-  for (const hook of managedHooks) merged.set(hook.name, hook);
-  for (const hook of workspaceHooks) merged.set(hook.name, hook);
+  for (const hook of extraHooks) {
+    merged.set(hook.name, hook);
+  }
+  for (const hook of bundledHooks) {
+    merged.set(hook.name, hook);
+  }
+  for (const hook of managedHooks) {
+    merged.set(hook.name, hook);
+  }
+  for (const hook of workspaceHooks) {
+    merged.set(hook.name, hook);
+  }
 
   return Array.from(merged.values()).map((hook) => {
     let frontmatter: ParsedHookFrontmatter = {};

@@ -1,16 +1,16 @@
-import { metrics, trace, SpanStatusCode } from "@opentelemetry/api";
 import type { SeverityNumber } from "@opentelemetry/api-logs";
+import type { DiagnosticEventPayload, VersoPluginService } from "verso/plugin-sdk";
+import type { VersoPluginService, DiagnosticEventPayload } from "verso/plugin-sdk";
+import { metrics, trace, SpanStatusCode } from "@opentelemetry/api";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
-import { Resource } from "@opentelemetry/resources";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 import { BatchLogRecordProcessor, LoggerProvider } from "@opentelemetry/sdk-logs";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { ParentBasedSampler, TraceIdRatioBasedSampler } from "@opentelemetry/sdk-trace-base";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-
-import type { VersoPluginService, DiagnosticEventPayload } from "verso/plugin-sdk";
 import { onDiagnosticEvent, registerLogTransport } from "verso/plugin-sdk";
 
 const DEFAULT_SERVICE_NAME = "verso";
@@ -21,14 +21,22 @@ function normalizeEndpoint(endpoint?: string): string | undefined {
 }
 
 function resolveOtelUrl(endpoint: string | undefined, path: string): string | undefined {
-  if (!endpoint) return undefined;
-  if (endpoint.includes("/v1/")) return endpoint;
+  if (!endpoint) {
+    return undefined;
+  }
+  if (endpoint.includes("/v1/")) {
+    return endpoint;
+  }
   return `${endpoint}/${path}`;
 }
 
 function resolveSampleRate(value: number | undefined): number | undefined {
-  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
-  if (value < 0 || value > 1) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return undefined;
+  }
+  if (value < 0 || value > 1) {
+    return undefined;
+  }
   return value;
 }
 
@@ -43,7 +51,9 @@ export function createDiagnosticsOtelService(): VersoPluginService {
     async start(ctx) {
       const cfg = ctx.config.diagnostics;
       const otel = cfg?.otel;
-      if (!cfg?.enabled || !otel?.enabled) return;
+      if (!cfg?.enabled || !otel?.enabled) {
+        return;
+      }
 
       const protocol = otel.protocol ?? process.env.OTEL_EXPORTER_OTLP_PROTOCOL ?? "http/protobuf";
       if (protocol !== "http/protobuf") {
@@ -60,9 +70,11 @@ export function createDiagnosticsOtelService(): VersoPluginService {
       const tracesEnabled = otel.traces !== false;
       const metricsEnabled = otel.metrics !== false;
       const logsEnabled = otel.logs === true;
-      if (!tracesEnabled && !metricsEnabled && !logsEnabled) return;
+      if (!tracesEnabled && !metricsEnabled && !logsEnabled) {
+        return;
+      }
 
-      const resource = new Resource({
+      const resource = resourceFromAttributes({
         [SemanticResourceAttributes.SERVICE_NAME]: serviceName,
       });
 
@@ -106,7 +118,7 @@ export function createDiagnosticsOtelService(): VersoPluginService {
             : {}),
         });
 
-        await sdk.start();
+        sdk.start();
       }
 
       const logSeverityMap: Record<string, SeverityNumber> = {
@@ -199,13 +211,11 @@ export function createDiagnosticsOtelService(): VersoPluginService {
           ...(logUrl ? { url: logUrl } : {}),
           ...(headers ? { headers } : {}),
         });
-        logProvider = new LoggerProvider({ resource });
-        logProvider.addLogRecordProcessor(
-          new BatchLogRecordProcessor(logExporter, {
-            ...(typeof otel.flushIntervalMs === "number"
-              ? { scheduledDelayMillis: Math.max(1000, otel.flushIntervalMs) }
-              : {}),
-          }),
+        const processor = new BatchLogRecordProcessor(
+          logExporter,
+          typeof otel.flushIntervalMs === "number"
+            ? { scheduledDelayMillis: Math.max(1000, otel.flushIntervalMs) }
+            : {},
         );
         const otelLogger = logProvider.getLogger("verso");
 
@@ -237,7 +247,7 @@ export function createDiagnosticsOtelService(): VersoPluginService {
 
           const numericArgs = Object.entries(logObj)
             .filter(([key]) => /^\d+$/.test(key))
-            .sort((a, b) => Number(a[0]) - Number(b[0]))
+            .toSorted((a, b) => Number(a[0]) - Number(b[0]))
             .map(([, value]) => value);
 
           let bindings: Record<string, unknown> | undefined;
@@ -273,7 +283,11 @@ export function createDiagnosticsOtelService(): VersoPluginService {
           }
           if (bindings) {
             for (const [key, value] of Object.entries(bindings)) {
-              if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+              if (
+                typeof value === "string" ||
+                typeof value === "number" ||
+                typeof value === "boolean"
+              ) {
                 attributes[`verso.${key}`] = value;
               } else if (value != null) {
                 attributes[`verso.${key}`] = safeStringify(value);
@@ -283,9 +297,6 @@ export function createDiagnosticsOtelService(): VersoPluginService {
           if (numericArgs.length > 0) {
             attributes["verso.log.args"] = safeStringify(numericArgs);
           }
-          if (meta?.path?.filePath) attributes["code.filepath"] = meta.path.filePath;
-          if (meta?.path?.fileLine) attributes["code.lineno"] = Number(meta.path.fileLine);
-          if (meta?.path?.method) attributes["code.function"] = meta.path.method;
           if (meta?.path?.filePathWithLine) {
             attributes["verso.code.location"] = meta.path.filePathWithLine;
           }
@@ -332,20 +343,28 @@ export function createDiagnosticsOtelService(): VersoPluginService {
           tokensCounter.add(usage.promptTokens, { ...attrs, "verso.token": "prompt" });
         if (usage.total) tokensCounter.add(usage.total, { ...attrs, "verso.token": "total" });
 
-        if (evt.costUsd) costCounter.add(evt.costUsd, attrs);
-        if (evt.durationMs) durationHistogram.record(evt.durationMs, attrs);
-        if (evt.context?.limit)
+        if (evt.costUsd) {
+          costCounter.add(evt.costUsd, attrs);
+        }
+        if (evt.durationMs) {
+          durationHistogram.record(evt.durationMs, attrs);
+        }
+        if (evt.context?.limit) {
           contextHistogram.record(evt.context.limit, {
             ...attrs,
             "verso.context": "limit",
           });
-        if (evt.context?.used)
+        }
+        if (evt.context?.used) {
           contextHistogram.record(evt.context.used, {
             ...attrs,
             "verso.context": "used",
           });
+        }
 
-        if (!tracesEnabled) return;
+        if (!tracesEnabled) {
+          return;
+        }
         const spanAttrs: Record<string, string | number> = {
           ...attrs,
           "verso.sessionKey": evt.sessionKey ?? "",
@@ -381,7 +400,9 @@ export function createDiagnosticsOtelService(): VersoPluginService {
         if (typeof evt.durationMs === "number") {
           webhookDurationHistogram.record(evt.durationMs, attrs);
         }
-        if (!tracesEnabled) return;
+        if (!tracesEnabled) {
+          return;
+        }
         const spanAttrs: Record<string, string | number> = { ...attrs };
         if (evt.chatId !== undefined) spanAttrs["verso.chatId"] = String(evt.chatId);
         const span = spanWithDuration("verso.webhook.processed", spanAttrs, evt.durationMs);
@@ -396,7 +417,9 @@ export function createDiagnosticsOtelService(): VersoPluginService {
           "verso.webhook": evt.updateType ?? "unknown",
         };
         webhookErrorCounter.add(1, attrs);
-        if (!tracesEnabled) return;
+        if (!tracesEnabled) {
+          return;
+        }
         const spanAttrs: Record<string, string | number> = {
           ...attrs,
           "verso.error": evt.error,
@@ -433,7 +456,9 @@ export function createDiagnosticsOtelService(): VersoPluginService {
         if (typeof evt.durationMs === "number") {
           messageDurationHistogram.record(evt.durationMs, attrs);
         }
-        if (!tracesEnabled) return;
+        if (!tracesEnabled) {
+          return;
+        }
         const spanAttrs: Record<string, string | number> = { ...attrs };
         if (evt.sessionKey) spanAttrs["verso.sessionKey"] = evt.sessionKey;
         if (evt.sessionId) spanAttrs["verso.sessionId"] = evt.sessionId;
@@ -482,7 +507,9 @@ export function createDiagnosticsOtelService(): VersoPluginService {
         if (typeof evt.ageMs === "number") {
           sessionStuckAgeHistogram.record(evt.ageMs, attrs);
         }
-        if (!tracesEnabled) return;
+        if (!tracesEnabled) {
+          return;
+        }
         const spanAttrs: Record<string, string | number> = { ...attrs };
         if (evt.sessionKey) spanAttrs["verso.sessionKey"] = evt.sessionKey;
         if (evt.sessionId) spanAttrs["verso.sessionId"] = evt.sessionId;

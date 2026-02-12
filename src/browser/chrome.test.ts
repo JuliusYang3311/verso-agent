@@ -2,9 +2,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
-
 import {
   decorateVersoProfile,
   ensureProfileCleanExit,
@@ -119,7 +117,6 @@ describe("browser chrome profile decoration", () => {
   it("is idempotent when rerun on an existing profile", async () => {
     const userDataDir = await fsp.mkdtemp(path.join(os.tmpdir(), "verso-chrome-test-"));
     try {
-      decorateVersoProfile(userDataDir, { color: DEFAULT_VERSO_BROWSER_COLOR });
       decorateVersoProfile(userDataDir, { color: DEFAULT_VERSO_BROWSER_COLOR });
 
       const prefs = await readJson(path.join(userDataDir, "Default", "Preferences"));
