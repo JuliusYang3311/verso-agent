@@ -42,11 +42,24 @@ export function resolveContextWindowInfo(params: {
       : { tokens: Math.floor(params.defaultTokens), source: "default" as const };
 
   const capTokens = normalizePositiveInt(params.cfg?.agents?.defaults?.contextTokens);
-  if (capTokens && capTokens < baseInfo.tokens) {
-    return { tokens: capTokens, source: "agentContextTokens" };
+  const maxSessionTokens = normalizePositiveInt(
+    params.cfg?.agents?.defaults?.compaction?.maxSessionTokens,
+  );
+
+  let tokens = baseInfo.tokens;
+  let source: ContextWindowSource = baseInfo.source;
+
+  if (capTokens && capTokens < tokens) {
+    tokens = capTokens;
+    source = "agentContextTokens";
   }
 
-  return baseInfo;
+  if (maxSessionTokens && maxSessionTokens < tokens) {
+    tokens = maxSessionTokens;
+    source = "agentContextTokens"; // Using same source category for simplicity
+  }
+
+  return { tokens, source };
 }
 
 export type ContextWindowGuardResult = ContextWindowInfo & {

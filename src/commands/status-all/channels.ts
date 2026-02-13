@@ -5,7 +5,10 @@ import type {
   ChannelPlugin,
 } from "../../channels/plugins/types.js";
 import type { VersoConfig } from "../../config/config.js";
-import { formatAge } from "./format.js";
+import { resolveChannelDefaultAccountId } from "../../channels/plugins/helpers.js";
+import { listChannelPlugins } from "../../channels/plugins/index.js";
+import { sha256HexPrefix } from "../../logging/redact-identifier.js";
+import { formatTimeAgo } from "./format.js";
 
 export type ChannelRow = {
   id: ChannelId;

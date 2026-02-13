@@ -75,7 +75,10 @@ function resolveAnthropicOpus46ForwardCompatModel(
   modelRegistry: ModelRegistry,
 ): Model<Api> | undefined {
   const normalizedProvider = normalizeProviderId(provider);
-  if (normalizedProvider !== "anthropic") {
+  // Support both native anthropic and google-antigravity (which routes Anthropic models)
+  const isAnthropicCompatible =
+    normalizedProvider === "anthropic" || normalizedProvider === "google-antigravity";
+  if (!isAnthropicCompatible) {
     return undefined;
   }
 
@@ -99,16 +102,26 @@ function resolveAnthropicOpus46ForwardCompatModel(
   }
   templateIds.push(...ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS);
 
-  for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
-    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
-    if (!template) {
-      continue;
+  // For google-antigravity, try looking up templates under both the actual provider
+  // and under "anthropic" (where the base model definitions live)
+  const lookupProviders =
+    normalizedProvider === "google-antigravity"
+      ? [normalizedProvider, "anthropic"]
+      : [normalizedProvider];
+
+  for (const lookupProvider of lookupProviders) {
+    for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
+      const template = modelRegistry.find(lookupProvider, templateId) as Model<Api> | null;
+      if (!template) {
+        continue;
+      }
+      return normalizeModelCompat({
+        ...template,
+        id: trimmedModelId,
+        name: trimmedModelId,
+        provider: normalizedProvider,
+      } as Model<Api>);
     }
-    return normalizeModelCompat({
-      ...template,
-      id: trimmedModelId,
-      name: trimmedModelId,
-    } as Model<Api>);
   }
 
   return undefined;
@@ -225,6 +238,14 @@ export function resolveModel(
         } as Model<Api>);
       }
     }
+  }
+
+  // 4. Forward-compat fallbacks for known-new model IDs
+  if (!rawModel) {
+    rawModel =
+      resolveAnthropicOpus46ForwardCompatModel(provider, modelId, modelRegistry) ??
+      resolveOpenAICodexGpt53FallbackModel(provider, modelId, modelRegistry) ??
+      null;
   }
 
   if (rawModel) {

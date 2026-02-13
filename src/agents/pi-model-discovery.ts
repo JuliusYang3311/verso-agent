@@ -14,6 +14,29 @@ const OVERRIDES: Model<Api>[] = [];
 
 export function discoverModels(authStorage: AuthStorage, agentDir: string): ModelRegistry {
   const registry = new ModelRegistry(authStorage, path.join(agentDir, "models.json"));
+
+  // Register forward-compat Opus 4.6 models by cloning from 4.5 templates.
+  // The SDK may not yet include 4.6 definitions, so we derive them from 4.5.
+  const allModels = registry.getAll();
+  const opus45Templates = allModels.filter(
+    (m) => m.id === "claude-opus-4-5" || m.id === "claude-opus-4-5-thinking",
+  );
+  for (const template of opus45Templates) {
+    const opus46Id = template.id.replace("claude-opus-4-5", "claude-opus-4-6");
+    const alreadyExists = allModels.some(
+      (m) => m.provider === template.provider && m.id === opus46Id,
+    );
+    if (!alreadyExists) {
+      allModels.push({
+        ...template,
+        id: opus46Id,
+        name: (template.name || template.id).replace(/4[.-]?5/g, "4.6"),
+        contextWindow: 1048576, // 1M
+        maxTokens: 128000, // 128k
+      });
+    }
+  }
+
   const originalFind = registry.find.bind(registry);
 
   registry.find = (provider: string, modelId: string): Model<Api> | undefined => {
@@ -41,10 +64,11 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
           contextWindow: 1048576,
         };
       }
-      if (modelId === "claude-opus-4-6") {
+      if (modelId === "claude-opus-4-6" || modelId.startsWith("claude-opus-4-6-")) {
         return {
           ...original,
           contextWindow: 1048576,
+          maxTokens: 128000,
         };
       }
       return original;

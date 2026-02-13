@@ -66,12 +66,24 @@ function ensureNoReplyHint(text: string): string {
 }
 
 export function resolveMemoryFlushContextWindowTokens(params: {
+  cfg?: VersoConfig;
   modelId?: string;
   agentCfgContextTokens?: number;
 }): number {
-  return (
-    lookupContextTokens(params.modelId) ?? params.agentCfgContextTokens ?? DEFAULT_CONTEXT_TOKENS
-  );
+  const modelContext = lookupContextTokens(params.modelId);
+  const agentContext = params.agentCfgContextTokens ?? DEFAULT_CONTEXT_TOKENS;
+  const baseTokens = modelContext ?? agentContext;
+
+  const maxSessionTokens = params.cfg?.agents?.defaults?.compaction?.maxSessionTokens;
+  if (
+    typeof maxSessionTokens === "number" &&
+    maxSessionTokens > 0 &&
+    maxSessionTokens < baseTokens
+  ) {
+    return maxSessionTokens;
+  }
+
+  return baseTokens;
 }
 
 export function shouldRunMemoryFlush(params: {

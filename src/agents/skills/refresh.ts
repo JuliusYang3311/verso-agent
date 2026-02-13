@@ -38,6 +38,11 @@ export const DEFAULT_SKILLS_WATCH_IGNORED: RegExp[] = [
   // Build artifacts and caches
   /(^|[\\/])build([\\/]|$)/,
   /(^|[\\/])\.cache([\\/]|$)/,
+  // Data and media storage (prevents FD leaks from large media folders)
+  /(^|[\\/])storage([\\/]|$)/,
+  /(^|[\\/])cache_videos([\\/]|$)/,
+  // Hidden files and directories
+  /(^|[\\/])\../,
 ];
 
 function bumpVersion(current: number): number {
