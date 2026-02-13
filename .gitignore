@@ -89,3 +89,4 @@ skills/storage/cache_videos/
 *.wav
 *.mov
 *.pkl
+Crypto/
