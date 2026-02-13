@@ -73,6 +73,8 @@ export function createVersoTools(options?: {
   requireExplicitMessageTarget?: boolean;
   /** If true, omit the message tool from the tool list. */
   disableMessageTool?: boolean;
+  /** Current model context to inherit if not explicitly overridden. */
+  currentModel?: { provider: string; model: string };
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -154,6 +156,7 @@ export function createVersoTools(options?: {
       agentGroupSpace: options?.agentGroupSpace,
       sandboxed: options?.sandboxed,
       requesterAgentIdOverride: options?.requesterAgentIdOverride,
+      currentModel: options?.currentModel,
     }),
     createSessionStatusTool({
       agentSessionKey: options?.agentSessionKey,

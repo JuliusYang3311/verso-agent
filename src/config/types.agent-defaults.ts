@@ -271,4 +271,6 @@ export type AgentCompactionMemoryFlushConfig = {
   prompt?: string;
   /** System prompt appended for the memory flush turn. */
   systemPrompt?: string;
+  /** Proportional buffer (0.05-0.2) to trigger flush before hard limit. */
+  proportionalBuffer?: number;
 };

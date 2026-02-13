@@ -486,6 +486,10 @@ export function createVersoCodingTools(options?: {
       requireExplicitMessageTarget: options?.requireExplicitMessageTarget,
       disableMessageTool: options?.disableMessageTool,
       requesterAgentIdOverride: agentId,
+      currentModel:
+        options?.modelProvider && options?.modelId
+          ? { provider: options.modelProvider, model: options.modelId }
+          : undefined,
     }),
   ];
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)

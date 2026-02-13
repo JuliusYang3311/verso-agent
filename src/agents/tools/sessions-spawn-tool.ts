@@ -78,6 +78,8 @@ export function createSessionsSpawnTool(opts?: {
   sandboxed?: boolean;
   /** Explicit agent ID override for cron/hook sessions where session key parsing may not work. */
   requesterAgentIdOverride?: string;
+  /** Current model context to inherit if not explicitly overridden. */
+  currentModel?: { provider: string; model: string };
 }): AnyAgentTool {
   return {
     label: "Sessions",
@@ -169,9 +171,26 @@ export function createSessionsSpawnTool(opts?: {
       const childSessionKey = `agent:${targetAgentId}:subagent:${crypto.randomUUID()}`;
       const spawnedByKey = requesterInternalKey;
       const targetAgentConfig = resolveAgentConfig(cfg, targetAgentId);
+
+      const currentModelRef = opts?.currentModel
+        ? `${opts.currentModel.provider}/${opts.currentModel.model}`
+        : undefined;
+
       const resolvedModel =
         normalizeModelSelection(modelOverride) ??
         normalizeModelSelection(targetAgentConfig?.subagents?.model) ??
+        // Prefer current model inheritance over global defaults, unless global default is explicitly set?
+        // Actually, inheritance should probably act as the "default" if no specific override is present.
+        // But we must respect the hierarchy:
+        // 1. Tool argument (modelOverride)
+        // 2. Target Agent Config (targetAgentConfig.subagents.model)
+        // 3. Current Model Inheritance (NEW)
+        // 4. Global Defaults (cfg.agents.defaults.subagents.model)
+        //
+        // Wait, if I'm talking to Gemini, and global default is Claude, maybe I *want* subagent to be Claude?
+        // "Sub-agents should follow the main verso" implies inheritance > global default.
+        // But inheritance should probably be < agent specific config.
+        currentModelRef ??
         normalizeModelSelection(cfg.agents?.defaults?.subagents?.model);
 
       const resolvedThinkingDefaultRaw =

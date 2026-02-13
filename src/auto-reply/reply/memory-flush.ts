@@ -6,6 +6,7 @@ import { DEFAULT_PI_COMPACTION_RESERVE_TOKENS_FLOOR } from "../../agents/pi-sett
 import { SILENT_REPLY_TOKEN } from "../tokens.js";
 
 export const DEFAULT_MEMORY_FLUSH_SOFT_TOKENS = 4000;
+export const DEFAULT_MEMORY_FLUSH_PROPORTIONAL_BUFFER = 0.05;
 
 export const DEFAULT_MEMORY_FLUSH_PROMPT = [
   "Pre-compaction memory flush.",
@@ -25,6 +26,7 @@ export type MemoryFlushSettings = {
   prompt: string;
   systemPrompt: string;
   reserveTokensFloor: number;
+  proportionalBuffer: number;
 };
 
 const normalizeNonNegativeInt = (value: unknown): number | null => {
@@ -33,6 +35,13 @@ const normalizeNonNegativeInt = (value: unknown): number | null => {
   }
   const int = Math.floor(value);
   return int >= 0 ? int : null;
+};
+
+const normalizePositiveFloat = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0 && value < 1) {
+    return value;
+  }
+  return null;
 };
 
 export function resolveMemoryFlushSettings(cfg?: VersoConfig): MemoryFlushSettings | null {
@@ -48,6 +57,9 @@ export function resolveMemoryFlushSettings(cfg?: VersoConfig): MemoryFlushSettin
   const reserveTokensFloor =
     normalizeNonNegativeInt(cfg?.agents?.defaults?.compaction?.reserveTokensFloor) ??
     DEFAULT_PI_COMPACTION_RESERVE_TOKENS_FLOOR;
+  const proportionalBuffer =
+    normalizePositiveFloat(defaults?.proportionalBuffer) ??
+    DEFAULT_MEMORY_FLUSH_PROPORTIONAL_BUFFER;
 
   return {
     enabled,
@@ -55,6 +67,7 @@ export function resolveMemoryFlushSettings(cfg?: VersoConfig): MemoryFlushSettin
     prompt: ensureNoReplyHint(prompt),
     systemPrompt: ensureNoReplyHint(systemPrompt),
     reserveTokensFloor,
+    proportionalBuffer,
   };
 }
 
@@ -91,6 +104,7 @@ export function shouldRunMemoryFlush(params: {
   contextWindowTokens: number;
   reserveTokensFloor: number;
   softThresholdTokens: number;
+  proportionalBuffer?: number;
 }): boolean {
   const totalTokens = params.entry?.totalTokens;
   if (!totalTokens || totalTokens <= 0) {
@@ -98,8 +112,14 @@ export function shouldRunMemoryFlush(params: {
   }
   const contextWindow = Math.max(1, Math.floor(params.contextWindowTokens));
   const reserveTokens = Math.max(0, Math.floor(params.reserveTokensFloor));
-  const softThreshold = Math.max(0, Math.floor(params.softThresholdTokens));
-  const threshold = Math.max(0, contextWindow - reserveTokens - softThreshold);
+
+  const proportionalBuffer = params.proportionalBuffer ?? DEFAULT_MEMORY_FLUSH_PROPORTIONAL_BUFFER;
+  const proportionalTokens = Math.floor(contextWindow * proportionalBuffer);
+  const effectiveSoftThreshold = Math.max(
+    Math.floor(params.softThresholdTokens),
+    proportionalTokens,
+  );
+  const threshold = Math.max(0, contextWindow - reserveTokens - effectiveSoftThreshold);
   if (threshold <= 0) {
     return false;
   }

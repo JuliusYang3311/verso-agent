@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_MEMORY_FLUSH_SOFT_TOKENS,
+  DEFAULT_MEMORY_FLUSH_PROPORTIONAL_BUFFER,
   resolveMemoryFlushContextWindowTokens,
   resolveMemoryFlushSettings,
   shouldRunMemoryFlush,
@@ -13,6 +14,7 @@ describe("memory flush settings", () => {
     expect(settings?.enabled).toBe(true);
     expect(settings?.prompt.length).toBeGreaterThan(0);
     expect(settings?.systemPrompt.length).toBeGreaterThan(0);
+    expect(settings?.proportionalBuffer).toBe(DEFAULT_MEMORY_FLUSH_PROPORTIONAL_BUFFER);
   });
 
   it("respects disable flag", () => {
@@ -110,6 +112,40 @@ describe("shouldRunMemoryFlush", () => {
         contextWindowTokens: 100_000,
         reserveTokensFloor: 5_000,
         softThresholdTokens: 2_000,
+      }),
+    ).toBe(true);
+  });
+
+  it("triggers based on proportional buffer for large context windows", () => {
+    // 1M context window
+    // Proportional buffer 5% = 50,000 tokens
+    // Reserve floor = 20,000 tokens
+    // Soft threshold = 4,000 (ignored because proportional is larger)
+    // Threshold = 1,000,000 - 20,000 - 50,000 = 930,000 tokens
+    const contextWindowTokens = 1_000_000;
+    const reserveTokensFloor = 20_000;
+    const softThresholdTokens = 4_000;
+    const proportionalBuffer = 0.05;
+
+    // Below 930k -> false
+    expect(
+      shouldRunMemoryFlush({
+        entry: { totalTokens: 929_900 },
+        contextWindowTokens,
+        reserveTokensFloor,
+        softThresholdTokens,
+        proportionalBuffer,
+      }),
+    ).toBe(false);
+
+    // Above 930k -> true
+    expect(
+      shouldRunMemoryFlush({
+        entry: { totalTokens: 930_100 },
+        contextWindowTokens,
+        reserveTokensFloor,
+        softThresholdTokens,
+        proportionalBuffer,
       }),
     ).toBe(true);
   });
