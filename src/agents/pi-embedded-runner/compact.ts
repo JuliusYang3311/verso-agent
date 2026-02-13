@@ -26,8 +26,9 @@ import { resolveVersoAgentDir } from "../agent-paths.js";
 import { resolveSessionAgentIds } from "../agent-scope.js";
 import { makeBootstrapWarn, resolveBootstrapContextForRun } from "../bootstrap-files.js";
 import { listChannelSupportedActions, resolveChannelMessageToolHints } from "../channel-tools.js";
+import { resolveContextWindowInfo } from "../context-window-guard.js";
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
-import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
+import { DEFAULT_CONTEXT_TOKENS, DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
 import { resolveVersoDocsPath } from "../docs-path.js";
 import { getApiKeyForModel, resolveModelAuthMode } from "../model-auth.js";
 import { ensureVersoModelsJson } from "../models-config.js";
@@ -381,9 +382,26 @@ export async function compactEmbeddedPiSessionDirect(
       });
       trackSessionManagerAccess(params.sessionFile);
       const settingsManager = SettingsManager.create(effectiveWorkspace, agentDir);
+
+      const ctxInfo = resolveContextWindowInfo({
+        cfg: params.config,
+        provider,
+        modelId,
+        modelContextWindow: model.contextWindow,
+        defaultTokens: DEFAULT_CONTEXT_TOKENS,
+      });
+      // Calculate how many tokens we need to reserve to force compaction at the effective limit
+      // (effectiveLimit = min(model.contextWindow, maxSessionTokens))
+      // trigger = contextWindow - reserveTokens
+      // target trigger = effectiveLimit
+      // => reserveTokens = contextWindow - effectiveLimit
+      const modelContextWindow = model.contextWindow ?? DEFAULT_CONTEXT_TOKENS;
+      const dynamicReserveTokens = Math.max(0, modelContextWindow - ctxInfo.tokens);
+      const configuredReserveFloor = resolveCompactionReserveTokensFloor(params.config);
+
       ensurePiCompactionReserveTokens({
         settingsManager,
-        minReserveTokens: resolveCompactionReserveTokensFloor(params.config),
+        minReserveTokens: Math.max(configuredReserveFloor, dynamicReserveTokens),
       });
       // Call for side effects (sets compaction/pruning runtime state)
       buildEmbeddedExtensionPaths({
