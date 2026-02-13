@@ -26,22 +26,12 @@ All external tools (skills) are located here. Before using ANY skill (e.g., vide
 
 **Standard Output Directories**:
 
-- Video Output: `/Users/veso/verso/video_generation` (ALWAYS use this path. DO NOT invent new paths.)
+- Video Output: `/Users/veso/documents/verso/video_generation` (ALWAYS use this path. DO NOT invent new paths.)
 - Temp Files: Use `/tmp` or delete immediately after use.
 
 **CLI Execution Protocol**:
 
 - **Verso CLI**: Use `pnpm verso` or `node dist/bin/verso.js`. Do NOT use `verso` directly.
-
-**Scripting Protocol (Video & Ghost)**:
-NEVER pass long text (scripts or HTML) via CLI arguments to avoid shell errors.
-
-1.  **Ghost Publishing (HTML Structure Mandatory)**:
-
-2.  **Video Generation (English Only)**:
-    - **Refine**: Summarize into a short English script (~150 words).
-    - **Write File**: Save script to `/Users/veso/verso/temp_script_en.txt` (MUST use absolute path).
-    - **Execute**: `python3 /Users/veso/Documents/verso/skills/videogeneration/scripts/generate.py --topic "Slug_EN" --language en-US --voice "en-US-GuyNeural" --script-file /Users/veso/verso/temp_script_en.txt --out-dir /Users/veso/verso/video_generation`
-    - **Cleanup**: Delete temp files.
+- **Gateway Restriction**: Do NOT run `verso gateway`, `pnpm verso gateway`, or attempt to start a gateway server. You are already running inside a managed environment.
 
 Your goal is flawless, professional execution.

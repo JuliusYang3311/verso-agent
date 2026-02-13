@@ -34,6 +34,7 @@ Things like:
 ### System Configuration
 
 - **Skills Root Directory**: `/Users/veso/Documents/verso/skills`
+- **Crypto Records Path**: `/Users/veso/Documents/verso/Crypto` (Transaction logs, Account snapshots)
 
 ## Why Separate?
 

@@ -25,6 +25,10 @@
 
 - Do **not** maintain a separate VIAP protocol markdown file; keep the protocol/process **in memory** (this file) and write it in **English**.
 - **Workflow preference (Julius):** video制作与发布（尤其是Twitter）需要交给子Verso/子agent去做；主Verso负责统筹与审核，发布前先给Julius确认。
+- **Video Release Strategy (2026-02-12):**
+  - Twitter API 对非 Premium 账号限制为 140s。超长需自动分段。
+  - 遇到上传 403 错误（非时长原因）时，强制使用 FFmpeg 进行 libx264 转码后再试。
+  - 脚本: `python3 skills/twitter/scripts/post_tweet.py`。
 
 ### VIAP v3 — Main Verso ↔ utility agent execution protocol
 
