@@ -117,7 +117,7 @@ describe("verso-tools: subagents", () => {
       runId: "run-1",
     });
 
-    await sleep(0);
+    await new Promise((r) => setTimeout(r, 0));
 
     const childWait = waitCalls.find((call) => call.runId === childRunId);
     expect(childWait?.timeoutMs).toBe(1000);

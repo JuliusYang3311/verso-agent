@@ -33,6 +33,7 @@ const SessionsSpawnToolSchema = Type.Object({
   // Back-compat alias. Prefer runTimeoutSeconds.
   timeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
   cleanup: optionalStringEnum(["delete", "keep"] as const),
+  background: Type.Optional(Type.Boolean()),
 });
 
 function splitModelRef(ref?: string) {
@@ -293,6 +294,7 @@ export function createSessionsSpawnTool(opts?: {
         cleanup,
         label: label || undefined,
         runTimeoutSeconds,
+        background: params.background === true,
       });
 
       return jsonResult({

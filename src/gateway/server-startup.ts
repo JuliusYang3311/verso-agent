@@ -97,47 +97,58 @@ export async function startGatewaySidecars(params: {
     }
   }
 
-  // Load internal hook handlers from configuration and directory discovery.
-  try {
-    // Clear any previously registered hooks to ensure fresh loading
-    clearInternalHooks();
-    const loadedCount = await loadInternalHooks(params.cfg, params.defaultWorkspaceDir);
-    if (loadedCount > 0) {
-      params.logHooks.info(
-        `loaded ${loadedCount} internal hook handler${loadedCount > 1 ? "s" : ""}`,
-      );
-    }
-  } catch (err) {
-    params.logHooks.error(`failed to load hooks: ${String(err)}`);
-  }
-
-  // Launch configured channels so gateway replies via the surface the message came from.
-  // Tests can opt out via VERSO_SKIP_CHANNELS (or legacy VERSO_SKIP_PROVIDERS).
   const skipChannels =
     isTruthyEnvValue(process.env.VERSO_SKIP_CHANNELS) ||
     isTruthyEnvValue(process.env.VERSO_SKIP_PROVIDERS);
-  if (!skipChannels) {
-    try {
-      await params.startChannels();
-    } catch (err) {
-      params.logChannels.error(`channel startup failed: ${String(err)}`);
-    }
-  } else {
-    params.logChannels.info(
-      "skipping channel start (VERSO_SKIP_CHANNELS=1 or VERSO_SKIP_PROVIDERS=1)",
-    );
-  }
 
-  if (params.cfg.hooks?.internal?.enabled) {
-    setTimeout(() => {
-      const hookEvent = createInternalHookEvent("gateway", "startup", "gateway:startup", {
-        cfg: params.cfg,
-        deps: params.deps,
-        workspaceDir: params.defaultWorkspaceDir,
-      });
-      void triggerInternalHook(hookEvent);
-    }, 250);
-  }
+  // Parallelize independent startup tasks
+  const startChannelsTask = async () => {
+    if (!skipChannels) {
+      try {
+        await params.startChannels();
+      } catch (err) {
+        params.logChannels.error(`channel startup failed: ${String(err)}`);
+      }
+    } else {
+      params.logChannels.info(
+        "skipping channel start (VERSO_SKIP_CHANNELS=1 or VERSO_SKIP_PROVIDERS=1)",
+      );
+    }
+  };
+
+  const loadHooksTask = async () => {
+    try {
+      // Clear any previously registered hooks to ensure fresh loading
+      clearInternalHooks();
+      const loadedCount = await loadInternalHooks(params.cfg, params.defaultWorkspaceDir);
+      if (loadedCount > 0) {
+        params.logHooks.info(
+          `loaded ${loadedCount} internal hook handler${loadedCount > 1 ? "s" : ""}`,
+        );
+      }
+    } catch (err) {
+      params.logHooks.error(`failed to load hooks: ${String(err)}`);
+    }
+  };
+
+  const triggerStartupHookTask = async () => {
+    if (params.cfg.hooks?.internal?.enabled) {
+      setTimeout(() => {
+        const hookEvent = createInternalHookEvent("gateway", "startup", "gateway:startup", {
+          cfg: params.cfg,
+          deps: params.deps,
+          workspaceDir: params.defaultWorkspaceDir,
+        });
+        void triggerInternalHook(hookEvent);
+      }, 250);
+    }
+  };
+
+  // Run initial loading in parallel
+  await Promise.all([loadHooksTask(), startChannelsTask()]);
+
+  // Trigger startup hook (runs on timer anyway)
+  await triggerStartupHookTask();
 
   let pluginServices: PluginServicesHandle | null = null;
   try {

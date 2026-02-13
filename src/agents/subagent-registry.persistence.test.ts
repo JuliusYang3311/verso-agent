@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const noop = () => {};
 
+const { announceSpy } = vi.hoisted(() => ({
+  announceSpy: vi.fn(async () => true),
+}));
+
 vi.mock("../gateway/call.js", () => ({
   callGateway: vi.fn(async () => ({
     status: "ok",
@@ -17,7 +21,6 @@ vi.mock("../infra/agent-events.js", () => ({
   onAgentEvent: vi.fn(() => noop),
 }));
 
-const announceSpy = vi.fn(async () => true);
 vi.mock("./subagent-announce.js", () => ({
   runSubagentAnnounceFlow: (...args: unknown[]) => announceSpy(...args),
 }));
@@ -232,8 +235,8 @@ describe("subagent registry persistence", () => {
   });
 
   it("keeps delete-mode runs retryable when announce is deferred", async () => {
-    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-subagent-"));
-    process.env.OPENCLAW_STATE_DIR = tempStateDir;
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-subagent-"));
+    process.env.VERSO_STATE_DIR = tempStateDir;
 
     const registryPath = path.join(tempStateDir, "subagents", "runs.json");
     const persisted = {
@@ -259,7 +262,7 @@ describe("subagent registry persistence", () => {
     vi.resetModules();
     const mod1 = await import("./subagent-registry.js");
     mod1.initSubagentRegistry();
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 50));
 
     expect(announceSpy).toHaveBeenCalledTimes(1);
     const afterFirst = JSON.parse(await fs.readFile(registryPath, "utf8")) as {

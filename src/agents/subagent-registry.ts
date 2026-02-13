@@ -217,6 +217,7 @@ function ensureListener() {
     } else {
       entry.outcome = { status: "ok" };
     }
+    setArchiveTime(entry);
     persistSubagentRuns();
 
     if (!beginSubagentCleanup(evt.runId)) {
@@ -279,6 +280,22 @@ function beginSubagentCleanup(runId: string) {
   return true;
 }
 
+const ERROR_ARCHIVE_DELAY_MS = 10 * 60_000;
+const SUCCESS_ARCHIVE_DELAY_MS = 0; // Immediate
+
+function setArchiveTime(entry: SubagentRunRecord) {
+  // Config override (optional check) - currently ignoring config to enforce user preference
+  // const cfg = loadConfig();
+  // const duration = resolveArchiveAfterMs(cfg);
+
+  if (entry.outcome?.status === "error") {
+    entry.archiveAtMs = Date.now() + ERROR_ARCHIVE_DELAY_MS;
+  } else {
+    entry.archiveAtMs = Date.now() + SUCCESS_ARCHIVE_DELAY_MS;
+  }
+  startSweeper();
+}
+
 export function registerSubagentRun(params: {
   runId: string;
   childSessionKey: string;
@@ -289,11 +306,13 @@ export function registerSubagentRun(params: {
   cleanup: "delete" | "keep";
   label?: string;
   runTimeoutSeconds?: number;
+  background?: boolean;
 }) {
   const now = Date.now();
   const cfg = loadConfig();
-  const archiveAfterMs = resolveArchiveAfterMs(cfg);
-  const archiveAtMs = archiveAfterMs ? now + archiveAfterMs : undefined;
+  // Don't set archiveAtMs at start; wait for completion to avoid premature deletion of long-running tasks.
+  // const archiveAfterMs = resolveArchiveAfterMs(cfg);
+  // const archiveAtMs = archiveAfterMs ? now + archiveAfterMs : undefined;
   const waitTimeoutMs = resolveSubagentWaitTimeoutMs(cfg, params.runTimeoutSeconds);
   const requesterOrigin = normalizeDeliveryContext(params.requesterOrigin);
   subagentRuns.set(params.runId, {
@@ -307,17 +326,20 @@ export function registerSubagentRun(params: {
     label: params.label,
     createdAt: now,
     startedAt: now,
-    archiveAtMs,
+    // archiveAtMs,
     cleanupHandled: false,
   });
   ensureListener();
   persistSubagentRuns();
-  if (archiveAfterMs) {
-    startSweeper();
+  // if (archiveAfterMs) {
+  //   startSweeper();
+  // }
+
+  if (!params.background) {
+    // Wait for subagent completion via gateway RPC (cross-process).
+    // The in-process lifecycle listener is a fallback for embedded runs.
+    void waitForSubagentCompletion(params.runId, waitTimeoutMs);
   }
-  // Wait for subagent completion via gateway RPC (cross-process).
-  // The in-process lifecycle listener is a fallback for embedded runs.
-  void waitForSubagentCompletion(params.runId, waitTimeoutMs);
 }
 
 async function waitForSubagentCompletion(runId: string, waitTimeoutMs: number) {
@@ -361,6 +383,7 @@ async function waitForSubagentCompletion(runId: string, waitTimeoutMs: number) {
       wait.status === "error" ? { status: "error", error: waitError } : { status: "ok" };
     mutated = true;
     if (mutated) {
+      setArchiveTime(entry);
       persistSubagentRuns();
     }
     if (!beginSubagentCleanup(runId)) {
