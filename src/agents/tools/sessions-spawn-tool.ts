@@ -291,8 +291,6 @@ export function createSessionsSpawnTool(opts?: {
             spawnedBy: spawnedByKey,
             groupId: opts?.agentGroupId ?? undefined,
             groupChannel: opts?.agentGroupChannel ?? undefined,
-            groupSpace: opts?.agentGroupSpace ?? undefined,
-            groupSpace: opts?.agentGroupSpace ?? undefined,
             authProfileId:
               opts?.currentAuthProfileId &&
               opts.currentModel?.provider &&
