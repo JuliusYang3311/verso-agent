@@ -37,6 +37,7 @@ Artifacts are saved to: `/Users/veso/Documents/verso/DIDanalyze/`
   - `trends_plot`: PNG image of the parallel trends plot.
   - `event_study_plot`: PNG image of the event study plot (if applicable).
   - `table_csv`: CSV file containing the three-line table of results.
+  - `table_png`: PNG image of the three-line table.
 
 ### Dependencies
 

@@ -281,6 +281,67 @@ def make_three_line_table(res, *, main_term="D", out_csv="three_line_table.csv")
     tbl_fmt.to_csv(out_csv, index=False)
     return tbl_fmt
 
+
+def save_three_line_table_png(df, out_png):
+    """
+    Render a DataFrame as a matplotlib figure in "Three-Line Table" style.
+    """
+    if df is None or df.empty:
+        return
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(6, 2 + len(df) * 0.5))
+    ax.axis('off')
+
+    # Table data as list of lists
+    cell_text = []
+    # Headers
+    headers = df.columns.tolist()
+    
+    # Rows
+    for _, row in df.iterrows():
+        cell_text.append(row.tolist())
+
+    # Create table
+    # transform bbox to be consistent
+    table = ax.table(cellText=cell_text, colLabels=headers, loc='center', cellLoc='center', bbox=[0, 0, 1, 1])
+    
+    # Style styling
+    table.auto_set_font_size(False)
+    table.set_fontsize(12)
+    
+    # Remove all cell borders first
+    for key, cell in table.get_celld().items():
+        cell.set_linewidth(0)
+
+    # Add three lines (Top of Header, Bottom of Header, Bottom of Table)
+    # Get table renderer to find coordinates, but simplified:
+    # Matplotlib table doesn't support partial borders easily. 
+    # We will draw lines manually relative to table rows.
+    
+    # We can use the 'edges' property if we iterate, but it's simpler to just
+    # draw lines on the axes. The table occupies [0, 0, 1, 1] in axes coordinates.
+    
+    # Header height is roughly 1/(rows+1)
+    n_rows = len(df)
+    n_total = n_rows + 1 # +1 for header
+    row_height = 1.0 / n_total
+    
+    # Line 1: Top of header (y=1)
+    ax.plot([0, 1], [1, 1], color='black', linewidth=1.5, transform=ax.transAxes)
+    
+    # Line 2: Bottom of header (y = 1 - row_height)
+    header_bottom = 1 - row_height
+    ax.plot([0, 1], [header_bottom, header_bottom], color='black', linewidth=1.0, transform=ax.transAxes)
+    
+    # Line 3: Bottom of table (y=0)
+    ax.plot([0, 1], [0, 0], color='black', linewidth=1.5, transform=ax.transAxes)
+
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=300, bbox_inches='tight')
+    plt.close()
+
+
 # -------------------------
 # 5) Main Entry Point
 # -------------------------
@@ -367,7 +428,10 @@ def main():
 
     # Three-line table
     table_path = os.path.join(OUTPUT_DIR, "three_line_table.csv")
+    table_png_path = os.path.join(OUTPUT_DIR, "three_line_table.png")
     three_line = make_three_line_table(twfe_res, main_term="D", out_csv=table_path)
+    if three_line is not None:
+        save_three_line_table_png(three_line, table_png_path)
     
     # Construct JSON response
     result = {
@@ -375,7 +439,8 @@ def main():
         "output_files": {
             "trends_plot": os.path.abspath(trends_path),
             "event_study_plot": os.path.abspath(event_study_path) if es_res else None,
-            "table_csv": os.path.abspath(table_path)
+            "table_csv": os.path.abspath(table_path),
+            "table_png": os.path.abspath(table_png_path) if three_line is not None else None
         },
         "regression_results": {
             "term": "D",
