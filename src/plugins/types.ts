@@ -342,12 +342,16 @@ export type PluginHookAgentEndEvent = {
 export type PluginHookBeforeCompactionEvent = {
   messageCount: number;
   tokenCount?: number;
+  compactingCount: number;
+  messages?: unknown[];
+  sessionFile?: string;
 };
 
 export type PluginHookAfterCompactionEvent = {
   messageCount: number;
   tokenCount?: number;
   compactedCount: number;
+  sessionFile: string;
 };
 
 // Message context

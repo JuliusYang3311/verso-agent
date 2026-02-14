@@ -12,3 +12,5 @@ export * from "./runtime-overrides.js";
 export * from "./types.js";
 export { validateConfigObject, validateConfigObjectWithPlugins } from "./validation.js";
 export { VersoSchema } from "./zod-schema.js";
+import { type VersoConfig } from "./types.js";
+export type OpenClawConfig = VersoConfig;

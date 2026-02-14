@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { type VersoConfig, loadConfig } from "../config/config.js";
-import { resolveVersoAgentDir } from "./agent-paths.js";
+import type { ModelDefinitionConfig } from "../config/types.models.js";
+import { type VersoConfig as OpenClawConfig, loadConfig } from "../config/config.js";
+import { resolveOpenClawAgentDir } from "./agent-paths.js";
 import {
   normalizeProviders,
   type ProviderConfig,
@@ -10,13 +11,13 @@ import {
   resolveImplicitProviders,
 } from "./models-config.providers.js";
 
-type ModelsConfig = NonNullable<VersoConfig["models"]>;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+type ModelsConfig = NonNullable<OpenClawConfig["models"]>;
 
 const DEFAULT_MODE: NonNullable<ModelsConfig["mode"]> = "merge";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
-}
 
 function mergeProviderModels(implicit: ProviderConfig, explicit: ProviderConfig): ProviderConfig {
   const implicitModels = Array.isArray(implicit.models) ? implicit.models : [];
@@ -36,7 +37,7 @@ function mergeProviderModels(implicit: ProviderConfig, explicit: ProviderConfig)
 
   const mergedModels = [
     ...explicitModels,
-    ...implicitModels.filter((model) => {
+    ...implicitModels.filter((model: ModelDefinitionConfig) => {
       const id = getId(model);
       if (!id) {
         return false;
@@ -81,15 +82,15 @@ async function readJson(pathname: string): Promise<unknown> {
   }
 }
 
-export async function ensureVersoModelsJson(
-  config?: VersoConfig,
+export async function ensureOpenClawModelsJson(
+  config?: OpenClawConfig,
   agentDirOverride?: string,
 ): Promise<{ agentDir: string; wrote: boolean }> {
   const cfg = config ?? loadConfig();
-  const agentDir = agentDirOverride?.trim() ? agentDirOverride.trim() : resolveVersoAgentDir();
+  const agentDir = agentDirOverride?.trim() ? agentDirOverride.trim() : resolveOpenClawAgentDir();
 
   const explicitProviders = cfg.models?.providers ?? {};
-  const implicitProviders = await resolveImplicitProviders({ agentDir });
+  const implicitProviders = await resolveImplicitProviders({ agentDir, explicitProviders });
   const providers: Record<string, ProviderConfig> = mergeProviders({
     implicit: implicitProviders,
     explicit: explicitProviders,
@@ -145,3 +146,5 @@ export async function ensureVersoModelsJson(
   await fs.writeFile(targetPath, next, { mode: 0o600 });
   return { agentDir, wrote: true };
 }
+
+export const ensureVersoModelsJson = ensureOpenClawModelsJson;

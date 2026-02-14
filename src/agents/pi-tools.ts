@@ -5,8 +5,7 @@ import {
   createWriteTool,
   readTool,
 } from "@mariozechner/pi-coding-agent";
-import path from "node:path";
-import type { VersoConfig } from "../config/config.js";
+import type { VersoConfig as OpenClawConfig } from "../config/config.js";
 import type { ModelAuthMode } from "./model-auth.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxContext } from "./sandbox.js";
@@ -14,6 +13,7 @@ import { logWarn } from "../logger.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
 import { resolveGatewayMessageChannel } from "../utils/message-channel.js";
+import { resolveAgentConfig } from "./agent-scope.js";
 import { createApplyPatchTool } from "./apply-patch.js";
 import {
   createExecTool,
@@ -22,7 +22,7 @@ import {
   type ProcessToolDefaults,
 } from "./bash-tools.js";
 import { listChannelAgentTools } from "./channel-tools.js";
-import { resolveMemorySearchConfig } from "./memory-search.js";
+import { createOpenClawTools } from "./openclaw-tools.js";
 import { wrapToolWithAbortSignal } from "./pi-tools.abort.js";
 import { wrapToolWithBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
 import {
@@ -35,7 +35,7 @@ import {
 import {
   assertRequiredParams,
   CLAUDE_PARAM_GROUPS,
-  createVersoReadTool,
+  createOpenClawReadTool,
   createSandboxedEditTool,
   createSandboxedReadTool,
   createSandboxedWriteTool,
@@ -53,7 +53,6 @@ import {
   resolveToolProfilePolicy,
   stripPluginOnlyAllowlist,
 } from "./tool-policy.js";
-import { createVersoTools } from "./verso-tools.js";
 
 function isOpenAIProvider(provider?: string) {
   const normalized = provider?.trim().toLowerCase();
@@ -88,100 +87,25 @@ function isApplyPatchAllowedForModel(params: {
   });
 }
 
-function resolveMemoryGuardPaths(params: {
-  cfg?: VersoConfig;
-  agentId?: string;
-  workspaceRoot: string;
-}): string[] {
-  const base: string[] = [];
-  if (params.cfg && params.agentId) {
-    const resolved = resolveMemorySearchConfig(params.cfg, params.agentId);
-    if (resolved?.extraPaths?.length) {
-      base.push(...resolved.extraPaths);
-    }
-  }
-  base.push(
-    path.join(params.workspaceRoot, "MEMORY.md"),
-    path.join(params.workspaceRoot, "memory"),
-  );
-  return Array.from(new Set(base.filter(Boolean)));
-}
-
-function isPathInMemory(filePath: string, memoryPaths: string[], workspaceRoot: string): boolean {
-  const resolvedTarget = path.resolve(workspaceRoot, filePath);
-  for (const entry of memoryPaths) {
-    const resolved = path.resolve(workspaceRoot, entry);
-    if (resolvedTarget === resolved) {
-      return true;
-    }
-    if (resolvedTarget.startsWith(resolved + path.sep)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function wrapMemoryWriteGuard(
-  tool: AnyAgentTool,
-  params: {
-    enabled: boolean;
-    memoryPaths: string[];
-    workspaceRoot: string;
-    kind: "file" | "patch";
-  },
-): AnyAgentTool {
-  if (!params.enabled) {
-    return tool;
-  }
-  return {
-    ...tool,
-    execute: async (toolCallId, args, signal, onUpdate) => {
-      const record =
-        args && typeof args === "object" ? (args as Record<string, unknown>) : undefined;
-      if (params.kind === "file") {
-        const target = record?.path;
-        if (typeof target === "string" && target.trim()) {
-          if (isPathInMemory(target, params.memoryPaths, params.workspaceRoot)) {
-            throw new Error("Subagent writes to memory files are blocked.");
-          }
-        }
-      } else if (params.kind === "patch") {
-        const input = typeof record?.input === "string" ? String(record.input) : "";
-        if (input) {
-          const lines = input.split(/\r?\n/);
-          for (const line of lines) {
-            const match =
-              line.startsWith("*** Update File: ") ||
-              line.startsWith("*** Add File: ") ||
-              line.startsWith("*** Delete File: ")
-                ? line.split(": ").slice(1).join(": ")
-                : null;
-            if (match && isPathInMemory(match.trim(), params.memoryPaths, params.workspaceRoot)) {
-              throw new Error("Subagent patches to memory files are blocked.");
-            }
-          }
-        }
-      }
-      return tool.execute(toolCallId, args, signal, onUpdate);
-    },
-  };
-}
-
-function resolveExecConfig(cfg: VersoConfig | undefined) {
+function resolveExecConfig(params: { cfg?: OpenClawConfig; agentId?: string }) {
+  const cfg = params.cfg;
   const globalExec = cfg?.tools?.exec;
+  const agentExec =
+    cfg && params.agentId ? resolveAgentConfig(cfg, params.agentId)?.tools?.exec : undefined;
   return {
-    host: globalExec?.host,
-    security: globalExec?.security,
-    ask: globalExec?.ask,
-    node: globalExec?.node,
-    pathPrepend: globalExec?.pathPrepend,
-    safeBins: globalExec?.safeBins,
-    backgroundMs: globalExec?.backgroundMs,
-    timeoutSec: globalExec?.timeoutSec,
-    approvalRunningNoticeMs: globalExec?.approvalRunningNoticeMs,
-    cleanupMs: globalExec?.cleanupMs,
-    notifyOnExit: globalExec?.notifyOnExit,
-    applyPatch: globalExec?.applyPatch,
+    host: agentExec?.host ?? globalExec?.host,
+    security: agentExec?.security ?? globalExec?.security,
+    ask: agentExec?.ask ?? globalExec?.ask,
+    node: agentExec?.node ?? globalExec?.node,
+    pathPrepend: agentExec?.pathPrepend ?? globalExec?.pathPrepend,
+    safeBins: agentExec?.safeBins ?? globalExec?.safeBins,
+    backgroundMs: agentExec?.backgroundMs ?? globalExec?.backgroundMs,
+    timeoutSec: agentExec?.timeoutSec ?? globalExec?.timeoutSec,
+    approvalRunningNoticeMs:
+      agentExec?.approvalRunningNoticeMs ?? globalExec?.approvalRunningNoticeMs,
+    cleanupMs: agentExec?.cleanupMs ?? globalExec?.cleanupMs,
+    notifyOnExit: agentExec?.notifyOnExit ?? globalExec?.notifyOnExit,
+    applyPatch: agentExec?.applyPatch ?? globalExec?.applyPatch,
   };
 }
 
@@ -193,7 +117,7 @@ export const __testing = {
   assertRequiredParams,
 } as const;
 
-export function createVersoCodingTools(options?: {
+export function createOpenClawCodingTools(options?: {
   exec?: ExecToolDefaults & ProcessToolDefaults;
   messageProvider?: string;
   agentAccountId?: string;
@@ -203,7 +127,7 @@ export function createVersoCodingTools(options?: {
   sessionKey?: string;
   agentDir?: string;
   workspaceDir?: string;
-  config?: VersoConfig;
+  config?: OpenClawConfig;
   abortSignal?: AbortSignal;
   /**
    * Provider of the currently selected model (used for provider-specific tool quirks).
@@ -293,7 +217,10 @@ export function createVersoCodingTools(options?: {
     providerProfilePolicy,
     providerProfileAlsoAllow,
   );
-  const scopeKey = options?.exec?.scopeKey ?? (agentId ? `agent:${agentId}` : undefined);
+  // Prefer sessionKey for process isolation scope to prevent cross-session process visibility/killing.
+  // Fallback to agentId if no sessionKey is available (e.g. legacy or global contexts).
+  const scopeKey =
+    options?.exec?.scopeKey ?? options?.sessionKey ?? (agentId ? `agent:${agentId}` : undefined);
   const subagentPolicy =
     isSubagentSessionKey(options?.sessionKey) && options?.sessionKey
       ? resolveSubagentToolPolicy(options.config)
@@ -309,16 +236,12 @@ export function createVersoCodingTools(options?: {
     sandbox?.tools,
     subagentPolicy,
   ]);
-  const execConfig = resolveExecConfig(options?.config);
+  const callbackHostname = undefined;
+  const execConfig = resolveExecConfig({ cfg: options?.config, agentId });
   const sandboxRoot = sandbox?.workspaceDir;
+  const sandboxFsBridge = (sandbox as any)?.fsBridge;
   const allowWorkspaceWrites = sandbox?.workspaceAccess !== "ro";
   const workspaceRoot = options?.workspaceDir ?? process.cwd();
-  const memoryGuardPaths = resolveMemoryGuardPaths({
-    cfg: options?.config,
-    agentId,
-    workspaceRoot,
-  });
-  const blockMemoryWrites = isSubagentSessionKey(options?.sessionKey) && !!options?.sessionKey;
   const applyPatchConfig = options?.config?.tools?.exec?.applyPatch;
   const applyPatchEnabled =
     !!applyPatchConfig?.enabled &&
@@ -329,13 +252,22 @@ export function createVersoCodingTools(options?: {
       allowModels: applyPatchConfig?.allowModels,
     });
 
+  if (sandboxRoot && !sandboxFsBridge) {
+    throw new Error("Sandbox filesystem bridge is unavailable.");
+  }
+
   const base = (codingTools as unknown as AnyAgentTool[]).flatMap((tool) => {
     if (tool.name === readTool.name) {
       if (sandboxRoot) {
-        return [createSandboxedReadTool(sandboxRoot)];
+        return [
+          createSandboxedReadTool({
+            root: sandboxRoot,
+            bridge: sandboxFsBridge!,
+          }),
+        ];
       }
       const freshReadTool = createReadTool(workspaceRoot);
-      return [createVersoReadTool(freshReadTool)];
+      return [createOpenClawReadTool(freshReadTool)];
     }
     if (tool.name === "bash" || tool.name === execToolName) {
       return [];
@@ -345,17 +277,8 @@ export function createVersoCodingTools(options?: {
         return [];
       }
       // Wrap with param normalization for Claude Code compatibility
-      const wrapped = wrapToolParamNormalization(
-        createWriteTool(workspaceRoot),
-        CLAUDE_PARAM_GROUPS.write,
-      );
       return [
-        wrapMemoryWriteGuard(wrapped, {
-          enabled: blockMemoryWrites,
-          memoryPaths: memoryGuardPaths,
-          workspaceRoot,
-          kind: "file",
-        }),
+        wrapToolParamNormalization(createWriteTool(workspaceRoot), CLAUDE_PARAM_GROUPS.write),
       ];
     }
     if (tool.name === "edit") {
@@ -363,18 +286,7 @@ export function createVersoCodingTools(options?: {
         return [];
       }
       // Wrap with param normalization for Claude Code compatibility
-      const wrapped = wrapToolParamNormalization(
-        createEditTool(workspaceRoot),
-        CLAUDE_PARAM_GROUPS.edit,
-      );
-      return [
-        wrapMemoryWriteGuard(wrapped, {
-          enabled: blockMemoryWrites,
-          memoryPaths: memoryGuardPaths,
-          workspaceRoot,
-          kind: "file",
-        }),
-      ];
+      return [wrapToolParamNormalization(createEditTool(workspaceRoot), CLAUDE_PARAM_GROUPS.edit)];
     }
     return [tool];
   });
@@ -414,35 +326,17 @@ export function createVersoCodingTools(options?: {
   const applyPatchTool =
     !applyPatchEnabled || (sandboxRoot && !allowWorkspaceWrites)
       ? null
-      : wrapMemoryWriteGuard(
-          createApplyPatchTool({
-            cwd: sandboxRoot ?? workspaceRoot,
-            sandboxRoot: sandboxRoot && allowWorkspaceWrites ? sandboxRoot : undefined,
-          }),
-          {
-            enabled: blockMemoryWrites,
-            memoryPaths: memoryGuardPaths,
-            workspaceRoot: sandboxRoot ?? workspaceRoot,
-            kind: "patch",
-          },
-        );
+      : createApplyPatchTool({
+          cwd: sandboxRoot ?? workspaceRoot,
+          sandboxRoot: sandboxRoot && allowWorkspaceWrites ? sandboxRoot : undefined,
+        });
   const tools: AnyAgentTool[] = [
     ...base,
     ...(sandboxRoot
       ? allowWorkspaceWrites
         ? [
-            wrapMemoryWriteGuard(createSandboxedEditTool(sandboxRoot), {
-              enabled: blockMemoryWrites,
-              memoryPaths: memoryGuardPaths,
-              workspaceRoot: sandboxRoot,
-              kind: "file",
-            }),
-            wrapMemoryWriteGuard(createSandboxedWriteTool(sandboxRoot), {
-              enabled: blockMemoryWrites,
-              memoryPaths: memoryGuardPaths,
-              workspaceRoot: sandboxRoot,
-              kind: "file",
-            }),
+            createSandboxedEditTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
+            createSandboxedWriteTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
           ]
         : []
       : []),
@@ -451,7 +345,7 @@ export function createVersoCodingTools(options?: {
     processTool as unknown as AnyAgentTool,
     // Channel docking: include channel-defined agent tools (login, etc.).
     ...listChannelAgentTools({ cfg: options?.config }),
-    ...createVersoTools({
+    ...createOpenClawTools({
       sandboxBrowserBridgeUrl: sandbox?.browser?.bridgeUrl,
       allowHostBrowserControl: sandbox ? sandbox.browserAllowHostControl : true,
       agentSessionKey: options?.sessionKey,
@@ -464,6 +358,7 @@ export function createVersoCodingTools(options?: {
       agentGroupSpace: options?.groupSpace ?? null,
       agentDir: options?.agentDir,
       sandboxRoot,
+      sandboxFsBridge,
       workspaceDir: options?.workspaceDir,
       sandboxed: !!sandbox,
       config: options?.config,
@@ -486,10 +381,6 @@ export function createVersoCodingTools(options?: {
       requireExplicitMessageTarget: options?.requireExplicitMessageTarget,
       disableMessageTool: options?.disableMessageTool,
       requesterAgentIdOverride: agentId,
-      currentModel:
-        options?.modelProvider && options?.modelId
-          ? { provider: options.modelProvider, model: options.modelId }
-          : undefined,
     }),
   ];
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)
@@ -578,8 +469,9 @@ export function createVersoCodingTools(options?: {
     ? withHooks.map((tool) => wrapToolWithAbortSignal(tool, options.abortSignal))
     : withHooks;
 
-  // NOTE: Keep canonical (lowercase) tool names here.
   // pi-ai's Anthropic OAuth transport remaps tool names to Claude Code-style names
   // on the wire and maps them back for tool dispatch.
   return withAbort;
 }
+
+export const createVersoCodingTools = createOpenClawCodingTools;

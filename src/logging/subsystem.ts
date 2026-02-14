@@ -21,6 +21,7 @@ export type SubsystemLogger = {
   fatal: (message: string, meta?: Record<string, unknown>) => void;
   raw: (message: string) => void;
   child: (name: string) => SubsystemLogger;
+  isEnabled: (level: LogLevel) => boolean;
 };
 
 function shouldLogToConsole(level: LogLevel, settings: { level: LogLevel }): boolean {
@@ -294,6 +295,22 @@ export function createSubsystemLogger(subsystem: string): SubsystemLogger {
       }
     },
     child: (name) => createSubsystemLogger(`${subsystem}/${name}`),
+    isEnabled: (level) => {
+      // Check console settings
+      const consoleSettings = getConsoleSettings();
+      if (
+        shouldLogToConsole(level, { level: consoleSettings.level }) &&
+        shouldLogSubsystemToConsole(subsystem)
+      ) {
+        return true;
+      }
+      // Check file logger settings (assumed silent if generic check, but strictly we can't easily know file level without more access.
+      // For now, mirroring console behavior or assuming true if file logging is active is tricky.
+      // Simplest: Check if level is high enough for console OR if we are just checking for debug/trace which usually implies verbose.
+      // Actually, standard usage in run.ts is `if (log.isEnabled("debug"))`.
+      // Let's reuse shouldLogToConsole logic.
+      return shouldLogToConsole(level, { level: consoleSettings.level });
+    },
   };
   return logger;
 }

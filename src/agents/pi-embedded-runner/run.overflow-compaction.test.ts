@@ -36,6 +36,7 @@ vi.mock("../model-auth.js", () => ({
 
 vi.mock("../models-config.js", () => ({
   ensureVersoModelsJson: vi.fn(async () => {}),
+  ensureOpenClawModelsJson: vi.fn(async () => {}),
 }));
 
 vi.mock("../context-window-guard.js", () => ({
@@ -67,6 +68,7 @@ vi.mock("../../utils/message-channel.js", () => ({
 
 vi.mock("../agent-paths.js", () => ({
   resolveVersoAgentDir: vi.fn(() => "/tmp/agent-dir"),
+  resolveOpenClawAgentDir: vi.fn(() => "/tmp/agent-dir"),
 }));
 
 vi.mock("../auth-profiles.js", () => ({
@@ -89,6 +91,7 @@ vi.mock("../failover-error.js", () => ({
 vi.mock("../usage.js", () => ({
   normalizeUsage: vi.fn(() => undefined),
   hasNonzeroUsage: vi.fn(() => false),
+  derivePromptTokens: vi.fn(() => 100),
 }));
 
 vi.mock("./lanes.js", () => ({
@@ -102,6 +105,7 @@ vi.mock("./logger.js", () => ({
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    isEnabled: vi.fn(() => true),
   },
 }));
 
@@ -154,6 +158,14 @@ vi.mock("../pi-embedded-helpers.js", async () => {
     pickFallbackThinkingLevel: vi.fn(() => null),
     isTimeoutErrorMessage: vi.fn(() => false),
     parseImageDimensionError: vi.fn(() => null),
+    isLikelyContextOverflowError: vi.fn((err: unknown) => {
+      if (!err) {
+        return false;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      return lower.includes("request_too_large") || lower.includes("request size exceeds");
+    }),
   };
 });
 
@@ -345,6 +357,7 @@ describe("overflow compaction in run loop", () => {
     const overflowError = new Error("request_too_large: Request size exceeds model context window");
 
     mockedRunEmbeddedAttempt
+      .mockResolvedValueOnce(makeAttemptResult({ promptError: overflowError }))
       .mockResolvedValueOnce(makeAttemptResult({ promptError: overflowError }))
       .mockResolvedValueOnce(makeAttemptResult({ promptError: null }));
 

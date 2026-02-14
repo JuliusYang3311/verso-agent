@@ -60,6 +60,10 @@ export type RunEmbeddedPiAgentParams = {
   config?: VersoConfig;
   skillsSnapshot?: SkillSnapshot;
   prompt: string;
+  inputProvenance?: {
+    source: string;
+    file?: string;
+  };
   images?: ImageContent[];
   /** Optional client-provided tools (OpenResponses hosted tools). */
   clientTools?: ClientToolDefinition[];

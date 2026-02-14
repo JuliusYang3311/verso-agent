@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { resolveVersoPackageRoot } from "../infra/verso-root.js";
+import { resolveOpenClawPackageRoot } from "../infra/openclaw-root.js";
 
-export async function resolveVersoDocsPath(params: {
+export async function resolveOpenClawDocsPath(params: {
   workspaceDir?: string;
   argv1?: string;
   cwd?: string;
@@ -16,7 +16,7 @@ export async function resolveVersoDocsPath(params: {
     }
   }
 
-  const packageRoot = await resolveVersoPackageRoot({
+  const packageRoot = await resolveOpenClawPackageRoot({
     cwd: params.cwd,
     argv1: params.argv1,
     moduleUrl: params.moduleUrl,
@@ -28,3 +28,5 @@ export async function resolveVersoDocsPath(params: {
   const packageDocs = path.join(packageRoot, "docs");
   return fs.existsSync(packageDocs) ? packageDocs : null;
 }
+
+export const resolveVersoDocsPath = resolveOpenClawDocsPath;

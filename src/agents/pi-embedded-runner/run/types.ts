@@ -45,6 +45,10 @@ export type EmbeddedRunAttemptParams = {
   config?: VersoConfig;
   skillsSnapshot?: SkillSnapshot;
   prompt: string;
+  inputProvenance?: {
+    source: string;
+    file?: string;
+  };
   images?: ImageContent[];
   /** Optional client-provided tools (OpenResponses hosted tools). */
   clientTools?: ClientToolDefinition[];
@@ -108,7 +112,9 @@ export type EmbeddedRunAttemptResult = {
   messagingToolSentTargets: MessagingToolSend[];
   cloudCodeAssistFormatError: boolean;
   attemptUsage?: NormalizedUsage;
+  lastCallUsage?: NormalizedUsage;
   compactionCount?: number;
   /** Client tool call detected (OpenResponses hosted tools). */
   clientToolCall?: { name: string; params: Record<string, unknown> };
+  provider?: string;
 };

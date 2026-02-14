@@ -1,5 +1,6 @@
-import type { VersoConfig } from "../config/config.js";
+import type { OpenClawConfig } from "../config/config.js";
 import type { GatewayMessageChannel } from "../utils/message-channel.js";
+import type { SandboxFsBridge } from "./sandbox/fs-bridge.js";
 import type { AnyAgentTool } from "./tools/common.js";
 import { resolvePluginTools } from "../plugins/tools.js";
 import { resolveSessionAgentId } from "./agent-scope.js";
@@ -17,25 +18,9 @@ import { createSessionsListTool } from "./tools/sessions-list-tool.js";
 import { createSessionsSendTool } from "./tools/sessions-send-tool.js";
 import { createSessionsSpawnTool } from "./tools/sessions-spawn-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
-import {
-  createWebFetchTool,
-  createWebSearchTool,
-  gmailListMessages,
-  gmailGetMessage,
-  gmailSendEmail,
-  gmailSendEmailWithAttachment,
-  docsCreateDocument,
-  sheetsCreateSpreadsheet,
-  sheetsAppendValues,
-  calendarListEvents,
-  calendarCreateEvent,
-  driveListFiles,
-  slidesCreatePresentation,
-  driveUploadFile,
-  driveDownloadFile,
-} from "./tools/web-tools.js";
+import { createWebFetchTool, createWebSearchTool } from "./tools/web-tools.js";
 
-export function createVersoTools(options?: {
+export function createOpenClawTools(options?: {
   sandboxBrowserBridgeUrl?: string;
   allowHostBrowserControl?: boolean;
   agentSessionKey?: string;
@@ -53,9 +38,10 @@ export function createVersoTools(options?: {
   agentGroupSpace?: string | null;
   agentDir?: string;
   sandboxRoot?: string;
+  sandboxFsBridge?: SandboxFsBridge;
   workspaceDir?: string;
   sandboxed?: boolean;
-  config?: VersoConfig;
+  config?: OpenClawConfig;
   pluginToolAllowlist?: string[];
   /** Current channel ID for auto-threading (Slack). */
   currentChannelId?: string;
@@ -73,8 +59,6 @@ export function createVersoTools(options?: {
   requireExplicitMessageTarget?: boolean;
   /** If true, omit the message tool from the tool list. */
   disableMessageTool?: boolean;
-  /** Current model context to inherit if not explicitly overridden. */
-  currentModel?: { provider: string; model: string };
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -156,7 +140,6 @@ export function createVersoTools(options?: {
       agentGroupSpace: options?.agentGroupSpace,
       sandboxed: options?.sandboxed,
       requesterAgentIdOverride: options?.requesterAgentIdOverride,
-      currentModel: options?.currentModel,
     }),
     createSessionStatusTool({
       agentSessionKey: options?.agentSessionKey,
@@ -166,28 +149,6 @@ export function createVersoTools(options?: {
     ...(webFetchTool ? [webFetchTool] : []),
     ...(imageTool ? [imageTool] : []),
   ];
-
-  if (options?.config?.google?.enabled) {
-    const services = options.config.google.services || ["gmail", "docs", "calendar"];
-    if (services.includes("gmail")) {
-      tools.push(gmailListMessages, gmailGetMessage, gmailSendEmail, gmailSendEmailWithAttachment);
-    }
-    if (services.includes("docs")) {
-      tools.push(docsCreateDocument);
-    }
-    if (services.includes("sheets")) {
-      tools.push(sheetsCreateSpreadsheet, sheetsAppendValues);
-    }
-    if (services.includes("calendar")) {
-      tools.push(calendarListEvents, calendarCreateEvent);
-    }
-    if (services.includes("drive")) {
-      tools.push(driveListFiles, driveUploadFile, driveDownloadFile);
-    }
-    if (services.includes("slides")) {
-      tools.push(slidesCreatePresentation);
-    }
-  }
 
   const pluginTools = resolvePluginTools({
     context: {

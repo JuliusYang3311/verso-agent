@@ -27,6 +27,7 @@ export function buildEmbeddedRunPayloads(params: {
   lastToolError?: { toolName: string; meta?: string; error?: string };
   config?: VersoConfig;
   sessionKey: string;
+  provider?: string;
   verboseLevel?: VerboseLevel;
   reasoningLevel?: ReasoningLevel;
   toolResultFormat?: ToolResultFormat;

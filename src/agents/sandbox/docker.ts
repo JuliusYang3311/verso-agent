@@ -9,11 +9,23 @@ import { resolveSandboxAgentId, resolveSandboxScopeKey, slugifySessionKey } from
 
 const HOT_CONTAINER_WINDOW_MS = 5 * 60 * 1000;
 
-export function execDocker(args: string[], opts?: { allowFailure?: boolean }) {
+export function execDocker(
+  args: string[],
+  opts?: {
+    allowFailure?: boolean;
+    input?: string;
+    signal?: AbortSignal;
+  },
+) {
   return new Promise<{ stdout: string; stderr: string; code: number }>((resolve, reject) => {
     const child = spawn("docker", args, {
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"],
+      signal: opts?.signal,
     });
+    if (opts?.input) {
+      child.stdin.write(opts.input);
+      child.stdin.end();
+    }
     let stdout = "";
     let stderr = "";
     child.stdout?.on("data", (chunk) => {
@@ -32,6 +44,9 @@ export function execDocker(args: string[], opts?: { allowFailure?: boolean }) {
     });
   });
 }
+
+export const execDockerRaw = execDocker;
+export type ExecDockerRawResult = { stdout: string; stderr: string; code: number };
 
 export async function readDockerPort(containerName: string, port: number) {
   const result = await execDocker(["port", containerName, `${port}/tcp`], {
