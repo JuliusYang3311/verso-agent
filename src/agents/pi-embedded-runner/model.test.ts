@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { discoverAuthStorage, discoverModels } from "../pi-model-discovery.js";
 
 vi.mock("../pi-model-discovery.js", () => ({
   discoverAuthStorage: vi.fn(() => ({ mocked: true })),
@@ -31,7 +32,7 @@ describe("buildInlineProviderModels", () => {
       beta: { baseUrl: "http://beta.local", models: [makeModel("beta-model")] },
     };
 
-    const result = buildInlineProviderModels(providers);
+    const result = buildInlineProviderModels(providers as any);
 
     expect(result).toEqual([
       {
@@ -57,7 +58,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers);
+    const result = buildInlineProviderModels(providers as any);
 
     expect(result).toHaveLength(1);
     expect(result[0].baseUrl).toBe("http://localhost:8000");
@@ -72,7 +73,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers);
+    const result = buildInlineProviderModels(providers as any);
 
     expect(result).toHaveLength(1);
     expect(result[0].api).toBe("anthropic-messages");
@@ -87,7 +88,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers);
+    const result = buildInlineProviderModels(providers as any);
 
     expect(result).toHaveLength(1);
     expect(result[0].api).toBe("anthropic-messages");
@@ -102,7 +103,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers);
+    const result = buildInlineProviderModels(providers as any);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
@@ -213,15 +214,11 @@ describe("resolveModel", () => {
   });
 
   it("uses codex fallback even when openai-codex provider is configured", () => {
-    // This test verifies the ordering: codex fallback must fire BEFORE the generic providerCfg fallback.
-    // If ordering is wrong, the generic fallback would use api: "openai-responses" (the default)
-    // instead of "openai-codex-responses".
     const cfg: VersoConfig = {
       models: {
         providers: {
           "openai-codex": {
             baseUrl: "https://custom.example.com",
-            // No models array, or models without gpt-5.3-codex
           },
         },
       },

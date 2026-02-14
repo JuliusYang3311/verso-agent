@@ -5,18 +5,12 @@ export { AuthStorage, ModelRegistry } from "@mariozechner/pi-coding-agent";
 
 import type { Api, Model } from "@mariozechner/pi-ai";
 
-// Compatibility helpers for pi-coding-agent 0.50+ (discover* helpers removed).
 export function discoverAuthStorage(agentDir: string): AuthStorage {
   return new AuthStorage(path.join(agentDir, "auth.json"));
 }
 
-const OVERRIDES: Model<Api>[] = [];
-
 export function discoverModels(authStorage: AuthStorage, agentDir: string): ModelRegistry {
   const registry = new ModelRegistry(authStorage, path.join(agentDir, "models.json"));
-
-  // Register forward-compat Opus 4.6 models by cloning from 4.5 templates.
-  // The SDK may not yet include 4.6 definitions, so we derive them from 4.5.
   const allModels = registry.getAll();
   const opus45Templates = allModels.filter(
     (m) => m.id === "claude-opus-4-5" || m.id === "claude-opus-4-5-thinking",
@@ -31,72 +25,52 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
         ...template,
         id: opus46Id,
         name: (template.name || template.id).replace(/4[.-]?5/g, "4.6"),
-        contextWindow: 1048576, // 1M
-        maxTokens: 128000, // 128k
+        contextWindow: 1048576,
+        maxTokens: 128000,
       });
     }
   }
-
+  const antigravityId = "google-antigravity";
+  const requiredOpusModels = [
+    { id: "claude-opus-4-6", name: "Claude 4.6 Opus" },
+    { id: "claude-opus-4-6-thinking", name: "Claude 4.6 Opus (Thinking)", reasoning: true },
+  ];
+  for (const modelDef of requiredOpusModels) {
+    const exists = allModels.some((m) => m.provider === antigravityId && m.id === modelDef.id);
+    if (!exists) {
+      allModels.push({
+        id: modelDef.id,
+        name: modelDef.name,
+        provider: antigravityId,
+        api: antigravityId as any,
+        baseUrl: "https://antigravity.google.com",
+        reasoning: modelDef.reasoning ?? false,
+        input: ["text", "image"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 1048576,
+        maxTokens: 128000,
+      } as Model<Api>);
+    }
+  }
   const originalFind = registry.find.bind(registry);
-
   registry.find = (provider: string, modelId: string): Model<Api> | undefined => {
-    // 1. Delegate to standard registry lookup first
     const original = originalFind(provider, modelId);
-
-    // 2. If found, apply specific patches for high-context models
     if (original) {
       if (modelId === "gemini-3-flash-preview") {
-        return {
-          ...original,
-          contextWindow: 1048576, // 1M
-        };
+        return { ...original, contextWindow: 1048576 };
       }
       if (modelId === "gemini-3-pro-preview") {
-        return {
-          ...original,
-          contextWindow: 1048576, // 1M
-          reasoning: true,
-        };
+        return { ...original, contextWindow: 1048576, reasoning: true };
       }
       if (modelId === "gpt-5.3" || modelId === "gpt-5.3-codex") {
-        return {
-          ...original,
-          contextWindow: 1048576,
-        };
+        return { ...original, contextWindow: 1048576 };
       }
       if (modelId === "claude-opus-4-6" || modelId.startsWith("claude-opus-4-6-")) {
-        return {
-          ...original,
-          contextWindow: 1048576,
-          maxTokens: 128000,
-        };
+        return { ...original, contextWindow: 1048576, maxTokens: 128000 };
       }
       return original;
     }
-
-    // 3. Fallback: If standard lookup fails, we assume it's a new model not yet in registry
-    // and provide a minimal valid definition based on the provider.
-    // This is less risky than a full static override list because we only do it when necessary.
     if (modelId === "gemini-3-flash-preview" || modelId === "gemini-3-pro-preview") {
-      // Only provide fallback if we are sure about the provider structure
-      if (provider === "google-gemini-cli") {
-        return {
-          id: modelId,
-          name:
-            modelId === "gemini-3-pro-preview"
-              ? "Gemini 3 Pro (Preview)"
-              : "Gemini 3 Flash (Preview)",
-          provider: "google-gemini-cli",
-          api: "google-gemini-cli", // Correct API type for CLI for OAuth
-          baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-          reasoning: modelId === "gemini-3-pro-preview",
-          input: ["text", "image"],
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-          contextWindow: 1048576,
-          maxTokens: 65536,
-        };
-      }
-      // Determine API type for standard provider
       const isGoogle = provider === "google";
       return {
         id: modelId,
@@ -114,9 +88,7 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
         maxTokens: 65536,
       };
     }
-
     return undefined;
   };
-
   return registry;
 }

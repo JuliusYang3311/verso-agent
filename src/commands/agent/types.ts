@@ -75,4 +75,5 @@ export type AgentCommandOpts = {
   extraSystemPrompt?: string;
   /** Per-call stream param overrides (best-effort). */
   streamParams?: AgentStreamParams;
+  authProfileOverrideSource?: "auto" | "user" | "spawn";
 };
