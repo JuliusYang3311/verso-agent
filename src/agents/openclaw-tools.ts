@@ -59,6 +59,10 @@ export function createOpenClawTools(options?: {
   requireExplicitMessageTarget?: boolean;
   /** If true, omit the message tool from the tool list. */
   disableMessageTool?: boolean;
+  /** Current model context to inherit if not explicitly overridden. */
+  currentModel?: { provider: string; model: string };
+  /** Current auth profile ID to inherit. */
+  currentAuthProfileId?: string;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -140,6 +144,8 @@ export function createOpenClawTools(options?: {
       agentGroupSpace: options?.agentGroupSpace,
       sandboxed: options?.sandboxed,
       requesterAgentIdOverride: options?.requesterAgentIdOverride,
+      currentModel: options?.currentModel,
+      currentAuthProfileId: options?.currentAuthProfileId,
     }),
     createSessionStatusTool({
       agentSessionKey: options?.agentSessionKey,

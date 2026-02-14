@@ -45,6 +45,7 @@ export type AgentCommandOpts = {
   deliver?: boolean;
   /** Override delivery target (separate from session routing). */
   replyTo?: string;
+  authProfileId?: string;
   /** Override delivery channel (separate from session routing). */
   replyChannel?: string;
   /** Override delivery account id (separate from session routing). */

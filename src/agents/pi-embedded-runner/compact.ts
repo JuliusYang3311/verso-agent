@@ -382,6 +382,7 @@ export async function compactEmbeddedPiSessionDirect(
       modelProvider: model.provider,
       modelId,
       modelAuthMode: resolveModelAuthMode(model.provider, params.config),
+      authProfileId: params.authProfileId,
     });
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider });
     logToolSchemasForGoogle({ tools, provider });

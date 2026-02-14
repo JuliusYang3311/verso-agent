@@ -85,6 +85,7 @@ export const agentHandlers: GatewayRequestHandlers = {
       timeout?: number;
       label?: string;
       spawnedBy?: string;
+      authProfileId?: string;
     };
     const cfg = loadConfig();
     const idem = request.idempotencyKey;
@@ -97,6 +98,8 @@ export const agentHandlers: GatewayRequestHandlers = {
     let resolvedGroupSpace: string | undefined = groupSpaceRaw || undefined;
     let spawnedByValue =
       typeof request.spawnedBy === "string" ? request.spawnedBy.trim() : undefined;
+    const authProfileIdValue =
+      typeof request.authProfileId === "string" ? request.authProfileId.trim() : undefined;
     const cached = context.dedupe.get(`agent:${idem}`);
     if (cached) {
       respond(cached.ok, cached.payload, cached.error, {
@@ -392,6 +395,7 @@ export const agentHandlers: GatewayRequestHandlers = {
         runId,
         lane: request.lane,
         extraSystemPrompt: request.extraSystemPrompt,
+        authProfileId: authProfileIdValue,
       },
       defaultRuntime,
       context.deps,

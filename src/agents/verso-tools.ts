@@ -75,6 +75,8 @@ export function createVersoTools(options?: {
   disableMessageTool?: boolean;
   /** Current model context to inherit if not explicitly overridden. */
   currentModel?: { provider: string; model: string };
+  /** Current auth profile ID to inherit. */
+  currentAuthProfileId?: string;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -157,6 +159,7 @@ export function createVersoTools(options?: {
       sandboxed: options?.sandboxed,
       requesterAgentIdOverride: options?.requesterAgentIdOverride,
       currentModel: options?.currentModel,
+      currentAuthProfileId: options?.currentAuthProfileId,
     }),
     createSessionStatusTool({
       agentSessionKey: options?.agentSessionKey,

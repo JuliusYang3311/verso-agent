@@ -452,6 +452,7 @@ export async function runEmbeddedPiAgent(
             model,
             authStorage,
             modelRegistry,
+            authProfileId: lastProfileId,
             agentId: workspaceResolution.agentId,
             thinkLevel,
             verboseLevel: params.verboseLevel,

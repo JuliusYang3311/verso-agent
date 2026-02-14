@@ -80,6 +80,8 @@ export function createSessionsSpawnTool(opts?: {
   requesterAgentIdOverride?: string;
   /** Current model context to inherit if not explicitly overridden. */
   currentModel?: { provider: string; model: string };
+  /** Current auth profile ID to inherit. */
+  currentAuthProfileId?: string;
 }): AnyAgentTool {
   return {
     label: "Sessions",
@@ -290,6 +292,13 @@ export function createSessionsSpawnTool(opts?: {
             groupId: opts?.agentGroupId ?? undefined,
             groupChannel: opts?.agentGroupChannel ?? undefined,
             groupSpace: opts?.agentGroupSpace ?? undefined,
+            groupSpace: opts?.agentGroupSpace ?? undefined,
+            authProfileId:
+              opts?.currentAuthProfileId &&
+              opts.currentModel?.provider &&
+              splitModelRef(resolvedModel).provider === opts.currentModel.provider
+                ? opts.currentAuthProfileId
+                : undefined,
           },
           timeoutMs: 10_000,
         });
