@@ -31,7 +31,11 @@ import { listChannelSupportedActions, resolveChannelMessageToolHints } from "../
 import { formatUserTime, resolveUserTimeFormat, resolveUserTimezone } from "../date-time.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../defaults.js";
 import { resolveOpenClawDocsPath } from "../docs-path.js";
-import { getApiKeyForModel, resolveModelAuthMode } from "../model-auth.js";
+import {
+  getApiKeyForModel,
+  resolveModelAuthMode,
+  type ResolvedProviderAuth,
+} from "../model-auth.js";
 import { ensureOpenClawModelsJson } from "../models-config.js";
 import {
   ensureSessionHeader,
@@ -86,6 +90,7 @@ export type CompactEmbeddedPiSessionParams = {
   messageProvider?: string;
   agentAccountId?: string;
   authProfileId?: string;
+  runtimeAuth?: ResolvedProviderAuth;
   /** Group id for channel-level tool policy resolution. */
   groupId?: string | null;
   /** Group channel label (e.g. #general) for channel-level tool policy resolution. */
@@ -274,12 +279,14 @@ export async function compactEmbeddedPiSessionDirect(
     };
   }
   try {
-    const apiKeyInfo = await getApiKeyForModel({
-      model,
-      cfg: params.config,
-      profileId: params.authProfileId,
-      agentDir,
-    });
+    const apiKeyInfo =
+      params.runtimeAuth ??
+      (await getApiKeyForModel({
+        model,
+        cfg: params.config,
+        profileId: params.authProfileId,
+        agentDir,
+      }));
 
     if (!apiKeyInfo.apiKey) {
       if (apiKeyInfo.mode !== "aws-sdk") {
