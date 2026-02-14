@@ -20,17 +20,17 @@ You can use the python script `analyze_did.py` to perform the analysis.
 - `--treated_col`: Name of the treated indicator column (0/1) (default: "treated").
 - `--policy_time` (required): Time when the policy starts (integer or string matching time column).
 - `--x_cols`: List of control variable columns (optional).
-- `--outdir`: Directory to save output files (default: current directory).
 
 ### Example
 
 ```bash
-python3 skills/did_analysis/analyze_did.py data.csv --id_col state --t_col year --y_col employment --treated_col is_treated --policy_time 2020 --outdir ./results
+python3 skills/did_analysis/analyze_did.py data.csv --id_col state --t_col year --y_col employment --treated_col is_treated --policy_time 2020
 ```
 
 ### Output
 
-The script outputs a JSON object to stdout containing:
+The script outputs a JSON object to stdout.
+Artifacts are saved to: `/Users/veso/Documents/verso/DIDanalyze/`
 
 - `regression_results`: Key statistics (coefficient, standard error, p-value, R-squared).
 - `output_files`: Absolute paths to the generated files:

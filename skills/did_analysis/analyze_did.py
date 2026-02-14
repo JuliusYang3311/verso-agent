@@ -293,12 +293,12 @@ def main():
     parser.add_argument("--treated_col", default="treated", help="Treated indicator column (0/1)")
     parser.add_argument("--policy_time", required=True, help="Policy start time")
     parser.add_argument("--x_cols", nargs="*", help="Control variables")
-    parser.add_argument("--outdir", default=".", help="Output directory")
-
+    
     args = parser.parse_args()
 
-    # Create output directory if needed
-    os.makedirs(args.outdir, exist_ok=True)
+    # Fixed output directory as requested
+    OUTPUT_DIR = "/Users/veso/Documents/verso/DIDanalyze"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     try:
         df = pd.read_csv(args.file)
@@ -343,7 +343,7 @@ def main():
         return
 
     # Visuals
-    trends_path = os.path.join(args.outdir, "did_trends.png")
+    trends_path = os.path.join(OUTPUT_DIR, "did_trends.png")
     plot_trends(
         df, 
         policy_time=policy_time, 
@@ -353,7 +353,7 @@ def main():
         out_png=trends_path
     )
     
-    event_study_path = os.path.join(args.outdir, "event_study.png")
+    event_study_path = os.path.join(OUTPUT_DIR, "event_study.png")
     es_res, es_tbl = fit_and_plot_event_study(
         df,
         policy_time=policy_time,
@@ -366,7 +366,7 @@ def main():
     )
 
     # Three-line table
-    table_path = os.path.join(args.outdir, "three_line_table.csv")
+    table_path = os.path.join(OUTPUT_DIR, "three_line_table.csv")
     three_line = make_three_line_table(twfe_res, main_term="D", out_csv=table_path)
     
     # Construct JSON response
