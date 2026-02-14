@@ -381,7 +381,7 @@ export async function runSubagentAnnounceFlow(params: {
   requesterDisplayKey: string;
   task: string;
   timeoutMs: number;
-  cleanup: "delete" | "keep";
+  cleanup: "delete" | "keep" | "on-success";
   roundOneReply?: string;
   waitForCompletion?: boolean;
   startedAt?: number;
@@ -391,10 +391,11 @@ export async function runSubagentAnnounceFlow(params: {
   announceType?: SubagentAnnounceType;
 }): Promise<boolean> {
   let didAnnounce = false;
-  let shouldDeleteChildSession = params.cleanup === "delete";
+  let shouldDeleteChildSession = params.cleanup === "delete" || params.cleanup === "on-success";
   let forceDeleteStalled = false;
   let finalReply: string | undefined;
   let childSessionId: string | undefined;
+  let outcome: SubagentRunOutcome | undefined;
   const requesterOrigin = normalizeDeliveryContext(params.requesterOrigin);
   try {
     childSessionId = (() => {
@@ -405,7 +406,7 @@ export async function runSubagentAnnounceFlow(params: {
     })();
     const settleTimeoutMs = Math.min(Math.max(params.timeoutMs, 1), 120_000);
     let reply = params.roundOneReply;
-    let outcome: SubagentRunOutcome | undefined = params.outcome;
+    outcome = params.outcome;
     // Lifecycle "end" can arrive before auto-compaction retries finish. If the
     // subagent is still active, wait for the embedded run to fully settle.
     if (childSessionId && isEmbeddedPiRunActive(childSessionId)) {
@@ -479,6 +480,10 @@ export async function runSubagentAnnounceFlow(params: {
         // Defer announcement until we have a final reply to report.
         shouldDeleteChildSession = false;
         return false;
+      }
+      if (params.cleanup === "on-success" && outcome?.status === "error") {
+        // Keep session on error for inspection
+        shouldDeleteChildSession = false;
       }
       if (params.endedAt || outcome?.status) {
         const announceType = params.announceType ?? "subagent task";
@@ -679,6 +684,11 @@ export async function runSubagentAnnounceFlow(params: {
       // Force cleanup for stalled runs after completion (regardless of reply).
       forceDeleteStalled = true;
     }
+    if (params.cleanup === "on-success" && outcome?.status === "error") {
+      // Keep session on error for inspection
+      shouldDeleteChildSession = false;
+    }
+
     const canDelete =
       (shouldDeleteChildSession && (didAnnounce || (finalReply && finalReply.trim()))) ||
       forceDeleteStalled;

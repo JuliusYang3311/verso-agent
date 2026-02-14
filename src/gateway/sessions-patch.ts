@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { ModelCatalogEntry } from "../agents/model-catalog.js";
 import type { VersoConfig } from "../config/config.js";
 import type { SessionEntry } from "../config/sessions.js";
+import type { PersistenceMode } from "../config/types.agents.js";
 import { resolveDefaultAgentId } from "../agents/agent-scope.js";
 import { resolveAllowedModelRef, resolveDefaultModelForAgent } from "../agents/model-selection.js";
 import { normalizeGroupActivation } from "../auto-reply/group-activation.js";
@@ -54,6 +55,14 @@ function normalizeExecAsk(raw: string): "off" | "on-miss" | "always" | undefined
   const normalized = raw.trim().toLowerCase();
   if (normalized === "off" || normalized === "on-miss" || normalized === "always") {
     return normalized;
+  }
+  return undefined;
+}
+
+function normalizePersistence(raw: string): PersistenceMode | undefined {
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "persistent" || normalized === "transient" || normalized === "singleton") {
+    return normalized as PersistenceMode;
   }
   return undefined;
 }
@@ -332,6 +341,19 @@ export async function applySessionsPatchToStore(params: {
         return invalid('invalid groupActivation (use "mention"|"always")');
       }
       next.groupActivation = normalized;
+    }
+  }
+
+  if ("persistence" in patch) {
+    const raw = patch.persistence;
+    if (raw === null) {
+      delete next.persistence;
+    } else if (raw !== undefined) {
+      const normalized = normalizePersistence(String(raw));
+      if (!normalized) {
+        return invalid('invalid persistence (use "persistent"|"transient"|"singleton")');
+      }
+      next.persistence = normalized;
     }
   }
 

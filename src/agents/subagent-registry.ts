@@ -16,7 +16,7 @@ export type SubagentRunRecord = {
   requesterOrigin?: DeliveryContext;
   requesterDisplayKey: string;
   task: string;
-  cleanup: "delete" | "keep";
+  cleanup: "delete" | "keep" | "on-success";
   label?: string;
   createdAt: number;
   startedAt?: number;
@@ -244,7 +244,11 @@ function ensureListener() {
   });
 }
 
-function finalizeSubagentCleanup(runId: string, cleanup: "delete" | "keep", didAnnounce: boolean) {
+function finalizeSubagentCleanup(
+  runId: string,
+  cleanup: "delete" | "keep" | "on-success",
+  didAnnounce: boolean,
+) {
   const entry = subagentRuns.get(runId);
   if (!entry) {
     return;
@@ -255,7 +259,7 @@ function finalizeSubagentCleanup(runId: string, cleanup: "delete" | "keep", didA
     persistSubagentRuns();
     return;
   }
-  if (cleanup === "delete") {
+  if (cleanup === "delete" || cleanup === "on-success") {
     subagentRuns.delete(runId);
     persistSubagentRuns();
     return;
@@ -288,10 +292,26 @@ function setArchiveTime(entry: SubagentRunRecord) {
   // const cfg = loadConfig();
   // const duration = resolveArchiveAfterMs(cfg);
 
-  if (entry.outcome?.status === "error") {
-    entry.archiveAtMs = Date.now() + ERROR_ARCHIVE_DELAY_MS;
+  if (entry.cleanup === "keep") {
+    entry.archiveAtMs = undefined;
+    return;
+  }
+
+  if (entry.cleanup === "on-success") {
+    if (entry.outcome?.status === "error") {
+      // Keep on error
+      entry.archiveAtMs = undefined;
+    } else {
+      // Archive on success
+      entry.archiveAtMs = Date.now() + SUCCESS_ARCHIVE_DELAY_MS;
+    }
   } else {
-    entry.archiveAtMs = Date.now() + SUCCESS_ARCHIVE_DELAY_MS;
+    // Default / "delete"
+    if (entry.outcome?.status === "error") {
+      entry.archiveAtMs = Date.now() + ERROR_ARCHIVE_DELAY_MS;
+    } else {
+      entry.archiveAtMs = Date.now() + SUCCESS_ARCHIVE_DELAY_MS;
+    }
   }
   startSweeper();
 }
@@ -303,7 +323,7 @@ export function registerSubagentRun(params: {
   requesterOrigin?: DeliveryContext;
   requesterDisplayKey: string;
   task: string;
-  cleanup: "delete" | "keep";
+  cleanup: "delete" | "keep" | "on-success";
   label?: string;
   runTimeoutSeconds?: number;
   background?: boolean;

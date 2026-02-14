@@ -21,6 +21,11 @@ export function resolvePersistenceMode(params: {
 }): PersistenceMode {
   const { cfg, agentId, sessionKey, sessionEntry } = params;
 
+  // Check for explicit session-level override first.
+  if (sessionEntry?.persistence) {
+    return sessionEntry.persistence;
+  }
+
   // If the session was spawned by another session, it should be transient by default.
   if (sessionEntry?.spawnedBy) {
     return "transient";

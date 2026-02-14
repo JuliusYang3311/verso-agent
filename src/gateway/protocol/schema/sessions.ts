@@ -77,6 +77,14 @@ export const SessionsPatchParamsSchema = Type.Object(
     groupActivation: Type.Optional(
       Type.Union([Type.Literal("mention"), Type.Literal("always"), Type.Null()]),
     ),
+    persistence: Type.Optional(
+      Type.Union([
+        Type.Literal("persistent"),
+        Type.Literal("transient"),
+        Type.Literal("singleton"),
+        Type.Null(),
+      ]),
+    ),
   },
   { additionalProperties: false },
 );

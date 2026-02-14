@@ -32,7 +32,7 @@ const SessionsSpawnToolSchema = Type.Object({
   runTimeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
   // Back-compat alias. Prefer runTimeoutSeconds.
   timeoutSeconds: Type.Optional(Type.Number({ minimum: 0 })),
-  cleanup: optionalStringEnum(["delete", "keep"] as const),
+  cleanup: optionalStringEnum(["delete", "keep", "on-success"] as const),
   background: Type.Optional(Type.Boolean()),
 });
 
@@ -95,7 +95,9 @@ export function createSessionsSpawnTool(opts?: {
       const modelOverride = readStringParam(params, "model");
       const thinkingOverrideRaw = readStringParam(params, "thinking");
       const cleanup =
-        params.cleanup === "keep" || params.cleanup === "delete" ? params.cleanup : "delete";
+        params.cleanup === "keep" || params.cleanup === "on-success" || params.cleanup === "delete"
+          ? params.cleanup
+          : "delete";
       const requesterOrigin = normalizeDeliveryContext({
         channel: opts?.agentChannel,
         accountId: opts?.agentAccountId,
@@ -241,6 +243,8 @@ export function createSessionsSpawnTool(opts?: {
             params: {
               key: childSessionKey,
               thinkingLevel: thinkingOverride === "off" ? null : thinkingOverride,
+              persistence:
+                cleanup === "keep" || cleanup === "on-success" ? "persistent" : undefined,
             },
             timeoutMs: 10_000,
           });
@@ -310,7 +314,7 @@ export function createSessionsSpawnTool(opts?: {
         requesterOrigin,
         requesterDisplayKey,
         task,
-        cleanup,
+        cleanup: cleanup as "delete" | "keep" | "on-success",
         label: label || undefined,
         runTimeoutSeconds,
         background: params.background === true,

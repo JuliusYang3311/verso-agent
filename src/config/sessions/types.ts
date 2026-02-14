@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import type { ChatType } from "../../channels/chat-type.js";
 import type { ChannelId } from "../../channels/plugins/types.js";
 import type { DeliveryContext } from "../../utils/delivery-context.js";
+import type { PersistenceMode } from "../types.agent-defaults.js";
 import type { TtsAutoMode } from "../types.tts.js";
 
 export type SessionScope = "per-sender" | "global";
@@ -35,6 +36,8 @@ export type SessionEntry = {
   sessionFile?: string;
   /** Parent session key that spawned this session (used for sandbox session-tool scoping). */
   spawnedBy?: string;
+  /** Explicit persistence override (overrides default sub-agent transient behavior). */
+  persistence?: PersistenceMode;
   systemSent?: boolean;
   abortedLastRun?: boolean;
   chatType?: SessionChatType;
