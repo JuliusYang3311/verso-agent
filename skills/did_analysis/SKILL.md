@@ -30,7 +30,12 @@ python3 skills/did_analysis/analyze_did.py data.csv --id_col state --t_col year 
 ### Output
 
 The script outputs a JSON object to stdout.
-Artifacts are saved to: `/Users/veso/Documents/verso/DIDanalyze/`
+
+> [!IMPORTANT]
+> **Output Location**: All generated plots and tables are ALWAYS saved to:
+> `/Users/veso/Documents/verso/DIDanalyze/`
+>
+> The JSON output contains absolute paths to these files in the `output_files` object.
 
 - `regression_results`: Key statistics (coefficient, standard error, p-value, R-squared).
 - `output_files`: Absolute paths to the generated files:
