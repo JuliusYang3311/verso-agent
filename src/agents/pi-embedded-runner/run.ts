@@ -554,7 +554,6 @@ export async function runEmbeddedPiAgent(
                 messageProvider: params.messageProvider,
                 agentAccountId: params.agentAccountId,
                 authProfileId: lastProfileId,
-                runtimeAuth: apiKeyInfo ?? undefined,
                 sessionFile: params.sessionFile,
                 workspaceDir: resolvedWorkspace,
                 agentDir,

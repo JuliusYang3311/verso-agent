@@ -279,14 +279,12 @@ export async function compactEmbeddedPiSessionDirect(
     };
   }
   try {
-    const apiKeyInfo =
-      params.runtimeAuth ??
-      (await getApiKeyForModel({
-        model,
-        cfg: params.config,
-        profileId: params.authProfileId,
-        agentDir,
-      }));
+    const apiKeyInfo = await getApiKeyForModel({
+      model,
+      cfg: params.config,
+      profileId: params.authProfileId,
+      agentDir,
+    });
 
     if (!apiKeyInfo.apiKey) {
       if (apiKeyInfo.mode !== "aws-sdk") {
