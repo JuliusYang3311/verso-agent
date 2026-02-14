@@ -291,12 +291,7 @@ export function createSessionsSpawnTool(opts?: {
             spawnedBy: spawnedByKey,
             groupId: opts?.agentGroupId ?? undefined,
             groupChannel: opts?.agentGroupChannel ?? undefined,
-            authProfileId:
-              opts?.currentAuthProfileId &&
-              opts.currentModel?.provider &&
-              splitModelRef(resolvedModel).provider === opts.currentModel.provider
-                ? opts.currentAuthProfileId
-                : undefined,
+            authProfileId: opts?.currentAuthProfileId,
           },
           timeoutMs: 10_000,
         });
