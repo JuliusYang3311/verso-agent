@@ -590,6 +590,30 @@ export async function runEmbeddedPiAgent(
                 log.info(`auto-compaction succeeded for ${provider}/${modelId}; retrying prompt`);
                 continue;
               }
+
+              const compactionFailoverReason = compactResult.reason
+                ? classifyFailoverReason(compactResult.reason)
+                : null;
+              if (
+                compactionFailoverReason &&
+                compactionFailoverReason !== "timeout" &&
+                lastProfileId
+              ) {
+                await markAuthProfileFailure({
+                  store: authStore,
+                  profileId: lastProfileId,
+                  reason: compactionFailoverReason,
+                  cfg: params.config,
+                  agentDir: params.agentDir,
+                });
+                if (await advanceAuthProfile()) {
+                  log.info(
+                    `auto-compaction failed (${compactionFailoverReason}) for ${provider}/${modelId}; rotated auth and retrying prompt`,
+                  );
+                  continue;
+                }
+              }
+
               log.warn(
                 `auto-compaction failed for ${provider}/${modelId}: ${compactResult.reason ?? "nothing to compact"}`,
               );
