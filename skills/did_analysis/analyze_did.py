@@ -261,7 +261,7 @@ def fit_and_plot_event_study(
 # -------------------------
 # 4) Three-line table output
 # -------------------------
-def make_three_line_table(res, *, main_term="D", out_csv="three_line_table.csv"):
+def make_three_line_table(res, *, main_term="D", out_csv=None):
     if main_term not in res.params:
         return None
         
@@ -278,7 +278,10 @@ def make_three_line_table(res, *, main_term="D", out_csv="three_line_table.csv")
         "Std.Err.": tbl["Std.Err."].map(lambda x: f"({x:.3f})"),
         "P-value": tbl["P-value"].map(lambda x: f"{x:.4f}"),
     })
-    tbl_fmt.to_csv(out_csv, index=False)
+    
+    if out_csv:
+        tbl_fmt.to_csv(out_csv, index=False)
+        
     return tbl_fmt
 
 
@@ -430,9 +433,12 @@ def main():
     )
 
     # Three-line table
-    table_path = os.path.join(OUTPUT_DIR, f"{base_name}_three_line_table.csv")
+    # table_path = os.path.join(OUTPUT_DIR, f"{base_name}_three_line_table.csv") 
     table_png_path = os.path.join(OUTPUT_DIR, f"{base_name}_three_line_table.png")
-    three_line = make_three_line_table(twfe_res, main_term="D", out_csv=table_path)
+    
+    # Generate table dataframe but do NOT save to CSV (passed None)
+    three_line = make_three_line_table(twfe_res, main_term="D", out_csv=None)
+    
     if three_line is not None:
         save_three_line_table_png(three_line, table_png_path)
     
@@ -444,7 +450,6 @@ def main():
         "output_files": {
             "trends_plot": os.path.abspath(trends_path),
             "event_study_plot": os.path.abspath(event_study_path) if es_res else None,
-            "table_csv": os.path.abspath(table_path),
             "table_png": os.path.abspath(table_png_path) if three_line is not None else None
         },
         "regression_results": {

@@ -41,7 +41,6 @@ The script outputs a JSON object to stdout.
 - `output_files`: Absolute paths to the generated files:
   - `trends_plot`: PNG image of the parallel trends plot (`{filename}_did_trends.png`).
   - `event_study_plot`: PNG image of the event study plot (if applicable) (`{filename}_event_study.png`).
-  - `table_csv`: CSV file containing the three-line table of results (`{filename}_three_line_table.csv`).
   - `table_png`: PNG image of the three-line table (`{filename}_three_line_table.png`).
 
 ### Dependencies
