@@ -4,6 +4,7 @@ import sys
 import json
 import asyncio
 import argparse
+import datetime
 from typing import Optional, Dict, Any, List
 from solders.keypair import Keypair # type: ignore
 from solders.pubkey import Pubkey # type: ignore
@@ -72,7 +73,7 @@ async def audit_drift(rpc_url: str, pk_str: str, output_dir: str):
 
         report = {
             "wallet_address": str(kp.pubkey()),
-            "timestamp_iso": os.popen('date -u +"%Y-%m-%dT%H:%M:%SZ"').read().strip(),
+            "timestamp_iso": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
             "total_collateral_usd": total_collateral,
             "health_factor": health,
             "perp_positions": positions,
@@ -80,7 +81,7 @@ async def audit_drift(rpc_url: str, pk_str: str, output_dir: str):
         }
         
         os.makedirs(output_dir, exist_ok=True)
-        timestamp_unix = int(os.popen('date +%s').read().strip())
+        timestamp_unix = int(datetime.datetime.now().timestamp())
         filename = f"drift_audit_{timestamp_unix}.json"
         filepath = os.path.join(output_dir, filename)
         
