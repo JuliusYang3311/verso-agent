@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import type { ThinkLevel } from "../../auto-reply/thinking.js";
 import type { RunEmbeddedPiAgentParams } from "./run/params.js";
 import type { EmbeddedPiAgentMeta, EmbeddedPiRunResult } from "./types.js";
+import { loadConfig } from "../../config/config.js";
 import { enqueueCommandInLane } from "../../process/command-queue.js";
 import { isMarkdownCapableMessageChannel } from "../../utils/message-channel.js";
 import { resolveOpenClawAgentDir } from "../agent-paths.js";
@@ -416,6 +417,16 @@ export async function runEmbeddedPiAgent(
       let autoCompactionCount = 0;
       try {
         while (true) {
+          // Hot-reload config to pick up auth/model changes (e.g. refreshed tokens)
+          const freshConfig = loadConfig();
+          if (freshConfig) {
+            params.config = {
+              ...params.config,
+              auth: freshConfig.auth,
+              models: freshConfig.models,
+            };
+          }
+
           attemptedThinking.add(thinkLevel);
           await fs.mkdir(resolvedWorkspace, { recursive: true });
 
