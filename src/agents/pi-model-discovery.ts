@@ -42,7 +42,7 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
         id: modelDef.id,
         name: modelDef.name,
         provider: antigravityId,
-        api: antigravityId as any,
+        api: antigravityId as unknown as Api,
         baseUrl: "https://antigravity.google.com",
         reasoning: modelDef.reasoning ?? false,
         input: ["text", "image"],

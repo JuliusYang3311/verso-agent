@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { discoverAuthStorage, discoverModels } from "../pi-model-discovery.js";
+import { discoverModels } from "../pi-model-discovery.js";
 
 vi.mock("../pi-model-discovery.js", () => ({
   discoverAuthStorage: vi.fn(() => ({ mocked: true })),
@@ -32,7 +32,7 @@ describe("buildInlineProviderModels", () => {
       beta: { baseUrl: "http://beta.local", models: [makeModel("beta-model")] },
     };
 
-    const result = buildInlineProviderModels(providers as any);
+    const result = buildInlineProviderModels(providers as unknown as Record<string, unknown>);
 
     expect(result).toEqual([
       {
@@ -58,7 +58,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers as any);
+    const result = buildInlineProviderModels(providers as unknown as Record<string, unknown>);
 
     expect(result).toHaveLength(1);
     expect(result[0].baseUrl).toBe("http://localhost:8000");
@@ -73,7 +73,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers as any);
+    const result = buildInlineProviderModels(providers as unknown as Record<string, unknown>);
 
     expect(result).toHaveLength(1);
     expect(result[0].api).toBe("anthropic-messages");
@@ -88,7 +88,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers as any);
+    const result = buildInlineProviderModels(providers as unknown as Record<string, unknown>);
 
     expect(result).toHaveLength(1);
     expect(result[0].api).toBe("anthropic-messages");
@@ -103,7 +103,7 @@ describe("buildInlineProviderModels", () => {
       },
     };
 
-    const result = buildInlineProviderModels(providers as any);
+    const result = buildInlineProviderModels(providers as unknown as Record<string, unknown>);
 
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
