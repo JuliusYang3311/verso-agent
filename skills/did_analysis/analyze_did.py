@@ -357,6 +357,9 @@ def main():
     
     args = parser.parse_args()
 
+    # Get input filename without extension for distinct output names
+    base_name = os.path.splitext(os.path.basename(args.file))[0]
+
     # Fixed output directory as requested
     OUTPUT_DIR = "/Users/veso/Documents/verso/DIDanalyze"
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -404,7 +407,7 @@ def main():
         return
 
     # Visuals
-    trends_path = os.path.join(OUTPUT_DIR, "did_trends.png")
+    trends_path = os.path.join(OUTPUT_DIR, f"{base_name}_did_trends.png")
     plot_trends(
         df, 
         policy_time=policy_time, 
@@ -414,7 +417,7 @@ def main():
         out_png=trends_path
     )
     
-    event_study_path = os.path.join(OUTPUT_DIR, "event_study.png")
+    event_study_path = os.path.join(OUTPUT_DIR, f"{base_name}_event_study.png")
     es_res, es_tbl = fit_and_plot_event_study(
         df,
         policy_time=policy_time,
@@ -427,8 +430,8 @@ def main():
     )
 
     # Three-line table
-    table_path = os.path.join(OUTPUT_DIR, "three_line_table.csv")
-    table_png_path = os.path.join(OUTPUT_DIR, "three_line_table.png")
+    table_path = os.path.join(OUTPUT_DIR, f"{base_name}_three_line_table.csv")
+    table_png_path = os.path.join(OUTPUT_DIR, f"{base_name}_three_line_table.png")
     three_line = make_three_line_table(twfe_res, main_term="D", out_csv=table_path)
     if three_line is not None:
         save_three_line_table_png(three_line, table_png_path)
