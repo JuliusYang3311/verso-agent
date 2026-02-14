@@ -10,7 +10,7 @@ export function applyModelOverrideToSessionEntry(params: {
   entry: SessionEntry;
   selection: ModelOverrideSelection;
   profileOverride?: string;
-  profileOverrideSource?: "auto" | "user";
+  profileOverrideSource?: "auto" | "user" | "spawn";
 }): { updated: boolean } {
   const { entry, selection, profileOverride } = params;
   const profileOverrideSource = params.profileOverrideSource ?? "user";
