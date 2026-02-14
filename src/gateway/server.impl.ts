@@ -42,6 +42,7 @@ import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
+import { worldMonitor } from "../world-monitor/service.js";
 import { startGatewayConfigReloader } from "./config-reload.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
 import { NodeRegistry } from "./node-registry.js";
@@ -597,9 +598,11 @@ export async function startGatewayServer(
     watchPath: CONFIG_PATH,
   });
 
+  // ... (imports)
+
+  // Inside startGatewayServer
   // Start WorldMonitor
   try {
-    const { worldMonitor } = await import("../../world-monitor/service.js");
     void worldMonitor.start();
   } catch (err) {
     log.warn(`gateway: failed to start world monitor: ${String(err)}`);
@@ -642,7 +645,6 @@ export async function startGatewayServer(
       skillsChangeUnsub();
       // Stop WorldMonitor
       try {
-        const { worldMonitor } = await import("../../world-monitor/service.js");
         worldMonitor.stop();
       } catch (err) {
         log.warn(`gateway: failed to stop world monitor: ${String(err)}`);
