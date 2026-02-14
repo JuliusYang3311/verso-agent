@@ -4,6 +4,7 @@ import type { ModelDefinitionConfig } from "../../config/types.js";
 import { resolveVersoAgentDir } from "../agent-paths.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../defaults.js";
 import { normalizeModelCompat } from "../model-compat.js";
+import { resolveForwardCompatModel } from "../model-forward-compat.js";
 import { normalizeProviderId } from "../model-selection.js";
 import {
   discoverAuthStorage,
@@ -18,114 +19,6 @@ type InlineProviderConfig = {
   api?: ModelDefinitionConfig["api"];
   models?: ModelDefinitionConfig[];
 };
-
-const OPENAI_CODEX_GPT_53_MODEL_ID = "gpt-5.3-codex";
-
-const OPENAI_CODEX_TEMPLATE_MODEL_IDS = ["gpt-5.2-codex"] as const;
-
-// pi-ai's built-in Anthropic catalog can lag behind Verso's defaults/docs.
-// Add forward-compat fallbacks for known-new IDs by cloning an older template model.
-const ANTHROPIC_OPUS_46_MODEL_ID = "claude-opus-4-6";
-const ANTHROPIC_OPUS_46_DOT_MODEL_ID = "claude-opus-4.6";
-const ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS = ["claude-opus-4-5", "claude-opus-4.5"] as const;
-
-function resolveOpenAICodexGpt53FallbackModel(
-  provider: string,
-  modelId: string,
-  modelRegistry: ModelRegistry,
-): Model<Api> | undefined {
-  const normalizedProvider = normalizeProviderId(provider);
-  const trimmedModelId = modelId.trim();
-  if (normalizedProvider !== "openai-codex") {
-    return undefined;
-  }
-  if (trimmedModelId.toLowerCase() !== OPENAI_CODEX_GPT_53_MODEL_ID) {
-    return undefined;
-  }
-
-  for (const templateId of OPENAI_CODEX_TEMPLATE_MODEL_IDS) {
-    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
-    if (!template) {
-      continue;
-    }
-    return normalizeModelCompat({
-      ...template,
-      id: trimmedModelId,
-      name: trimmedModelId,
-    } as Model<Api>);
-  }
-
-  return normalizeModelCompat({
-    id: trimmedModelId,
-    name: trimmedModelId,
-    api: "openai-codex-responses",
-    provider: normalizedProvider,
-    baseUrl: "https://chatgpt.com/backend-api",
-    reasoning: true,
-    input: ["text", "image"],
-    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-    contextWindow: DEFAULT_CONTEXT_TOKENS,
-    maxTokens: DEFAULT_CONTEXT_TOKENS,
-  } as Model<Api>);
-}
-
-function resolveAnthropicOpus46ForwardCompatModel(
-  provider: string,
-  modelId: string,
-  modelRegistry: ModelRegistry,
-): Model<Api> | undefined {
-  const normalizedProvider = normalizeProviderId(provider);
-  // Support both native anthropic and google-antigravity (which routes Anthropic models)
-  const isAnthropicCompatible =
-    normalizedProvider === "anthropic" || normalizedProvider === "google-antigravity";
-  if (!isAnthropicCompatible) {
-    return undefined;
-  }
-
-  const trimmedModelId = modelId.trim();
-  const lower = trimmedModelId.toLowerCase();
-  const isOpus46 =
-    lower === ANTHROPIC_OPUS_46_MODEL_ID ||
-    lower === ANTHROPIC_OPUS_46_DOT_MODEL_ID ||
-    lower.startsWith(`${ANTHROPIC_OPUS_46_MODEL_ID}-`) ||
-    lower.startsWith(`${ANTHROPIC_OPUS_46_DOT_MODEL_ID}-`);
-  if (!isOpus46) {
-    return undefined;
-  }
-
-  const templateIds: string[] = [];
-  if (lower.startsWith(ANTHROPIC_OPUS_46_MODEL_ID)) {
-    templateIds.push(lower.replace(ANTHROPIC_OPUS_46_MODEL_ID, "claude-opus-4-5"));
-  }
-  if (lower.startsWith(ANTHROPIC_OPUS_46_DOT_MODEL_ID)) {
-    templateIds.push(lower.replace(ANTHROPIC_OPUS_46_DOT_MODEL_ID, "claude-opus-4.5"));
-  }
-  templateIds.push(...ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS);
-
-  // For google-antigravity, try looking up templates under both the actual provider
-  // and under "anthropic" (where the base model definitions live)
-  const lookupProviders =
-    normalizedProvider === "google-antigravity"
-      ? [normalizedProvider, "anthropic"]
-      : [normalizedProvider];
-
-  for (const lookupProvider of lookupProviders) {
-    for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
-      const template = modelRegistry.find(lookupProvider, templateId) as Model<Api> | null;
-      if (!template) {
-        continue;
-      }
-      return normalizeModelCompat({
-        ...template,
-        id: trimmedModelId,
-        name: trimmedModelId,
-        provider: normalizedProvider,
-      } as Model<Api>);
-    }
-  }
-
-  return undefined;
-}
 
 export function buildInlineProviderModels(
   providers: Record<string, InlineProviderConfig>,
@@ -220,8 +113,16 @@ export function resolveModel(
 
     if (inlineMatch) {
       rawModel = normalizeModelCompat(inlineMatch as Model<Api>);
-    } else {
-      // 3. Fallback logic for generic providers or mocks
+    }
+
+    // 3. Forward-compat fallbacks for known-new model IDs
+    // must be checked BEFORE the generic providerCfg fallback.
+    if (!rawModel) {
+      rawModel = resolveForwardCompatModel(provider, modelId, modelRegistry) ?? null;
+    }
+
+    if (!rawModel) {
+      // 4. Fallback logic for generic providers or mocks
       const providerCfg = providers[provider];
       if (providerCfg || modelId.startsWith("mock-")) {
         rawModel = normalizeModelCompat({
@@ -238,14 +139,6 @@ export function resolveModel(
         } as Model<Api>);
       }
     }
-  }
-
-  // 4. Forward-compat fallbacks for known-new model IDs
-  if (!rawModel) {
-    rawModel =
-      resolveAnthropicOpus46ForwardCompatModel(provider, modelId, modelRegistry) ??
-      resolveOpenAICodexGpt53FallbackModel(provider, modelId, modelRegistry) ??
-      null;
   }
 
   if (rawModel) {

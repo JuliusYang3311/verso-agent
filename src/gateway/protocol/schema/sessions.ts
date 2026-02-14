@@ -85,6 +85,11 @@ export const SessionsPatchParamsSchema = Type.Object(
         Type.Null(),
       ]),
     ),
+    authProfileOverride: Type.Optional(Type.Union([NonEmptyString, Type.Null()])),
+    authProfileOverrideSource: Type.Optional(
+      Type.Union([Type.Literal("auto"), Type.Literal("user"), Type.Literal("spawn"), Type.Null()]),
+    ),
+    authProfileOverrideCompactionCount: Type.Optional(Type.Union([Type.Integer(), Type.Null()])),
   },
   { additionalProperties: false },
 );

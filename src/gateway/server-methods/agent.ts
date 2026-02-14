@@ -86,6 +86,7 @@ export const agentHandlers: GatewayRequestHandlers = {
       label?: string;
       spawnedBy?: string;
       authProfileId?: string;
+      authProfileOverrideSource?: "user" | "spawn" | "auto";
     };
     const cfg = loadConfig();
     const idem = request.idempotencyKey;
@@ -100,6 +101,10 @@ export const agentHandlers: GatewayRequestHandlers = {
       typeof request.spawnedBy === "string" ? request.spawnedBy.trim() : undefined;
     const authProfileIdValue =
       typeof request.authProfileId === "string" ? request.authProfileId.trim() : undefined;
+    const authProfileOverrideSourceValue =
+      typeof request.authProfileOverrideSource === "string"
+        ? request.authProfileOverrideSource.trim()
+        : undefined;
     const cached = context.dedupe.get(`agent:${idem}`);
     if (cached) {
       respond(cached.ok, cached.payload, cached.error, {
@@ -396,6 +401,11 @@ export const agentHandlers: GatewayRequestHandlers = {
         lane: request.lane,
         extraSystemPrompt: request.extraSystemPrompt,
         authProfileId: authProfileIdValue,
+        authProfileOverrideSource: authProfileOverrideSourceValue as
+          | "user"
+          | "spawn"
+          | "auto"
+          | undefined,
       },
       defaultRuntime,
       context.deps,

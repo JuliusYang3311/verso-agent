@@ -68,6 +68,9 @@ export const AgentParamsSchema = Type.Object(
     label: Type.Optional(SessionLabelString),
     spawnedBy: Type.Optional(Type.String()),
     authProfileId: Type.Optional(Type.String()),
+    authProfileOverrideSource: Type.Optional(
+      Type.Union([Type.Literal("auto"), Type.Literal("user"), Type.Literal("spawn")]),
+    ),
   },
   { additionalProperties: false },
 );

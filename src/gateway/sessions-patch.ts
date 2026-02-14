@@ -357,6 +357,36 @@ export async function applySessionsPatchToStore(params: {
     }
   }
 
+  if ("authProfileOverride" in patch) {
+    const raw = patch.authProfileOverride;
+    if (raw === null) {
+      delete next.authProfileOverride;
+    } else if (typeof raw === "string") {
+      next.authProfileOverride = raw.trim() || undefined;
+      if (!next.authProfileOverride) {
+        delete next.authProfileOverride;
+      }
+    }
+  }
+
+  if ("authProfileOverrideSource" in patch) {
+    const raw = patch.authProfileOverrideSource;
+    if (raw === null) {
+      delete next.authProfileOverrideSource;
+    } else if (raw === "auto" || raw === "user" || raw === "spawn") {
+      next.authProfileOverrideSource = raw;
+    }
+  }
+
+  if ("authProfileOverrideCompactionCount" in patch) {
+    const raw = patch.authProfileOverrideCompactionCount;
+    if (raw === null) {
+      delete next.authProfileOverrideCompactionCount;
+    } else if (typeof raw === "number") {
+      next.authProfileOverrideCompactionCount = raw;
+    }
+  }
+
   store[storeKey] = next;
   return { ok: true, entry: next };
 }

@@ -52,7 +52,7 @@ export function resolveGemini3ForwardCompatModel(
           : "https://cloudcode-pa.googleapis.com",
       contextWindow: 1048576,
       reasoning: modelId === "gemini-3-pro-preview",
-    } as any);
+    } as Model<Api>);
   }
 
   // Fallback for missing registry entry
@@ -81,7 +81,7 @@ export function resolveGemini3ForwardCompatModel(
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: 1048576,
       maxTokens: 65536,
-    } as any);
+    } as Model<Api>);
   }
 
   return undefined;
@@ -133,7 +133,10 @@ function resolveAnthropicOpus46ForwardCompatModel(
   modelRegistry: ModelRegistry,
 ): Model<Api> | undefined {
   const normalizedProvider = normalizeProviderId(provider);
-  if (normalizedProvider !== "anthropic") {
+  // Support both native anthropic and google-antigravity (which routes Anthropic models)
+  const isAnthropicCompatible =
+    normalizedProvider === "anthropic" || normalizedProvider === "google-antigravity";
+  if (!isAnthropicCompatible) {
     return undefined;
   }
 
@@ -157,16 +160,26 @@ function resolveAnthropicOpus46ForwardCompatModel(
   }
   templateIds.push(...ANTHROPIC_OPUS_TEMPLATE_MODEL_IDS);
 
-  for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
-    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
-    if (!template) {
-      continue;
+  // For google-antigravity, try looking up templates under both the actual provider
+  // and under "anthropic" (where the base model definitions live)
+  const lookupProviders =
+    normalizedProvider === "google-antigravity"
+      ? [normalizedProvider, "anthropic"]
+      : [normalizedProvider];
+
+  for (const lookupProvider of lookupProviders) {
+    for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
+      const template = modelRegistry.find(lookupProvider, templateId) as Model<Api> | null;
+      if (!template) {
+        continue;
+      }
+      return normalizeModelCompat({
+        ...template,
+        id: trimmedModelId,
+        name: trimmedModelId,
+        provider: normalizedProvider,
+      } as Model<Api>);
     }
-    return normalizeModelCompat({
-      ...template,
-      id: trimmedModelId,
-      name: trimmedModelId,
-    } as Model<Api>);
   }
 
   return undefined;
@@ -258,16 +271,22 @@ function resolveAntigravityOpus46ForwardCompatModel(
   templateIds.push(...ANTIGRAVITY_OPUS_TEMPLATE_MODEL_IDS);
   templateIds.push(...ANTIGRAVITY_OPUS_THINKING_TEMPLATE_MODEL_IDS);
 
-  for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
-    const template = modelRegistry.find(normalizedProvider, templateId) as Model<Api> | null;
-    if (!template) {
-      continue;
+  // Fallback to "anthropic" for base Opus templates if needed
+  const lookupProviders = [normalizedProvider, "anthropic"];
+
+  for (const lookupProvider of lookupProviders) {
+    for (const templateId of [...new Set(templateIds)].filter(Boolean)) {
+      const template = modelRegistry.find(lookupProvider, templateId) as Model<Api> | null;
+      if (!template) {
+        continue;
+      }
+      return normalizeModelCompat({
+        ...template,
+        id: trimmedModelId,
+        name: trimmedModelId,
+        provider: normalizedProvider,
+      } as Model<Api>);
     }
-    return normalizeModelCompat({
-      ...template,
-      id: trimmedModelId,
-      name: trimmedModelId,
-    } as Model<Api>);
   }
 
   return undefined;
