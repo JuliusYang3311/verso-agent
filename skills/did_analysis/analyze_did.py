@@ -433,6 +433,8 @@ def main():
     if three_line is not None:
         save_three_line_table_png(three_line, table_png_path)
     
+    ci = twfe_res.conf_int().loc["D"]
+    
     # Construct JSON response
     result = {
         "status": "success",
@@ -447,6 +449,8 @@ def main():
             "coef": twfe_res.params.get("D"),
             "std_err": twfe_res.bse.get("D"),
             "p_value": twfe_res.pvalues.get("D"),
+            "ci_lower": ci[0],
+            "ci_upper": ci[1],
             "n_obs": int(twfe_res.nobs),
             "r_squared": twfe_res.rsquared
         }
