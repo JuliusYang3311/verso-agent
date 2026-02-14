@@ -21,6 +21,7 @@ export type EmbeddedPiAgentMeta = {
     total?: number;
   };
   promptTokens?: number;
+  authProfileId?: string;
 };
 
 export type EmbeddedPiRunMeta = {

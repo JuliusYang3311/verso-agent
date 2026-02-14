@@ -76,6 +76,10 @@ export async function updateSessionStoreAfterAgentRun(params: {
   if (compactionsThisRun > 0) {
     next.compactionCount = (entry.compactionCount ?? 0) + compactionsThisRun;
   }
+  if (result.meta.agentMeta?.authProfileId) {
+    next.authProfileOverride = result.meta.agentMeta.authProfileId;
+    next.authProfileOverrideSource = "auto";
+  }
   sessionStore[sessionKey] = next;
   await updateSessionStore(storePath, (store) => {
     store[sessionKey] = next;
