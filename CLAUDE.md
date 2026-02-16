@@ -128,7 +128,7 @@ web-search, brave-search, novel-writer
 - `src/agents/subagent-announce-queue.ts`, `subagents-utils.ts`
 - `src/agents/tools/sessions-spawn-tool.ts`, `sessions-list-tool.ts`, `sessions-send-tool.ts`
 - `src/agents/tools/sessions-send-tool.a2a.ts`, `sessions-announce-target.ts`, `sessions-send-helpers.ts`, `sessions-helpers.ts`
-- 12 subagent spawn test files（openclaw-tools.subagents.*.test.ts × 6, verso-tools.subagents.*.test.ts × 6）
+- 12 subagent spawn test files（openclaw-tools.subagents._.test.ts × 6, verso-tools.subagents._.test.ts × 6）
 - `docs/tools/subagents.md`, `docs/zh-CN/tools/subagents.md`
 - All related test files (registry persistence, announce format, etc.)
 
@@ -143,11 +143,12 @@ web-search, brave-search, novel-writer
 **新建**: `src/agents/dynamic-context.ts` — 340 LOC，全英文注释
 
 已实现:
+
 - ✅ `buildDynamicContext()` — 主入口，动态合并近期消息 + 向量检索
 - ✅ `selectRecentMessages()` — 基于 token 预算动态保留近期消息
 - ✅ `filterRetrievedChunks()` — 基于相似度阈值动态过滤（非固定 top-k）
 - ✅ `computeDynamicRecentRatio()` — 根据对话节奏动态调整比例
-- ✅ `timeDecayFactor()` — 时间衰减：exp(-λ * hoursAgo)
+- ✅ `timeDecayFactor()` — 时间衰减：exp(-λ \* hoursAgo)
 - ✅ `loadContextParams()` — 从 evolver assets 加载可调超参数
 - ✅ 集成到 `pi-embedded-runner/run/attempt.ts`（feature-gated: `dynamicContext !== false`）
 - ✅ 新增 cache trace stage: `session:dynamic-context`
@@ -465,43 +466,45 @@ src/heartbeat/ ← heartbeat-runner.ts, heartbeat-events.ts, heartbeat-visibilit
 src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 ```
 
-### 5.3 单体文件分解（>1000 LOC）
+### 5.3 单体文件分解（>1000 LOC）（已完成 ✅）
 
-| 文件                      | LOC  | 拆分方案                                             |
-| ------------------------- | ---- | ---------------------------------------------------- |
-| memory/manager.ts         | 2411 | → store.ts + query.ts + embedding.ts + manager.ts    |
-| agents/bash-tools.exec.ts | 1692 | → exec-spawn.ts + exec-session.ts + exec-approval.ts |
-| infra/exec-approvals.ts   | 1541 | → workflow.ts + audit.ts + allowlist.ts              |
-| tts/tts.ts                | 1579 | → synthesizer.ts + cache.ts + providers.ts           |
-| cli/update-cli.ts         | 1356 | → updater.ts + version-check.ts                      |
-| node-host/runner.ts       | 1307 | → process.ts + lifecycle.ts                          |
-| telegram/bot.test.ts      | 3029 | → 按功能拆 8-10 个测试文件                           |
+| 文件                      | 原 LOC | 现 LOC | 拆分结果                                                                                                                                                   |
+| ------------------------- | ------ | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| telegram/bot.test.ts      | 3029   | 已删除 | → 10 个独立测试文件 + bot-test-helpers.ts                                                                                                                  |
+| memory/manager.ts         | 2411   | 1452   | → manager-vectors.ts + manager-session-delta.ts + manager-embeddings.ts + manager-batch-failure.ts + manager-embedding-cache.ts + manager-session-files.ts |
+| agents/bash-tools.exec.ts | 1692   | 564    | → exec-spawn.ts + exec-approval-check.ts + exec-run-process.ts + exec-env.ts                                                                               |
+| tts/tts.ts                | 1579   | 596    | → tts-config.ts + tts-providers.ts + tts-validators.ts + tts-preprocessor.ts                                                                               |
+| node-host/runner.ts       | 1307   | 119    | → runner-ipc.ts + runner-exec-security.ts + runner-invoke.ts                                                                                               |
+| cli/update-cli.ts         | 1356   | 279    | → update-cli-command.ts + update-cli-progress.ts                                                                                                           |
+| infra/exec-approvals.ts   | 1541   | -      | 已在阶段 5.2 infra 拆分中处理（→ approval/ 模块）                                                                                                          |
 
-### 5.4 重复逻辑统一
+### 5.4 重复逻辑统一（已完成 ✅）
 
-**Deduplication（4 处散落）**:
+**Deduplication 分析结果**: 4 处 dedupe 实现各有不同职责，非真正重复：
 
-- `src/infra/dedupe.ts`, `src/web/inbound/dedupe.ts`, `src/agents/pi-embedded-helpers/messaging-dedupe.ts`
-- 统一到 `src/shared/dedupe.ts`，单一测试套件
+- `src/infra/dedupe.ts` — 通用 TTL+LRU 缓存工具（5 importers），基础设施
+- `src/web/inbound/dedupe.ts` — WhatsApp 专用入站去重（1 importer），✅ 已内联到 monitor.ts
+- `src/auto-reply/reply/inbound-dedupe.ts` — 多渠道入站去重（41 importers），独立职责
+- `src/agents/pi-embedded-helpers/messaging-dedupe.ts` — 出站文本去重+归一化（3 importers），独立职责
 
-**Test 工具合并**: `src/test-helpers/` + `src/test-utils/` → `src/test/`
+**Test 工具合并**: `src/test-helpers/` 已移至 `src/test-utils/` ✅
 
-### 5.5 Evolver GEP JS→TS 转换
+### 5.5 Evolver GEP JS→TS 转换（已完成 ✅）
 
-**问题**: `src/evolver/gep/` 下 20 个 .js 文件（~150K），无类型安全
+所有 GEP 文件已转换为 TypeScript，零残留 .js 文件：
 
-**核心文件**: memoryGraph.js (28K), solidify.js (24K), prompt.js (15K), signals.js, mutation.js, selector.js 等
-
-**方案**: 分批转换，每次 2-3 个文件，配合测试验证
+- `src/evolver/gep/` — 21 个 .ts 文件（solidify.ts 33K, memoryGraph.ts 36K, prompt.ts 15K 等）
+- `src/evolver/ops/` — 7 个 .ts 文件
+- `src/evolver/` 根目录 — 4 个 .ts 文件（evolve.ts 44K, runner.ts, daemon-entry.ts, code-agent.ts）
 
 ### 5.6 死目录清理（已完成 ✅）
 
-| 目录            | 状态                   | 处置                |
-| --------------- | ---------------------- | ------------------- |
-| canvas/         | 仅 1 个 HTML，无 TS    | ✅ 已删除           |
-| ghost/          | 单个 17K HTML 分析文件 | ✅ 已删除           |
-| packages/verso/ | 兼容 shim，仅 16 行    | 内联到主代码（待评估）|
-| vendor/a2ui/    | 3.2M UI 规格，仅文档用 | 考虑外部依赖化      |
+| 目录            | 状态                   | 处置                   |
+| --------------- | ---------------------- | ---------------------- |
+| canvas/         | 仅 1 个 HTML，无 TS    | ✅ 已删除              |
+| ghost/          | 单个 17K HTML 分析文件 | ✅ 已删除              |
+| packages/verso/ | 兼容 shim，仅 16 行    | 内联到主代码（待评估） |
+| vendor/a2ui/    | 3.2M UI 规格，仅文档用 | 考虑外部依赖化         |
 
 ### 5.7 模块边界与导入规范
 
@@ -528,9 +531,9 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ### 阶段 1（Evolve 增强 — 已融合到 src/evolver/）
 
-**核心**: runner.ts, daemon-entry.ts, code-agent.ts, evolve.js
-**GEP**: src-optimizer.js, sandbox-runner.js, signals.js, solidify.js, prompt.js, mutation.js 等
-**运维**: lifecycle.js, build-verify.js, error-record.js
+**核心**: runner.ts, daemon-entry.ts, code-agent.ts, evolve.ts
+**GEP**: src-optimizer.ts, sandbox-runner.ts, signals.ts, solidify.ts, prompt.ts, mutation.ts 等（全部已转 TypeScript）
+**运维**: lifecycle.ts, build-verify.ts, error-record.ts
 **资产**: errors.jsonl, feedback.jsonl, context_params.json
 **CI**: evolver-validate.yml
 
@@ -542,7 +545,7 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 **新建**: session-lock.ts, dynamic-context.ts, tool-resume.ts, dispatch-from-config.async.test.ts, context_params.json
 **修改**: attempt.ts (dynamic context integration), dispatch-from-config.ts (async dispatch), types.agent-defaults.ts, cache-trace.ts
-**删除**: subagent-*.ts (5+), sessions-*-tool.ts (6+), subagent test files (12+), docs/tools/subagents.md
+**删除**: subagent-_.ts (5+), sessions-_-tool.ts (6+), subagent test files (12+), docs/tools/subagents.md
 **Stubs**: pi-tools.policy.ts (resolveSubagentToolPolicy), session-key-utils.ts (isSubagentSessionKey)
 
 ### 阶段 4（代码瘦身 — 已完成 ✅）
@@ -551,15 +554,22 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 **已修改**: types.ts, types.channels.ts, schema.ts, deliver.ts, outbound-session.ts, plugin-sdk/index.ts, bash-process-registry.ts, bash-tools.exec.ts, spawn-utils.ts 等 20+ 文件
 **已移除依赖**: @line/bot-sdk
 
-### 阶段 5（结构性重构 — 部分完成）
+### 阶段 5（结构性重构 — 已完成 ✅）
 
-**Config 精简**: legacy.*.ts 分析完毕，均有活跃调用者，无需归档 ✅
+**Config 精简**: legacy._.ts 分析完毕，均有活跃调用者，无需归档 ✅
 **Infra 拆分**: infra/ → infra/ + approval/ + heartbeat/ + env/ ✅
 **死目录**: canvas/, ghost/ 已删除 ✅
 **残留引用清理**: openclaw→verso (hooks/tests), imsg tests 已修复 ✅
-**重复统一**: dedupeStrings (4处) — 待合并到 src/shared/dedupe.ts
-**单体分解**: manager.ts, bash-tools.exec.ts, exec-approvals.ts 等大文件 — 待实施
-**GEP 转换**: evolver/gep/*.js (20文件) → TypeScript — 待实施
+**重复统一**: 4 处 dedupe 分析完毕，各有独立职责（非真正重复），web/inbound/dedupe.ts 已内联 ✅
+**GEP 转换**: evolver/gep/_.js 全部已转 TypeScript（21 个 .ts 文件，零残留 .js）✅
+**单体分解**: ✅ 已完成
+
+- telegram/bot.test.ts (3029→删除，拆分为 9 个测试文件)
+- memory/manager.ts (2411→1451，提取 manager-vectors.ts, manager-session-delta.ts, manager-embeddings.ts, manager-batch-failure.ts)
+- bash-tools.exec.ts (1679→564，提取 exec-run-process.ts, exec-approval-check.ts, exec-env.ts)
+- tts/tts.ts (1579→596，提取 tts-config.ts, tts-providers.ts, tts-validators.ts, tts-preprocessor.ts)
+- node-host/runner.ts (1307→119，提取 runner-invoke.ts, runner-ipc.ts, runner-exec-security.ts)
+- update-cli.ts (1001→279，提取 update-cli-command.ts, update-cli-progress.ts)
 
 ---
 
@@ -574,8 +584,8 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ---
 
-**计划版本**: 4.1
+**计划版本**: 4.3
 **创建日期**: 2026-02-14
-**最后更新**: 2026-02-15
-**当前状态**: 阶段 1-4 已完成，阶段 3 架构改造已完成（动态上下文 + 异步执行 + 单 session），阶段 5 部分完成（infra 拆分 ✅、死目录清理 ✅，大文件分解和 GEP TS 转换待实施）
-**测试基线**: 989 files, 6768 tests, 0 failures（evolver sandbox gate 已验证）
+**最后更新**: 2026-02-16
+**当前状态**: 阶段 1-5 全部完成。架构改造（动态上下文 + 异步执行 + 单 session）、代码瘦身（Signal/iMessage/Line 移除）、结构性重构（大文件分解 ✅、infra 拆分 ✅、GEP TS 转换 ✅、dedupe 统一 ✅）均已实施。
+**测试基线**: 998 files, 6768 tests, 0 failures

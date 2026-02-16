@@ -72,8 +72,9 @@ apps/ios/*.mobileprovision
 IDENTITY.md
 USER.md
 Soul.md
-memory.md
 .tgz
+contributing.md
+security.md
 
 # local tooling
 .serena/

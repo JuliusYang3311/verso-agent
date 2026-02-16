@@ -5,13 +5,13 @@ import { createInboundDebouncer } from "../../auto-reply/inbound-debounce.js";
 import { formatLocationText } from "../../channels/location.js";
 import { logVerbose, shouldLogVerbose } from "../../globals.js";
 import { recordChannelActivity } from "../../infra/channel-activity.js";
+import { createDedupeCache } from "../../infra/dedupe.js";
 import { getChildLogger } from "../../logging/logger.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { saveMediaBuffer } from "../../media/store.js";
 import { jidToE164, resolveJidToE164 } from "../../utils.js";
 import { createWaSocket, getStatusCode, waitForWaConnection } from "../session.js";
 import { checkInboundAccessControl } from "./access-control.js";
-import { isRecentInboundMessage } from "./dedupe.js";
 import {
   describeReplyContext,
   extractLocationData,
@@ -21,6 +21,22 @@ import {
 } from "./extract.js";
 import { downloadInboundMedia } from "./media.js";
 import { createWebSendApi } from "./send-api.js";
+
+const RECENT_WEB_MESSAGE_TTL_MS = 20 * 60_000;
+const RECENT_WEB_MESSAGE_MAX = 5000;
+
+const recentInboundMessages = createDedupeCache({
+  ttlMs: RECENT_WEB_MESSAGE_TTL_MS,
+  maxSize: RECENT_WEB_MESSAGE_MAX,
+});
+
+export function resetWebInboundDedupe(): void {
+  recentInboundMessages.clear();
+}
+
+function isRecentInboundMessage(key: string): boolean {
+  return recentInboundMessages.check(key);
+}
 
 export async function monitorWebInbox(options: {
   verbose: boolean;
