@@ -4,7 +4,6 @@ read_when:
   - Pairing iOS/Android nodes to a gateway
   - Using node canvas/camera for agent context
   - Adding new node commands or CLI helpers
-title: "Nodes"
 ---
 
 # Nodes
@@ -19,7 +18,6 @@ Notes:
 
 - Nodes are **peripherals**, not gateways. They don’t run the gateway service.
 - Telegram/WhatsApp/etc. messages land on the **gateway**, not on nodes.
-- Troubleshooting runbook: [/nodes/troubleshooting](/nodes/troubleshooting)
 
 ## Pairing + status
 
@@ -62,28 +60,6 @@ On the node machine:
 verso node run --host <gateway-host> --port 18789 --display-name "Build Node"
 ```
 
-### Remote gateway via SSH tunnel (loopback bind)
-
-If the Gateway binds to loopback (`gateway.bind=loopback`, default in local mode),
-remote node hosts cannot connect directly. Create an SSH tunnel and point the
-node host at the local end of the tunnel.
-
-Example (node host -> gateway host):
-
-```bash
-# Terminal A (keep running): forward local 18790 -> gateway 127.0.0.1:18789
-ssh -N -L 18790:127.0.0.1:18789 user@gateway-host
-
-# Terminal B: export the gateway token and connect through the tunnel
-export OPENCLAW_GATEWAY_TOKEN="<gateway-token>"
-openclaw node run --host 127.0.0.1 --port 18790 --display-name "Build Node"
-```
-
-Notes:
-
-- The token is `gateway.auth.token` from the gateway config (`~/.openclaw/openclaw.json` on the gateway host).
-- `openclaw node run` reads `OPENCLAW_GATEWAY_TOKEN` for auth.
-
 ### Start a node host (service)
 
 ```bash
@@ -104,18 +80,7 @@ verso nodes list
 Naming options:
 
 - `--display-name` on `verso node run` / `verso node install` (persists in `~/.verso/node.json` on the node).
-- # `verso nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
-  openclaw nodes pending
-  openclaw nodes approve <requestId>
-  openclaw nodes list
-
-````
-
-Naming options:
-
-- `--display-name` on `openclaw node run` / `openclaw node install` (persists in `~/.openclaw/node.json` on the node).
-- `openclaw nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
->>>>>>> upstream/main
+- `verso nodes rename --node <id|name|ip> --name "Build Node"` (gateway override).
 
 ### Allowlist the commands
 
@@ -124,7 +89,7 @@ Exec approvals are **per node host**. Add allowlist entries from the gateway:
 ```bash
 verso approvals allowlist add --node <id|name|ip> "/usr/bin/uname"
 verso approvals allowlist add --node <id|name|ip> "/usr/bin/sw_vers"
-````
+```
 
 Approvals live on the node host at `~/.verso/exec-approvals.json`.
 

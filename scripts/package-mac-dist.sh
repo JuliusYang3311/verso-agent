@@ -25,16 +25,9 @@ if [[ ! -d "$APP" ]]; then
 fi
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist" 2>/dev/null || echo "0.0.0")
-<<<<<<< HEAD
 ZIP="$ROOT_DIR/dist/Verso-$VERSION.zip"
 DMG="$ROOT_DIR/dist/Verso-$VERSION.dmg"
 NOTARY_ZIP="$ROOT_DIR/dist/Verso-$VERSION.notary.zip"
-=======
-ZIP="$ROOT_DIR/dist/Verso-$VERSION.zip"
-DMG="$ROOT_DIR/dist/Verso-$VERSION.dmg"
-NOTARY_ZIP="$ROOT_DIR/dist/Verso-$VERSION.notary.zip"
-DSYM_ZIP="$ROOT_DIR/dist/Verso-$VERSION.dSYM.zip"
->>>>>>> upstream/main
 SKIP_NOTARIZE="${SKIP_NOTARIZE:-0}"
 NOTARIZE=1
 SKIP_DSYM="${SKIP_DSYM:-0}"

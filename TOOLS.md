@@ -33,8 +33,8 @@ Things like:
 
 ### System Configuration
 
-- **Skills Root Directory**: `/Users/veso/Documents/verso/skills`
-- **Crypto Records Path**: `/Users/veso/Documents/verso/Crypto` (Transaction logs, Account snapshots)
+- **Skills Root Directory**: `~/Documents/verso/skills`
+- **Crypto Records Path**: `~/Documents/verso/Crypto` (Transaction logs, Account snapshots)
 
 ## Why Separate?
 

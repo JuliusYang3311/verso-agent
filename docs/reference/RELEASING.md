@@ -28,15 +28,7 @@ When the operator says “release”, immediately do this preflight (no extra qu
 
 2. **Build & artifacts**
 
-- [ ] # If A2UI inputs changed, run `pnpm canvas:a2ui:bundle` and commit any updated [`src/canvas-host/a2ui/a2ui.bundle.js`](https://github.com/verso/verso/blob/main/src/canvas-host/a2ui/a2ui.bundle.js).
-- [ ] Update CLI/version strings: [`src/cli/program.ts`](https://github.com/openclaw/openclaw/blob/main/src/cli/program.ts) and the Baileys user agent in [`src/provider-web.ts`](https://github.com/openclaw/openclaw/blob/main/src/provider-web.ts).
-- [ ] Confirm package metadata (name, description, repository, keywords, license) and `bin` map points to [`openclaw.mjs`](https://github.com/openclaw/openclaw/blob/main/openclaw.mjs) for `openclaw`.
-- [ ] If dependencies changed, run `pnpm install` so `pnpm-lock.yaml` is current.
-
-2. **Build & artifacts**
-
-- [ ] If A2UI inputs changed, run `pnpm canvas:a2ui:bundle` and commit any updated [`src/canvas-host/a2ui/a2ui.bundle.js`](https://github.com/openclaw/openclaw/blob/main/src/canvas-host/a2ui/a2ui.bundle.js).
-  > > > > > > > upstream/main
+- [ ] If A2UI inputs changed, run `pnpm canvas:a2ui:bundle` and commit any updated [`src/canvas-host/a2ui/a2ui.bundle.js`](https://github.com/verso/verso/blob/main/src/canvas-host/a2ui/a2ui.bundle.js).
 - [ ] `pnpm run build` (regenerates `dist/`).
 - [ ] Verify npm package `files` includes all required `dist/*` folders (notably `dist/node-host/**` and `dist/acp/**` for headless node + ACP CLI).
 - [ ] Confirm `dist/build-info.json` exists and includes the expected `commit` hash (CLI banner uses this for npm installs).
@@ -65,25 +57,17 @@ When the operator says “release”, immediately do this preflight (no extra qu
 5. **macOS app (Sparkle)**
 
 - [ ] Build + sign the macOS app, then zip it for distribution.
-      <<<<<<< HEAD
 - [ ] Generate the Sparkle appcast (HTML notes via [`scripts/make_appcast.sh`](https://github.com/verso/verso/blob/main/scripts/make_appcast.sh)) and update `appcast.xml`.
 - [ ] Keep the app zip (and optional dSYM zip) ready to attach to the GitHub release.
 - [ ] Follow [macOS release](/platforms/mac/release) for the exact commands and required env vars.
   - `APP_BUILD` must be numeric + monotonic (no `-beta`) so Sparkle compares versions correctly.
-  - # If notarizing, use the `verso-notary` keychain profile created from App Store Connect API env vars (see [macOS release](/platforms/mac/release)).
-- [ ] Generate the Sparkle appcast (HTML notes via [`scripts/make_appcast.sh`](https://github.com/openclaw/openclaw/blob/main/scripts/make_appcast.sh)) and update `appcast.xml`.
-- [ ] Keep the app zip (and optional dSYM zip) ready to attach to the GitHub release.
-- [ ] Follow [macOS release](/platforms/mac/release) for the exact commands and required env vars.
-  - `APP_BUILD` must be numeric + monotonic (no `-beta`) so Sparkle compares versions correctly.
-  - If notarizing, use the `openclaw-notary` keychain profile created from App Store Connect API env vars (see [macOS release](/platforms/mac/release)).
+  - If notarizing, use the `verso-notary` keychain profile created from App Store Connect API env vars (see [macOS release](/platforms/mac/release)).
 
 6. **Publish (npm)**
-   > > > > > > > upstream/main
 
 - [ ] Confirm git status is clean; commit and push as needed.
 - [ ] `npm login` (verify 2FA) if needed.
 - [ ] `npm publish --access public` (use `--tag beta` for pre-releases).
-      <<<<<<< HEAD
 - [ ] Verify the registry: `npm view verso version`, `npm view verso dist-tags`, and `npx -y verso@X.Y.Z --version` (or `--help`).
 
 ### Troubleshooting (notes from 2.0.0-beta2 release)
@@ -92,17 +76,7 @@ When the operator says “release”, immediately do this preflight (no extra qu
 - **npm auth web loop for dist-tags**: use legacy auth to get an OTP prompt:
   - `NPM_CONFIG_AUTH_TYPE=legacy npm dist-tag add verso@X.Y.Z latest`
 - **`npx` verification fails with `ECOMPROMISED: Lock compromised`**: retry with a fresh cache:
-  - # `NPM_CONFIG_CACHE=/tmp/npm-cache-$(date +%s) npx -y verso@X.Y.Z --version`
-- [ ] Verify the registry: `npm view openclaw version`, `npm view openclaw dist-tags`, and `npx -y openclaw@X.Y.Z --version` (or `--help`).
-
-### Troubleshooting (notes from 2.0.0-beta2 release)
-
-- **npm pack/publish hangs or produces huge tarball**: the macOS app bundle in `dist/Verso.app` (and release zips) get swept into the package. Fix by whitelisting publish contents via `package.json` `files` (include dist subdirs, docs, skills; exclude app bundles). Confirm with `npm pack --dry-run` that `dist/Verso.app` is not listed.
-- **npm auth web loop for dist-tags**: use legacy auth to get an OTP prompt:
-  - `NPM_CONFIG_AUTH_TYPE=legacy npm dist-tag add openclaw@X.Y.Z latest`
-- **`npx` verification fails with `ECOMPROMISED: Lock compromised`**: retry with a fresh cache:
-  - `NPM_CONFIG_CACHE=/tmp/npm-cache-$(date +%s) npx -y openclaw@X.Y.Z --version`
-    > > > > > > > upstream/main
+  - `NPM_CONFIG_CACHE=/tmp/npm-cache-$(date +%s) npx -y verso@X.Y.Z --version`
 - **Tag needs repointing after a late fix**: force-update and push the tag, then ensure the GitHub release assets still match:
   - `git tag -f vX.Y.Z && git push -f origin vX.Y.Z`
 
@@ -139,27 +113,7 @@ Current npm plugin list (update as needed):
 - @verso/nostr
 - @verso/voice-call
 - @verso/zalo
-- # @verso/zalouser
-
-1. `npm search @openclaw --json` and capture the package names.
-2. Compare with `extensions/*/package.json` names.
-3. Publish only the **intersection** (already on npm).
-
-Current npm plugin list (update as needed):
-
-- @openclaw/bluebubbles
-- @openclaw/diagnostics-otel
-- @openclaw/discord
-- @openclaw/feishu
-- @openclaw/lobster
-- @openclaw/matrix
-- @openclaw/msteams
-- @openclaw/nextcloud-talk
-- @openclaw/nostr
-- @openclaw/voice-call
-- @openclaw/zalo
-- @openclaw/zalouser
-  > > > > > > > upstream/main
+- @verso/zalouser
 
 Release notes must also call out **new optional bundled plugins** that are **not
 on by default** (example: `tlon`).

@@ -10,12 +10,6 @@ title: "Skills"
 
 # Verso uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Verso loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
 
-# Skills (Verso)
-
-Verso uses **[AgentSkills](https://agentskills.io)-compatible** skill folders to teach the agent how to use tools. Each skill is a directory containing a `SKILL.md` with YAML frontmatter and instructions. Verso loads **bundled skills** plus optional local overrides, and filters them at load time based on environment, config, and binary presence.
-
-> > > > > > > upstream/main
-
 ## Locations and precedence
 
 Skills are loaded from **three** places:
@@ -129,22 +123,21 @@ metadata:
 
 # Fields under `metadata.verso`:
 
-metadata:
-{
-"openclaw":
-{
-"requires": { "bins": ["uv"], "env": ["GEMINI_API_KEY"], "config": ["browser.enabled"] },
-"primaryEnv": "GEMINI_API_KEY",
-},
-}
-
+```markdown
 ---
+name: nano-banana-pro
+description: Generate or edit images via Gemini 3 Pro Image
+metadata:
+  {
+    "verso":
+      {
+        "requires": { "bins": ["uv"], "env": ["GEMINI_API_KEY"], "config": ["browser.enabled"] },
+        "primaryEnv": "GEMINI_API_KEY",
+      },
+  }
+---
+```
 
-````
-
-Fields under `metadata.openclaw`:
-
->>>>>>> upstream/main
 - `always: true` — always include the skill (skip other gates).
 - `emoji` — optional emoji used by the macOS Skills UI.
 - `homepage` — optional URL shown as “Website” in the macOS Skills UI.
@@ -172,10 +165,26 @@ Installer example:
 ---
 name: gemini
 description: Use Gemini CLI for coding assistance and Google search lookups.
-<<<<<<< HEAD
-metadata: {"verso":{"emoji":"♊️","requires":{"bins":["gemini"]},"install":[{"id":"brew","kind":"brew","formula":"gemini-cli","bins":["gemini"],"label":"Install Gemini CLI (brew)"}]}}
+metadata:
+  {
+    "verso":
+      {
+        "emoji": "♊️",
+        "requires": { "bins": ["gemini"] },
+        "install":
+          [
+            {
+              "id": "brew",
+              "kind": "brew",
+              "formula": "gemini-cli",
+              "bins": ["gemini"],
+              "label": "Install Gemini CLI (brew)",
+            },
+          ],
+      },
+  }
 ---
-````
+```
 
 Notes:
 
@@ -185,11 +194,8 @@ Notes:
 - Node installs honor `skills.install.nodeManager` in `verso.json` (default: npm; options: npm/pnpm/yarn/bun).
   This only affects **skill installs**; the Gateway runtime should still be Node
   (Bun is not recommended for WhatsApp/Telegram).
-- Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew’s `bin` when possible.
+- Go installs: if `go` is missing and `brew` is available, the gateway installs Go via Homebrew first and sets `GOBIN` to Homebrew's `bin` when possible.
 - Download installs: `url` (required), `archive` (`tar.gz` | `tar.bz2` | `zip`), `extract` (default: auto when archive detected), `stripComponents`, `targetDir` (default: `~/.verso/tools/<skillKey>`).
-
-If no `metadata.verso` is present, the skill is always eligible (unless
-disabled in config or blocked by `skills.allowBundled` for bundled skills).
 
 ## Config overrides (`~/.verso/verso.json`)
 
@@ -236,15 +242,10 @@ Rules:
 When an agent run starts, Verso:
 
 1. Reads skill metadata.
-2. # Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
-   When an agent run starts, Verso:
-
-1) Reads skill metadata.
-2) Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
-   > > > > > > > upstream/main
-   > > > > > > > `process.env`.
-3) Builds the system prompt with **eligible** skills.
-4) Restores the original environment after the run ends.
+2. Applies any `skills.entries.<key>.env` or `skills.entries.<key>.apiKey` to
+   `process.env`.
+3. Builds the system prompt with **eligible** skills.
+4. Restores the original environment after the run ends.
 
 This is **scoped to the agent run**, not a global shell environment.
 

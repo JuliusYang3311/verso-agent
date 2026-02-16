@@ -1,5 +1,4 @@
 #!/data/data/com.termux/files/usr/bin/bash
-<<<<<<< HEAD
 # Verso OAuth Sync Widget
 # Syncs Claude Code tokens to Verso on l36 server
 # Place in ~/.shortcuts/ on phone for Termux:Widget
@@ -8,17 +7,6 @@ termux-toast "Syncing Verso auth..."
 
 # Run sync on l36 server
 RESULT=$(ssh l36 '/home/admin/verso/scripts/sync-claude-code-auth.sh' 2>&1)
-=======
-# Verso OAuth Sync Widget
-# Syncs Claude Code tokens to Verso on l36 server
-# Place in ~/.shortcuts/ on phone for Termux:Widget
-
-termux-toast "Syncing Verso auth..."
-
-# Run sync on l36 server
-SERVER="${OPENCLAW_SERVER:-${CLAWDBOT_SERVER:-l36}}"
-RESULT=$(ssh "$SERVER" '/home/admin/openclaw/scripts/sync-claude-code-auth.sh' 2>&1)
->>>>>>> upstream/main
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then

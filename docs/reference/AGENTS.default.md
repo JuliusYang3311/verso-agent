@@ -11,23 +11,7 @@ read_when:
 
 # Verso uses a dedicated workspace directory for the agent. Default: `~/verso` (configurable via `agents.defaults.workspace`).
 
-summary: "Default Verso agent instructions and skills roster for the personal assistant setup"
-read_when:
-
-- Starting a new Verso agent session
-- Enabling or auditing default skills
-
----
-
-# AGENTS.md — Verso Personal Assistant (default)
-
-## First run (recommended)
-
-Verso uses a dedicated workspace directory for the agent. Default: `~/.openclaw/workspace` (configurable via `agents.defaults.workspace`).
-
-> > > > > > > upstream/main
-
-1. Create the workspace (if it doesn’t already exist):
+1. Create the workspace (if it doesn't already exist):
 
 ```bash
 mkdir -p ~/verso
@@ -105,13 +89,7 @@ git commit -m "Add Verso workspace"
 ## What Verso Does
 
 - Runs WhatsApp gateway + Pi coding agent so the assistant can read/write chats, fetch context, and run skills via the host Mac.
-- # macOS app manages permissions (screen recording, notifications, microphone) and exposes the `verso` CLI via its bundled binary.
-
-## What Verso Does
-
-- Runs WhatsApp gateway + Pi coding agent so the assistant can read/write chats, fetch context, and run skills via the host Mac.
-- macOS app manages permissions (screen recording, notifications, microphone) and exposes the `openclaw` CLI via its bundled binary.
-  > > > > > > > upstream/main
+- macOS app manages permissions (screen recording, notifications, microphone) and exposes the `verso` CLI via its bundled binary.
 - Direct chats collapse into the agent's `main` session by default; groups stay isolated as `agent:<agentId>:<channel>:group:<id>` (rooms/channels: `agent:<agentId>:<channel>:channel:<id>`); heartbeats keep background tasks alive.
 
 ## Core Skills (enable in Settings → Skills)
@@ -136,21 +114,10 @@ git commit -m "Add Verso workspace"
 
 ## Usage Notes
 
-<<<<<<< HEAD
-
 - Prefer the `verso` CLI for scripting; mac app handles permissions.
 - Run installs from the Skills tab; it hides the button if a binary is already present.
 - Keep heartbeats enabled so the assistant can schedule reminders, monitor inboxes, and trigger camera captures.
-- Canvas UI runs full-screen with native overlays. Avoid placing critical controls in the top-left/top-right/bottom edges; add explicit gutters in the layout and don’t rely on safe-area insets.
+- Canvas UI runs full-screen with native overlays. Avoid placing critical controls in the top-left/top-right/bottom edges; add explicit gutters in the layout and don't rely on safe-area insets.
 - For browser-driven verification, use `verso browser` (tabs/status/screenshot) with the verso-managed Chrome profile.
 - For DOM inspection, use `verso browser eval|query|dom|snapshot` (and `--json`/`--out` when you need machine output).
-- # For interactions, use `verso browser click|type|hover|drag|select|upload|press|wait|navigate|back|evaluate|run` (click/type require snapshot refs; use `evaluate` for CSS selectors).
-
-- Prefer the `openclaw` CLI for scripting; mac app handles permissions.
-- Run installs from the Skills tab; it hides the button if a binary is already present.
-- Keep heartbeats enabled so the assistant can schedule reminders, monitor inboxes, and trigger camera captures.
-- Canvas UI runs full-screen with native overlays. Avoid placing critical controls in the top-left/top-right/bottom edges; add explicit gutters in the layout and don’t rely on safe-area insets.
-- For browser-driven verification, use `openclaw browser` (tabs/status/screenshot) with the Verso-managed Chrome profile.
-- For DOM inspection, use `openclaw browser eval|query|dom|snapshot` (and `--json`/`--out` when you need machine output).
-- For interactions, use `openclaw browser click|type|hover|drag|select|upload|press|wait|navigate|back|evaluate|run` (click/type require snapshot refs; use `evaluate` for CSS selectors).
-  > > > > > > > upstream/main
+- For interactions, use `verso browser click|type|hover|drag|select|upload|press|wait|navigate|back|evaluate|run` (click/type require snapshot refs; use `evaluate` for CSS selectors).

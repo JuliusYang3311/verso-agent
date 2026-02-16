@@ -9,13 +9,7 @@ title: "Configuration"
 
 Verso reads an optional **JSON5** config from `~/.verso/verso.json` (comments + trailing commas allowed).
 
-# If the file is missing, Verso uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/verso`). You usually only need a config to:
-
-Verso reads an optional **JSON5** config from `~/.openclaw/openclaw.json` (comments + trailing commas allowed).
-
-If the file is missing, Verso uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/.openclaw/workspace`). You usually only need a config to:
-
-> > > > > > > upstream/main
+If the file is missing, Verso uses safe-ish defaults (embedded Pi agent + per-sender sessions + workspace `~/verso`). You usually only need a config to:
 
 - restrict who can trigger the bot (`channels.whatsapp.allowFrom`, `channels.telegram.allowFrom`, etc.)
 - control group allowlists + mention behavior (`channels.whatsapp.groups`, `channels.telegram.groups`, `channels.discord.guilds`, `agents.list[].groupChat`)
@@ -316,11 +310,7 @@ This effectively sources your shell profile.
 Env var equivalent:
 
 - `VERSO_LOAD_SHELL_ENV=1`
-- # `VERSO_SHELL_ENV_TIMEOUT_MS=15000`
-
-- `OPENCLAW_LOAD_SHELL_ENV=1`
-- `OPENCLAW_SHELL_ENV_TIMEOUT_MS=15000`
-  > > > > > > > upstream/main
+- `VERSO_SHELL_ENV_TIMEOUT_MS=15000`
 
 ### Env var substitution in config
 
@@ -367,32 +357,21 @@ You can reference environment variables directly in any config string value usin
 
 ### Auth storage (OAuth + API keys)
 
-<<<<<<< HEAD
 Verso stores **per-agent** auth profiles (OAuth + API keys) in:
 
-- # `<agentDir>/auth-profiles.json` (default: `~/.verso/agents/<agentId>/agent/auth-profiles.json`)
-
-  Verso stores **per-agent** auth profiles (OAuth + API keys) in:
-
-- `<agentDir>/auth-profiles.json` (default: `~/.openclaw/agents/<agentId>/agent/auth-profiles.json`)
-  > > > > > > > upstream/main
+- `<agentDir>/auth-profiles.json` (default: `~/.verso/agents/<agentId>/agent/auth-profiles.json`)
 
 See also: [/concepts/oauth](/concepts/oauth)
 
 Legacy OAuth imports:
-<<<<<<< HEAD
 
-- # `~/.verso/credentials/oauth.json` (or `$VERSO_STATE_DIR/credentials/oauth.json`)
-
-- `~/.openclaw/credentials/oauth.json` (or `$OPENCLAW_STATE_DIR/credentials/oauth.json`)
-  > > > > > > > upstream/main
+- `~/.verso/credentials/oauth.json` (or `$VERSO_STATE_DIR/credentials/oauth.json`)
 
 The embedded Pi agent maintains a runtime cache at:
 
-- `<agentDir>/auth.json` (managed automatically; don’t edit manually)
+- `<agentDir>/auth.json` (managed automatically; don't edit manually)
 
 Legacy agent dir (pre multi-agent):
-<<<<<<< HEAD
 
 - `~/.verso/agent/*` (migrated by `verso doctor` into `~/.verso/agents/<defaultAgentId>/agent/*`)
 
@@ -401,18 +380,7 @@ Overrides:
 - OAuth dir (legacy import only): `VERSO_OAUTH_DIR`
 - Agent dir (default agent root override): `VERSO_AGENT_DIR` (preferred), `PI_CODING_AGENT_DIR` (legacy)
 
-# On first use, Verso imports `oauth.json` entries into `auth-profiles.json`.
-
-- `~/.openclaw/agent/*` (migrated by `openclaw doctor` into `~/.openclaw/agents/<defaultAgentId>/agent/*`)
-
-Overrides:
-
-- OAuth dir (legacy import only): `OPENCLAW_OAUTH_DIR`
-- Agent dir (default agent root override): `OPENCLAW_AGENT_DIR` (preferred), `PI_CODING_AGENT_DIR` (legacy)
-
 On first use, Verso imports `oauth.json` entries into `auth-profiles.json`.
-
-> > > > > > > upstream/main
 
 ### `auth`
 
@@ -438,8 +406,7 @@ rotation order used for failover.
 
 Optional per-agent identity used for defaults and UX. This is written by the macOS onboarding assistant.
 
-<<<<<<< HEAD
-If set, Verso derives defaults (only when you haven’t set them explicitly):
+If set, Verso derives defaults (only when you haven't set them explicitly):
 }
 
 ````

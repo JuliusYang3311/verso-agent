@@ -3,24 +3,15 @@ summary: "Setup guide: keep your Verso setup tailored while staying up-to-date"
 read_when:
   - Setting up a new machine
   - You want “latest + greatest” without breaking your personal setup
-title: "Setup"
 ---
 
 # Setup
-
-<Note>
-If you are setting up for the first time, start with [Getting Started](/start/getting-started).
-For wizard details, see [Onboarding Wizard](/start/wizard).
-</Note>
 
 Last updated: 2026-01-01
 
 ## TL;DR
 
-- # **Tailoring lives outside the repo:** `~/verso` (workspace) + `~/.verso/verso.json` (config).
-
-- **Tailoring lives outside the repo:** `~/.openclaw/workspace` (workspace) + `~/.openclaw/openclaw.json` (config).
-  > > > > > > > upstream/main
+- **Tailoring lives outside the repo:** `~/verso` (workspace) + `~/.verso/verso.json` (config).
 - **Stable workflow:** install the macOS app; let it run the bundled Gateway.
 - **Bleeding edge workflow:** run the Gateway yourself via `pnpm gateway:watch`, then let the macOS app attach in Local mode.
 
@@ -70,15 +61,7 @@ verso health
 
 If onboarding is not available in your build:
 
-- # Run `verso setup`, then `verso channels login`, then start the Gateway manually (`verso gateway`).
-  openclaw health
-
-````
-
-If onboarding is not available in your build:
-
-- Run `openclaw setup`, then `openclaw channels login`, then start the Gateway manually (`openclaw gateway`).
->>>>>>> upstream/main
+- Run `verso setup`, then `verso channels login`, then start the Gateway manually (`verso gateway`).
 
 ## Bleeding edge workflow (Gateway in a terminal)
 
@@ -90,7 +73,7 @@ If you also want the macOS app on the bleeding edge:
 
 ```bash
 ./scripts/restart-mac.sh
-````
+```
 
 ### 1) Start the dev Gateway
 

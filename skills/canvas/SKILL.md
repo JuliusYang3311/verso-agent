@@ -112,22 +112,13 @@ cat ~/.verso/verso.json | jq '.gateway.bind'
 Then construct the URL:
 
 - **loopback**: `http://127.0.0.1:18793/__verso__/canvas/<file>.html`
-- # **lan/tailnet/auto**: `http://<hostname>:18793/__verso__/canvas/<file>.html`
-  cat ~/.openclaw/openclaw.json | jq '.gateway.bind'
-
-````
-
-Then construct the URL:
-
-- **loopback**: `http://127.0.0.1:18793/__openclaw__/canvas/<file>.html`
-- **lan/tailnet/auto**: `http://<hostname>:18793/__openclaw__/canvas/<file>.html`
->>>>>>> upstream/main
+- **lan/tailnet/auto**: `http://<hostname>:18793/__verso__/canvas/<file>.html`
 
 Find your Tailscale hostname:
 
 ```bash
 tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//'
-````
+```
 
 ### 3. Find connected nodes
 
@@ -167,12 +158,7 @@ canvas action:hide node:<node-id>
 
 1. Check server bind: `cat ~/.verso/verso.json | jq '.gateway.bind'`
 2. Check what port canvas is on: `lsof -i :18793`
-3. # Test URL directly: `curl http://<hostname>:18793/__verso__/canvas/<file>.html`
-
-4. Check server bind: `cat ~/.openclaw/openclaw.json | jq '.gateway.bind'`
-5. Check what port canvas is on: `lsof -i :18793`
-6. Test URL directly: `curl http://<hostname>:18793/__openclaw__/canvas/<file>.html`
-   > > > > > > > upstream/main
+3. Test URL directly: `curl http://<hostname>:18793/__verso__/canvas/<file>.html`
 
 **Solution:** Use the full hostname matching your bind mode, not localhost.
 

@@ -13,14 +13,8 @@ title: "Context"
 
 Beginner mental model:
 
-- # **System prompt** (Verso-built): rules, tools, skills list, time/runtime, and injected workspace files.
-  “Context” is **everything Verso sends to the model for a run**. It is bounded by the model’s **context window** (token limit).
-
-Beginner mental model:
-
 - **System prompt** (Verso-built): rules, tools, skills list, time/runtime, and injected workspace files.
-  > > > > > > > upstream/main
-- **Conversation history**: your messages + the assistant’s messages for this session.
+- **Conversation history**: your messages + the assistant's messages for this session.
 - **Tool calls/results + attachments**: command output, file reads, images/audio, etc.
 
 Context is _not the same thing_ as “memory”: memory can be stored on disk and reloaded later; context is what’s inside the model’s current window.
@@ -95,13 +89,9 @@ Everything the model receives counts, including:
 
 ## How Verso builds the system prompt
 
-# The system prompt is **Verso-owned** and rebuilt each run. It includes:
-
 ## How Verso builds the system prompt
 
 The system prompt is **Verso-owned** and rebuilt each run. It includes:
-
-> > > > > > > upstream/main
 
 - Tool list + short descriptions.
 - Skills list (metadata only; see below).
@@ -114,5 +104,4 @@ Full breakdown: [System Prompt](/concepts/system-prompt).
 
 ## Injected workspace files (Project Context)
 
-<<<<<<< HEAD
 By default, Verso injects a fixed set of workspace files (if present):

@@ -18,10 +18,7 @@ Docker is **optional**. Use it only if you want a containerized gateway or to va
 
 This guide covers:
 
-- # Containerized Gateway (full Verso in Docker)
-
 - Containerized Gateway (full Verso in Docker)
-  > > > > > > > upstream/main
 - Per-session Agent Sandbox (host gateway + Docker-isolated agent tools)
 
 Sandboxing details: [Sandboxing](/gateway/sandboxing)
@@ -53,12 +50,7 @@ Optional env vars:
 
 - `VERSO_DOCKER_APT_PACKAGES` — install extra apt packages during build
 - `VERSO_EXTRA_MOUNTS` — add extra host bind mounts
-- # `VERSO_HOME_VOLUME` — persist `/home/node` in a named volume
-
-- `OPENCLAW_DOCKER_APT_PACKAGES` — install extra apt packages during build
-- `OPENCLAW_EXTRA_MOUNTS` — add extra host bind mounts
-- `OPENCLAW_HOME_VOLUME` — persist `/home/node` in a named volume
-  > > > > > > > upstream/main
+- `VERSO_HOME_VOLUME` — persist `/home/node` in a named volume
 
 After it finishes:
 
@@ -67,15 +59,9 @@ After it finishes:
 - Need the URL again? Run `docker compose run --rm openclaw-cli dashboard --no-open`.
 
 It writes config/workspace on the host:
-<<<<<<< HEAD
 
 - `~/.verso/`
-- # `~/verso`
-
-  > > > > > > > upstream/main
-
-- `~/.openclaw/`
-- `~/.openclaw/workspace`
+- `~/verso`
 
 Running on a VPS? See [Hetzner (Docker VPS)](/install/hetzner).
 
@@ -153,13 +139,9 @@ export VERSO_EXTRA_MOUNTS="$HOME/.codex:/home/node/.codex:ro,$HOME/github:/home/
 ```
 
 Notes:
-<<<<<<< HEAD
 
-- # If you change `VERSO_HOME_VOLUME`, rerun `docker-setup.sh` to regenerate the
-
-- If you change `OPENCLAW_HOME_VOLUME`, rerun `docker-setup.sh` to regenerate the
-  > > > > > > > upstream/main
-  > > > > > > > extra compose file.
+- If you change `VERSO_HOME_VOLUME`, rerun `docker-setup.sh` to regenerate the
+  extra compose file.
 - The named volume persists until removed with `docker volume rm <name>`.
 
 ### Install extra apt packages (optional)
@@ -322,11 +304,8 @@ pnpm test:docker:qr
 ### Notes
 
 - Gateway bind defaults to `lan` for container use.
-  <<<<<<< HEAD
-- # The gateway container is the source of truth for sessions (`~/.verso/agents/<agentId>/sessions/`).
+- The gateway container is the source of truth for sessions (`~/.verso/agents/<agentId>/sessions/`).
 - Dockerfile CMD uses `--allow-unconfigured`; mounted config with `gateway.mode` not `local` will still start. Override CMD to enforce the guard.
-- The gateway container is the source of truth for sessions (`~/.openclaw/agents/<agentId>/sessions/`).
-  > > > > > > > upstream/main
 
 ## Agent Sandbox (host gateway + Docker tools)
 
@@ -467,7 +446,6 @@ If you want a sandbox image with common build tooling (Node, Go, Rust, etc.), bu
 scripts/sandbox-common-setup.sh
 ```
 
-<<<<<<< HEAD
 This builds `verso-sandbox-common:bookworm-slim`. To use it:
 
 ```json5

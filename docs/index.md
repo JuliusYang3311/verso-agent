@@ -98,26 +98,7 @@ verso message send --target +15555550123 --message "Hello from Verso"
 
 Config lives at `~/.verso/verso.json`.
 
-- # If you **do nothing**, Verso uses the bundled Pi binary in RPC mode with per-sender sessions.
-  Need the full install and dev setup? See [Quick start](/start/quickstart).
-
-## Dashboard
-
-Open the browser Control UI after the Gateway starts.
-
-- Local default: [http://127.0.0.1:18789/](http://127.0.0.1:18789/)
-- Remote access: [Web surfaces](/web) and [Tailscale](/gateway/tailscale)
-
-<p align="center">
-  <img src="whatsapp-openclaw.jpg" alt="Verso" width="420" />
-</p>
-
-## Configuration (optional)
-
-Config lives at `~/.openclaw/openclaw.json`.
-
 - If you **do nothing**, Verso uses the bundled Pi binary in RPC mode with per-sender sessions.
-  > > > > > > > upstream/main
 - If you want to lock it down, start with `channels.whatsapp.allowFrom` and (for groups) mention rules.
 
 Example:
@@ -179,32 +160,10 @@ Example:
   - [Webhooks](/automation/webhook)
   - [Gmail hooks (Pub/Sub)](/automation/gmail-pubsub)
   - [Security](/gateway/security)
-  - # [Troubleshooting](/gateway/troubleshooting)
-  <Columns>
-    <Card title="Docs hubs" href="/start/hubs" icon="book-open">
-      All docs and guides, organized by use case.
-    </Card>
-    <Card title="Configuration" href="/gateway/configuration" icon="settings">
-      Core Gateway settings, tokens, and provider config.
-    </Card>
-    <Card title="Remote access" href="/gateway/remote" icon="globe">
-      SSH and tailnet access patterns.
-    </Card>
-    <Card title="Channels" href="/channels/telegram" icon="message-square">
-      Channel-specific setup for WhatsApp, Telegram, Discord, and more.
-    </Card>
-    <Card title="Nodes" href="/nodes" icon="smartphone">
-      iOS and Android nodes with pairing and Canvas.
-    </Card>
-    <Card title="Help" href="/help" icon="life-buoy">
-      Common fixes and troubleshooting entry point.
-    </Card>
-  </Columns>
-  >>>>>>> upstream/main
+  - [Troubleshooting](/gateway/troubleshooting)
 
 ## Learn more
 
-<<<<<<< HEAD
 **Verso = CLAW + TARDIS** — because every space lobster needs a time-and-space machine.
 
 ---
@@ -227,24 +186,3 @@ _"We're all just playing with our own prompts."_ — an AI, probably high on tok
 MIT — Free as a lobster in the ocean 🦞
 
 ---
-
-# _"We're all just playing with our own prompts."_ — An AI, probably high on tokens
-
-<Columns>
-  <Card title="Full feature list" href="/concepts/features" icon="list">
-    Complete channel, routing, and media capabilities.
-  </Card>
-  <Card title="Multi-agent routing" href="/concepts/multi-agent" icon="route">
-    Workspace isolation and per-agent sessions.
-  </Card>
-  <Card title="Security" href="/gateway/security" icon="shield">
-    Tokens, allowlists, and safety controls.
-  </Card>
-  <Card title="Troubleshooting" href="/gateway/troubleshooting" icon="wrench">
-    Gateway diagnostics and common errors.
-  </Card>
-  <Card title="About and credits" href="/reference/credits" icon="info">
-    Project origins, contributors, and license.
-  </Card>
-</Columns>
->>>>>>> upstream/main

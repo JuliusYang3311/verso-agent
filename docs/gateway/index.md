@@ -27,25 +27,7 @@ verso gateway --force
 pnpm gateway:watch
 ```
 
-- # Config hot reload watches `~/.verso/verso.json` (or `VERSO_CONFIG_PATH`).
-  openclaw gateway --port 18789
-
-# for full debug/trace logs in stdio:
-
-openclaw gateway --port 18789 --verbose
-
-# if the port is busy, terminate listeners then start:
-
-openclaw gateway --force
-
-# dev loop (auto-reload on TS changes):
-
-pnpm gateway:watch
-
-````
-
-- Config hot reload watches `~/.openclaw/openclaw.json` (or `OPENCLAW_CONFIG_PATH`).
->>>>>>> upstream/main
+- Config hot reload watches `~/.verso/verso.json` (or `VERSO_CONFIG_PATH`).
   - Default mode: `gateway.reload.mode="hybrid"` (hot-apply safe changes, restart on critical).
   - Hot reload uses in-process restart via **SIGUSR1** when needed.
   - Disable with `gateway.reload.mode="off"`.
@@ -70,6 +52,8 @@ pnpm gateway:watch
 
   ```bash
   ssh -N -L 18789:127.0.0.1:18789 user@host
+  ```
+
 ````
 
 - Clients then connect to `ws://127.0.0.1:18789` through the tunnel.
@@ -91,18 +75,7 @@ Install metadata is embedded in the service config:
 
 - `VERSO_SERVICE_MARKER=verso`
 - `VERSO_SERVICE_KIND=gateway`
-- # `VERSO_SERVICE_VERSION=<version>`
-
-- macOS: `bot.molt.<profile>` (legacy `com.openclaw.*` may still exist)
-- Linux: `openclaw-gateway-<profile>.service`
-- Windows: `Verso Gateway (<profile>)`
-
-Install metadata is embedded in the service config:
-
-- `OPENCLAW_SERVICE_MARKER=openclaw`
-- `OPENCLAW_SERVICE_KIND=gateway`
-- `OPENCLAW_SERVICE_VERSION=<version>`
-  > > > > > > > upstream/main
+- `VERSO_SERVICE_VERSION=<version>`
 
 Rescue-Bot Pattern: keep a second Gateway isolated with its own profile, state dir, workspace, and base port spacing. Full guide: [Rescue-bot guide](/gateway/multiple-gateways#rescue-bot-guide).
 
@@ -111,7 +84,6 @@ Rescue-Bot Pattern: keep a second Gateway isolated with its own profile, state d
 Fast path: run a fully-isolated dev instance (config/state/workspace) without touching your primary setup.
 
 ```bash
-<<<<<<< HEAD
 verso --dev setup
 verso --dev gateway --allow-unconfigured
 # then target the dev instance:
@@ -132,32 +104,7 @@ Derived ports (rules of thumb):
 
 - Base port = `gateway.port` (or `VERSO_GATEWAY_PORT` / `--port`)
 - browser control service port = base + 2 (loopback only)
-- # `canvasHost.port = base + 4` (or `VERSO_CANVAS_HOST_PORT` / config override)
-  openclaw --dev setup
-  openclaw --dev gateway --allow-unconfigured
-
-# then target the dev instance:
-
-openclaw --dev status
-openclaw --dev health
-
-````
-
-Defaults (can be overridden via env/flags/config):
-
-- `OPENCLAW_STATE_DIR=~/.openclaw-dev`
-- `OPENCLAW_CONFIG_PATH=~/.openclaw-dev/openclaw.json`
-- `OPENCLAW_GATEWAY_PORT=19001` (Gateway WS + HTTP)
-- browser control service port = `19003` (derived: `gateway.port+2`, loopback only)
-- `canvasHost.port=19005` (derived: `gateway.port+4`)
-- `agents.defaults.workspace` default becomes `~/.openclaw/workspace-dev` when you run `setup`/`onboard` under `--dev`.
-
-Derived ports (rules of thumb):
-
-- Base port = `gateway.port` (or `OPENCLAW_GATEWAY_PORT` / `--port`)
-- browser control service port = base + 2 (loopback only)
-- `canvasHost.port = base + 4` (or `OPENCLAW_CANVAS_HOST_PORT` / config override)
->>>>>>> upstream/main
+- `canvasHost.port = base + 4` (or `VERSO_CANVAS_HOST_PORT` / config override)
 - Browser profile CDP ports auto-allocate from `browser.controlPort + 9 .. + 108` (persisted per profile).
 
 Checklist per instance:
@@ -195,12 +142,7 @@ VERSO_CONFIG_PATH=~/.verso/b.json VERSO_STATE_DIR=~/.verso-b verso gateway --por
 
 ## Methods (initial set)
 
-<<<<<<< HEAD
-
-- # `health` — full health snapshot (same shape as `verso health --json`).
-
-- `health` — full health snapshot (same shape as `openclaw health --json`).
-  > > > > > > > upstream/main
+- `health` — full health snapshot (same shape as `verso health --json`).
 - `status` — short summary.
 - `system-presence` — current presence list.
 - `system-event` — post a presence/system note (structured).
@@ -292,7 +234,6 @@ Notes:
 - `gateway status` prints config path + probe target to avoid “localhost vs LAN bind” confusion and profile mismatches.
 - `gateway status` includes the last gateway error line when the service looks running but the port is closed.
 - `logs` tails the Gateway file log via RPC (no manual `tail`/`grep` needed).
-  <<<<<<< HEAD
 - If other gateway-like services are detected, the CLI warns unless they are Verso profile services.
   We still recommend **one gateway per machine** for most setups; use isolated profiles/ports for redundancy or a rescue bot. See [Multiple gateways](/gateway/multiple-gateways).
   - Cleanup: `verso gateway uninstall` (current service) and `verso doctor` (legacy migrations).
@@ -309,32 +250,11 @@ Bundled mac app:
 
 ## Supervision (systemd user unit)
 
-# Verso installs a **systemd user service** by default on Linux/WSL2. We
-
-- If other gateway-like services are detected, the CLI warns unless they are Verso profile services.
-  We still recommend **one gateway per machine** for most setups; use isolated profiles/ports for redundancy or a rescue bot. See [Multiple gateways](/gateway/multiple-gateways).
-  - Cleanup: `openclaw gateway uninstall` (current service) and `openclaw doctor` (legacy migrations).
-- `gateway install` is a no-op when already installed; use `openclaw gateway install --force` to reinstall (profile/env/path changes).
-
-Bundled mac app:
-
-- Verso.app can bundle a Node-based gateway relay and install a per-user LaunchAgent labeled
-  `bot.molt.gateway` (or `bot.molt.<profile>`; legacy `com.openclaw.*` labels still unload cleanly).
-- To stop it cleanly, use `openclaw gateway stop` (or `launchctl bootout gui/$UID/bot.molt.gateway`).
-- To restart, use `openclaw gateway restart` (or `launchctl kickstart -k gui/$UID/bot.molt.gateway`).
-  - `launchctl` only works if the LaunchAgent is installed; otherwise use `openclaw gateway install` first.
-  - Replace the label with `bot.molt.<profile>` when running a named profile.
-
-## Supervision (systemd user unit)
-
 Verso installs a **systemd user service** by default on Linux/WSL2. We
+recommend user services for single-user machines (simpler env, per-user config).
+Use a **system service** for multi-user or always-on servers (no lingering
+required, shared supervision).
 
-> > > > > > > upstream/main
-> > > > > > > recommend user services for single-user machines (simpler env, per-user config).
-> > > > > > > Use a **system service** for multi-user or always-on servers (no lingering
-> > > > > > > required, shared supervision).
-
-<<<<<<< HEAD
 `verso gateway install` writes the user unit. `verso doctor` audits the
 unit and can update it to match the current recommended defaults.
 

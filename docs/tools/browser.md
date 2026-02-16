@@ -204,21 +204,13 @@ Remote CDP tips:
 
 Verso supports multiple named profiles (routing configs). Profiles can be:
 
-- # **verso-managed**: a dedicated Chromium-based browser instance with its own user data directory + CDP port
-
-  Verso supports multiple named profiles (routing configs). Profiles can be:
-
-- **openclaw-managed**: a dedicated Chromium-based browser instance with its own user data directory + CDP port
-  > > > > > > > upstream/main
+- **verso-managed**: a dedicated Chromium-based browser instance with its own user data directory + CDP port
 - **remote**: an explicit CDP URL (Chromium-based browser running elsewhere)
 - **extension relay**: your existing Chrome tab(s) via the local relay + Chrome extension
 
 Defaults:
 
-- # The `verso` profile is auto-created if missing.
-
-- The `openclaw` profile is auto-created if missing.
-  > > > > > > > upstream/main
+- The `verso` profile is auto-created if missing.
 - The `chrome` profile is built-in for the Chrome extension relay (points at `http://127.0.0.1:18792` by default).
 - Local CDP ports allocate from **18800–18899** by default.
 - Deleting a profile moves its local data directory to Trash.
@@ -253,29 +245,16 @@ Chrome extension relay takeover requires host browser control, so either:
 1. Load the extension (dev/unpacked):
 
 ```bash
-<<<<<<< HEAD
 verso browser extension install
 ```
 
-- Chrome → `chrome://extensions` → enable “Developer mode”
-- “Load unpacked” → select the directory printed by `verso browser extension path`
+- Chrome → `chrome://extensions` → enable "Developer mode"
+- "Load unpacked" → select the directory printed by `verso browser extension path`
 - Pin the extension, then click it on the tab you want to control (badge shows `ON`).
 
 2. Use it:
 
-- # CLI: `verso browser --browser-profile chrome tabs`
-  openclaw browser extension install
-
-````
-
-- Chrome → `chrome://extensions` → enable “Developer mode”
-- “Load unpacked” → select the directory printed by `openclaw browser extension path`
-- Pin the extension, then click it on the tab you want to control (badge shows `ON`).
-
-2. Use it:
-
-- CLI: `openclaw browser --browser-profile chrome tabs`
->>>>>>> upstream/main
+- CLI: `verso browser --browser-profile chrome tabs`
 - Agent tool: `browser` with `profile="chrome"`
 
 Optional: if you want a different name or relay port, create your own profile:
@@ -286,7 +265,7 @@ verso browser create-profile \
   --driver extension \
   --cdp-url http://127.0.0.1:18792 \
   --color "#00AA00"
-````
+```
 
 Notes:
 
@@ -301,5 +280,4 @@ Notes:
 
 ## Browser selection
 
-<<<<<<< HEAD
 When launching locally, Verso picks the first available:

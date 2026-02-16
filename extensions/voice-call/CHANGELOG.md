@@ -46,10 +46,7 @@
 
 ### Changes
 
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.26
 
@@ -64,109 +61,61 @@
 
 ### Changes
 
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.22
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.21
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.20
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.17-1
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.17
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.16
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.15
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 2026.1.14
 
 ### Changes
 
-<<<<<<< HEAD
-
-- # Version alignment with core Verso release numbers.
-
 - Version alignment with core Verso release numbers.
-  > > > > > > > upstream/main
 
 ## 0.1.0
 
 ### Highlights
 
-<<<<<<< HEAD
-
-- # First public release of the @verso/voice-call plugin.
-
-- First public release of the @openclaw/voice-call plugin.
-  > > > > > > > upstream/main
+- First public release of the @verso/voice-call plugin.
 
 ### Features
 

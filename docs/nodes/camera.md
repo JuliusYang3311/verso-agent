@@ -3,7 +3,6 @@ summary: "Camera capture (iOS node + macOS app) for agent use: photos (jpg) and 
 read_when:
   - Adding or modifying camera capture on iOS nodes or macOS
   - Extending agent-accessible MEDIA temp-file workflows
-title: "Camera Capture"
 ---
 
 # Camera capture (agent)
@@ -81,7 +80,7 @@ Notes:
 
 ## Android node
 
-### Android user setting (default on)
+### User setting (default on)
 
 - Android Settings sheet → **Camera** → **Allow Camera** (`camera.enabled`)
   - Default: **on** (missing key is treated as enabled).
@@ -96,7 +95,7 @@ Notes:
 If permissions are missing, the app will prompt when possible; if denied, `camera.*` requests fail with a
 `*_PERMISSION_REQUIRED` error.
 
-### Android foreground requirement
+### Foreground requirement
 
 Like `canvas.*`, the Android node only allows `camera.*` commands in the **foreground**. Background invocations return `NODE_BACKGROUND_UNAVAILABLE`.
 
@@ -134,23 +133,7 @@ verso nodes camera clip --node <id> --no-audio
 
 Notes:
 
-- # `verso nodes camera snap` defaults to `maxWidth=1600` unless overridden.
-  openclaw nodes camera list --node <id> # list camera ids
-  openclaw nodes camera snap --node <id> # prints MEDIA:<path>
-  openclaw nodes camera snap --node <id> --max-width 1280
-  openclaw nodes camera snap --node <id> --delay-ms 2000
-  openclaw nodes camera snap --node <id> --device-id <id>
-  openclaw nodes camera clip --node <id> --duration 10s # prints MEDIA:<path>
-  openclaw nodes camera clip --node <id> --duration-ms 3000 # prints MEDIA:<path> (legacy flag)
-  openclaw nodes camera clip --node <id> --device-id <id>
-  openclaw nodes camera clip --node <id> --no-audio
-
-````
-
-Notes:
-
-- `openclaw nodes camera snap` defaults to `maxWidth=1600` unless overridden.
->>>>>>> upstream/main
+- `verso nodes camera snap` defaults to `maxWidth=1600` unless overridden.
 - On macOS, `camera.snap` waits `delayMs` (default 2000ms) after warm-up/exposure settle before capturing.
 - Photo payloads are recompressed to keep base64 under 5 MB.
 
@@ -165,7 +148,7 @@ For _screen_ video (not camera), use the macOS companion:
 
 ```bash
 verso nodes screen record --node <id> --duration 10s --fps 15   # prints MEDIA:<path>
-````
+```
 
 Notes:
 

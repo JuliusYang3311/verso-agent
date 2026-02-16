@@ -4,7 +4,6 @@ read_when:
   - Pairing or reconnecting the iOS node
   - Running the iOS app from source
   - Debugging gateway discovery or canvas commands
-title: "iOS App"
 ---
 
 # iOS App (Node)
@@ -74,15 +73,7 @@ verso nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":
 
 Notes:
 
-- # The Gateway canvas host serves `/__verso__/canvas/` and `/__verso__/a2ui/`.
-  openclaw nodes invoke --node "iOS Node" --command canvas.navigate --params '{"url":"http://<gateway-host>:18793/**openclaw**/canvas/"}'
-
-````
-
-Notes:
-
-- The Gateway canvas host serves `/__openclaw__/canvas/` and `/__openclaw__/a2ui/`.
->>>>>>> upstream/main
+- The Gateway canvas host serves `/__verso__/canvas/` and `/__verso__/a2ui/`.
 - The iOS node auto-navigates to A2UI on connect when a canvas host URL is advertised.
 - Return to the built-in scaffold with `canvas.navigate` and `{"url":""}`.
 
@@ -90,7 +81,7 @@ Notes:
 
 ```bash
 verso nodes invoke --node "iOS Node" --command canvas.eval --params '{"javaScript":"(() => { const {ctx} = window.__verso; ctx.clearRect(0,0,innerWidth,innerHeight); ctx.lineWidth=6; ctx.strokeStyle=\"#ff2d55\"; ctx.beginPath(); ctx.moveTo(40,40); ctx.lineTo(innerWidth-40, innerHeight-40); ctx.stroke(); return \"ok\"; })()"}'
-````
+```
 
 ```bash
 verso nodes invoke --node "iOS Node" --command canvas.snapshot --params '{"maxWidth":900,"format":"jpeg"}'

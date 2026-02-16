@@ -13,10 +13,7 @@ Status: experimental. Direct messages only; groups coming soon per Zalo docs.
 
 Zalo ships as a plugin and is not bundled with the core install.
 
-- # Install via CLI: `verso plugins install @verso/zalo`
-
-- Install via CLI: `openclaw plugins install @openclaw/zalo`
-  > > > > > > > upstream/main
+- Install via CLI: `verso plugins install @verso/zalo`
 - Or select **Zalo** during onboarding and confirm the install prompt
 - Details: [Plugins](/tools/plugin)
 
@@ -24,13 +21,9 @@ Zalo ships as a plugin and is not bundled with the core install.
 
 1. Install the Zalo plugin:
    - From a source checkout: `verso plugins install ./extensions/zalo`
-   - # From npm (if published): `verso plugins install @verso/zalo`
-
-1) Install the Zalo plugin:
-   - From a source checkout: `openclaw plugins install ./extensions/zalo`
-   - From npm (if published): `openclaw plugins install @openclaw/zalo`
-     > > > > > > > upstream/main
+   - From npm (if published): `verso plugins install @verso/zalo`
    - Or pick **Zalo** in onboarding and confirm the install prompt
+
 2) Set the token:
    - Env: `ZALO_BOT_TOKEN=...`
    - Or config: `channels.zalo.botToken: "..."`.
@@ -154,16 +147,10 @@ Multi-account support: use `channels.zalo.accounts` with per-account tokens and 
 ## Troubleshooting
 
 **Bot doesn't respond:**
-<<<<<<< HEAD
 
 - Check that the token is valid: `verso channels status --probe`
 - Verify the sender is approved (pairing or allowFrom)
-- # Check gateway logs: `verso logs --follow`
-
-- Check that the token is valid: `openclaw channels status --probe`
-- Verify the sender is approved (pairing or allowFrom)
-- Check gateway logs: `openclaw logs --follow`
-  > > > > > > > upstream/main
+- Check gateway logs: `verso logs --follow`
 
 **Webhook not receiving events:**
 

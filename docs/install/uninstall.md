@@ -3,17 +3,13 @@ summary: "Uninstall Verso completely (CLI, service, state, workspace)"
 read_when:
   - You want to remove Verso from a machine
   - The gateway service is still running after uninstall
-title: "Uninstall"
 ---
 
 # Uninstall
 
 Two paths:
 
-- # **Easy path** if `verso` is still installed.
-
-- **Easy path** if `openclaw` is still installed.
-  > > > > > > > upstream/main
+- **Easy path** if `verso` is still installed.
 - **Manual service removal** if the CLI is gone but the service is still running.
 
 ## Easy path (CLI still installed)
@@ -75,15 +71,7 @@ rm -rf /Applications/Verso.app
 
 Notes:
 
-- # If you used profiles (`--profile` / `VERSO_PROFILE`), repeat step 3 for each state dir (defaults are `~/.verso-<profile>`).
-  rm -rf /Applications/Verso.app
-
-````
-
-Notes:
-
-- If you used profiles (`--profile` / `OPENCLAW_PROFILE`), repeat step 3 for each state dir (defaults are `~/.openclaw-<profile>`).
->>>>>>> upstream/main
+- If you used profiles (`--profile` / `VERSO_PROFILE`), repeat step 3 for each state dir (defaults are `~/.verso-<profile>`).
 - In remote mode, the state dir lives on the **gateway host**, so run steps 1-4 there too.
 
 ## Manual service removal (CLI not installed)
@@ -97,7 +85,7 @@ Default label is `bot.molt.gateway` (or `bot.molt.<profile>`; legacy `com.verso.
 ```bash
 launchctl bootout gui/$UID/bot.molt.gateway
 rm -f ~/Library/LaunchAgents/bot.molt.gateway.plist
-````
+```
 
 If you used a profile, replace the label and plist name with `bot.molt.<profile>`. Remove any legacy `com.verso.*` plists if present.
 

@@ -18,12 +18,7 @@ Zalo Personal ships as a plugin and is not bundled with the core install.
 
 - Install via CLI: `verso plugins install @verso/zalouser`
 - Or from a source checkout: `verso plugins install ./extensions/zalouser`
-- # Details: [Plugins](/plugin)
-
-- Install via CLI: `openclaw plugins install @openclaw/zalouser`
-- Or from a source checkout: `openclaw plugins install ./extensions/zalouser`
-- Details: [Plugins](/tools/plugin)
-  > > > > > > > upstream/main
+- Details: [Plugins](/plugin)
 
 ## Prerequisite: zca-cli
 
@@ -36,13 +31,9 @@ The Gateway machine must have the `zca` binary available in `PATH`.
 
 1. Install the plugin (see above).
 2. Login (QR, on the Gateway machine):
-   - # `verso channels login --channel zalouser`
+   - `verso channels login --channel zalouser`
+     Scan the QR code in the terminal with the Zalo mobile app.
 
-1) Install the plugin (see above).
-2) Login (QR, on the Gateway machine):
-   - `openclaw channels login --channel zalouser`
-     > > > > > > > upstream/main
-   - Scan the QR code in the terminal with the Zalo mobile app.
 3) Enable the channel:
 
 ```json5
@@ -90,14 +81,9 @@ verso directory groups list --channel zalouser --query "work"
 `channels.zalouser.allowFrom` accepts user IDs or names. The wizard resolves names to IDs via `zca friend find` when available.
 
 Approve via:
-<<<<<<< HEAD
 
 - `verso pairing list zalouser`
-- # `verso pairing approve zalouser <code>`
-
-- `openclaw pairing list zalouser`
-- `openclaw pairing approve zalouser <code>`
-  > > > > > > > upstream/main
+- `verso pairing approve zalouser <code>`
 
 ## Group access (optional)
 
@@ -149,12 +135,7 @@ Accounts map to zca profiles. Example:
 
 - Install zca-cli and ensure it’s on `PATH` for the Gateway process.
 
-**Login doesn’t stick:**
-<<<<<<< HEAD
+**Login doesn't stick:**
 
 - `verso channels status --probe`
-- # Re-login: `verso channels logout --channel zalouser && verso channels login --channel zalouser`
-
-- `openclaw channels status --probe`
-- Re-login: `openclaw channels logout --channel zalouser && openclaw channels login --channel zalouser`
-  > > > > > > > upstream/main
+- Re-login: `verso channels logout --channel zalouser && verso channels login --channel zalouser`

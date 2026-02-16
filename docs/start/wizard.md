@@ -187,14 +187,8 @@ Notes:
 
 ## Add another agent
 
-# Use `verso agents add <name>` to create a separate agent with its own workspace,
-
-## Add another agent
-
-Use `openclaw agents add <name>` to create a separate agent with its own workspace,
-
-> > > > > > > upstream/main
-> > > > > > > sessions, and auth profiles. Running without `--workspace` launches the wizard.
+Use `verso agents add <name>` to create a separate agent with its own workspace,
+sessions, and auth profiles. Running without `--workspace` launches the wizard.
 
 What it sets:
 
@@ -204,16 +198,12 @@ What it sets:
 
 Notes:
 
-- # Default workspaces follow `~/verso-<agentId>`.
-
-- Default workspaces follow `~/.openclaw/workspace-<agentId>`.
-  > > > > > > > upstream/main
+- Default workspaces follow `~/verso-<agentId>`.
 - Add `bindings` to route inbound messages (the wizard can do this).
 - Non-interactive flags: `--model`, `--agent-dir`, `--bind`, `--non-interactive`.
 
 ## Full reference
 
-<<<<<<< HEAD
 Use `--non-interactive` to automate or script onboarding:
 
 ```bash

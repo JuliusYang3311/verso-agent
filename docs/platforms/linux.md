@@ -3,7 +3,6 @@ summary: "Linux support + companion app status"
 read_when:
   - Looking for Linux companion app status
   - Planning platform coverage or contributions
-title: "Linux App"
 ---
 
 # Linux App
@@ -21,7 +20,7 @@ Native Linux companion apps are planned. Contributions are welcome if you want t
 4. From your laptop: `ssh -N -L 18789:127.0.0.1:18789 <user>@<host>`
 5. Open `http://127.0.0.1:18789/` and paste your token
 
-Step-by-step VPS guide: [exe.dev](/install/exe-dev)
+Step-by-step VPS guide: [exe.dev](/platforms/exe-dev)
 
 ## Install
 
@@ -64,16 +63,7 @@ verso doctor
 
 ## System control (systemd user unit)
 
-# Verso installs a systemd **user** service by default. Use a **system**
-
-openclaw doctor
-
-```
-
-## System control (systemd user unit)
-
 Verso installs a systemd **user** service by default. Use a **system**
->>>>>>> upstream/main
 service for shared or always-on servers. The full unit example and guidance
 live in the [Gateway runbook](/gateway).
 
@@ -82,7 +72,6 @@ Minimal setup:
 Create `~/.config/systemd/user/verso-gateway[-<profile>].service`:
 
 ```
-
 [Unit]
 Description=Verso Gateway (profile: <profile>, v<version>)
 After=network-online.target
@@ -95,15 +84,10 @@ RestartSec=5
 
 [Install]
 WantedBy=default.target
-
 ```
 
 Enable it:
 
 ```
-
 systemctl --user enable --now verso-gateway[-<profile>].service
-
-```
-
 ```

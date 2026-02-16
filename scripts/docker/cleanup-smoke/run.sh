@@ -3,16 +3,8 @@ set -euo pipefail
 
 cd /repo
 
-<<<<<<< HEAD
 export CLAWDBOT_STATE_DIR="/tmp/verso-test"
 export CLAWDBOT_CONFIG_PATH="${CLAWDBOT_STATE_DIR}/verso.json"
-=======
-export OPENCLAW_STATE_DIR="/tmp/openclaw-test"
-export OPENCLAW_CONFIG_PATH="${OPENCLAW_STATE_DIR}/openclaw.json"
-
-echo "==> Build"
-pnpm build
->>>>>>> upstream/main
 
 echo "==> Seed state"
 mkdir -p "${OPENCLAW_STATE_DIR}/credentials"

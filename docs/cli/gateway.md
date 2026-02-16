@@ -4,7 +4,6 @@ read_when:
   - Running the Gateway from the CLI (dev or servers)
   - Debugging Gateway auth, bind modes, and connectivity
   - Discovering gateways via Bonjour (LAN + tailnet)
-title: "gateway"
 ---
 
 # Gateway CLI
@@ -35,15 +34,7 @@ verso gateway run
 
 Notes:
 
-- # By default, the Gateway refuses to start unless `gateway.mode=local` is set in `~/.verso/verso.json`. Use `--allow-unconfigured` for ad-hoc/dev runs.
-  openclaw gateway run
-
-````
-
-Notes:
-
-- By default, the Gateway refuses to start unless `gateway.mode=local` is set in `~/.openclaw/openclaw.json`. Use `--allow-unconfigured` for ad-hoc/dev runs.
->>>>>>> upstream/main
+- By default, the Gateway refuses to start unless `gateway.mode=local` is set in `~/.verso/verso.json`. Use `--allow-unconfigured` for ad-hoc/dev runs.
 - Binding beyond loopback without auth is blocked (safety guardrail).
 - `SIGUSR1` triggers an in-process restart when authorized (enable `commands.restart` or use the gateway tool/config apply/update).
 - `SIGINT`/`SIGTERM` handlers stop the gateway process, but they don’t restore any custom terminal state. If you wrap the CLI with a TUI or raw-mode input, restore the terminal before exit.
@@ -86,14 +77,11 @@ Shared options (where supported):
 - `--timeout <ms>`: timeout/budget (varies per command).
 - `--expect-final`: wait for a “final” response (agent calls).
 
-Note: when you set `--url`, the CLI does not fall back to config or environment credentials.
-Pass `--token` or `--password` explicitly. Missing explicit credentials is an error.
-
 ### `gateway health`
 
 ```bash
 verso gateway health --url ws://127.0.0.1:18789
-````
+```
 
 ### `gateway status`
 
