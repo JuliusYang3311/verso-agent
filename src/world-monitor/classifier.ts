@@ -103,8 +103,8 @@ export function classifyByKeyword(
 
 // Stub for AI classification - meant to be hooked up to Verso's LLM
 export async function classifyWithAI(
-  title: string,
-  variant: string,
+  _title: string,
+  _variant: string,
 ): Promise<ThreatClassification | null> {
   // TODO: Integrate with defaultRuntime.llm or an agent for deeper analysis
   // For now, return null to fallback to keyword

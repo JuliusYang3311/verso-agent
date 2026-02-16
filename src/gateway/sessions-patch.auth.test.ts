@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { VersoConfig } from "../config/config.js";
 import type { SessionEntry } from "../config/sessions.js";
+import type { SessionsPatchParams } from "./protocol/index.js";
 import { applySessionsPatchToStore } from "./sessions-patch.js";
 
 describe("sessions-patch auth profile preservation", () => {
@@ -68,7 +69,7 @@ describe("sessions-patch auth profile preservation", () => {
       patch: {
         key: "agent:main:s2",
         authProfileId: "new-auth-profile",
-      } as any, // Cast because type definition might be lagging in test file context
+      } as unknown as SessionsPatchParams, // Cast because type definition might be lagging in test file context
       loadGatewayModelCatalog: mockCatalogLoader,
     });
 

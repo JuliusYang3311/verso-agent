@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { VersoConfig } from "../config/config.js";
@@ -49,10 +48,10 @@ function normalizeExecutablePath(value: string): string {
 }
 
 export async function maybeMigrateLegacyGatewayService(
-  cfg: VersoConfig,
-  mode: "local" | "remote",
-  runtime: RuntimeEnv,
-  prompter: DoctorPrompter,
+  _cfg: VersoConfig,
+  _mode: "local" | "remote",
+  _runtime: RuntimeEnv,
+  _prompter: DoctorPrompter,
 ) {
   const legacyServices = await findLegacyGatewayServices(process.env);
   if (legacyServices.length === 0) {
@@ -116,7 +115,11 @@ async function cleanupLegacyLaunchdService(params: {
     DEFAULT_GATEWAY_DAEMON_RUNTIME,
   );
   const port = resolveGatewayPort(cfg, process.env);
-  const { programArguments, workingDirectory, environment } = await buildGatewayInstallPlan({
+  const {
+    programArguments: _programArguments,
+    workingDirectory: _workingDirectory,
+    environment: _environment,
+  } = await buildGatewayInstallPlan({
     env: process.env,
     port,
     token: cfg.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN,

@@ -2,7 +2,7 @@ import type { GoogleConfig, GoogleServiceId } from "../config/types.google.js";
 import type { VersoConfig } from "../config/types.verso.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { note } from "../terminal/note.js";
-import { confirm, select, text } from "./configure.shared.js";
+import { confirm, text } from "./configure.shared.js";
 import { guardCancel } from "./onboard-helpers.js";
 
 export async function promptGoogleConfig(
@@ -66,7 +66,7 @@ export async function promptGoogleConfig(
     runtime,
   );
 
-  const SERVICES: Array<{ value: GoogleServiceId; label: string }> = [
+  const _SERVICES: Array<{ value: GoogleServiceId; label: string }> = [
     { value: "gmail", label: "Gmail" },
     { value: "docs", label: "Google Docs" },
     { value: "sheets", label: "Google Sheets" },
@@ -85,9 +85,9 @@ export async function promptGoogleConfig(
     oauthJsonPath: String(oauthJsonPath ?? "").trim(),
     defaultDriveFolderId: String(defaultDriveFolderId ?? "").trim(),
     uploadPath: String(uploadPath ?? "").trim(),
-    services: (existing?.services?.length
+    services: existing?.services?.length
       ? existing.services
-      : ["gmail", "docs", "sheets", "slides", "calendar", "drive"]) as GoogleServiceId[],
+      : ["gmail", "docs", "sheets", "slides", "calendar", "drive"],
   };
 
   return {

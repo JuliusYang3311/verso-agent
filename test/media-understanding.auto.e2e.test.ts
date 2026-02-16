@@ -4,7 +4,6 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MsgContext } from "../src/auto-reply/templating.js";
 import type { VersoConfig } from "../src/config/config.js";
-import type { VersoConfig } from "../src/config/config.js";
 
 const makeTempDir = async (prefix: string) => await fs.mkdtemp(path.join(os.tmpdir(), prefix));
 

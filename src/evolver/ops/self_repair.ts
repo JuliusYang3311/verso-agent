@@ -19,7 +19,7 @@ export function repair(gitRoot?: string): RepairAction[] {
     execSync("git rebase --abort", { cwd: root, stdio: "ignore" });
     repaired.push("rebase_aborted");
     console.log("[SelfRepair] Aborted pending rebase.");
-  } catch (_e: unknown) {
+  } catch {
     // intentionally ignored
   }
 
@@ -28,7 +28,7 @@ export function repair(gitRoot?: string): RepairAction[] {
     execSync("git merge --abort", { cwd: root, stdio: "ignore" });
     repaired.push("merge_aborted");
     console.log("[SelfRepair] Aborted pending merge.");
-  } catch (_e: unknown) {
+  } catch {
     // intentionally ignored
   }
 
@@ -45,7 +45,7 @@ export function repair(gitRoot?: string): RepairAction[] {
           "[SelfRepair] Removed stale index.lock (" + Math.round(age / 60000) + "min old).",
         );
       }
-    } catch (_e: unknown) {
+    } catch {
       // intentionally ignored
     }
   }

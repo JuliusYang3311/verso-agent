@@ -1,14 +1,16 @@
 import type { VersoConfig } from "../config/types.verso.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { note } from "../terminal/note.js";
-import { confirm, text } from "./configure.shared.js";
+import { text } from "./configure.shared.js";
 import { guardCancel } from "./onboard-helpers.js";
 
 export async function promptGhostConfig(
   nextConfig: VersoConfig,
   runtime: RuntimeEnv,
 ): Promise<VersoConfig> {
-  const existingEntry = nextConfig.skills?.entries?.["ghost"] as any;
+  const existingEntry = nextConfig.skills?.entries?.["ghost"] as
+    | Record<string, unknown>
+    | undefined;
   const existingEnv = existingEntry?.env ?? {};
   const existingConfig = existingEntry?.config ?? {}; // Fallback for old migration
 
@@ -58,7 +60,7 @@ export async function promptGhostConfig(
   const nextEntries = { ...nextSkills.entries };
 
   nextEntries["ghost"] = {
-    ...((nextEntries["ghost"] as any) ?? {}),
+    ...(nextEntries["ghost"] as Record<string, unknown> | undefined),
     env: {
       GHOST_API_URL: String(apiUrl).trim(),
       GHOST_CONTENT_API_KEY: String(contentApiKey).trim(),

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { VersoPluginApi } from "../plugins/types.js";
+import type { InternalHookHandler } from "./internal-hooks.js";
 import type { HookEntry } from "./types.js";
 import { shouldIncludeHook } from "./config.js";
 import { loadHookEntriesFromDir } from "./workspace.js";

@@ -38,7 +38,7 @@ export async function promptCryptoConfig(
     : "https://api.mainnet-beta.solana.com";
 
   /* RPC URL is now auto-configured (Public or Alchemy) to simplify UX */
-  const solanaRpcUrl = defaultSolanaRpc;
+  const _solanaRpcUrl = defaultSolanaRpc;
 
   const solanaPrivateKey = (await guardCancel(
     text({

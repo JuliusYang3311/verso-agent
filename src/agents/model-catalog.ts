@@ -92,9 +92,7 @@ export async function loadModelCatalog(params?: {
             ? entry.contextWindow
             : undefined;
         const reasoning = typeof entry?.reasoning === "boolean" ? entry.reasoning : undefined;
-        const input = Array.isArray(entry?.input)
-          ? (entry.input as Array<"text" | "image" | "audio" | "video">)
-          : undefined;
+        const input = Array.isArray(entry?.input) ? entry.input : undefined;
         // Pass through the API type if discovered
         const api = entry?.api;
         models.push({ id, name, provider, contextWindow, reasoning, input, api });
@@ -103,7 +101,7 @@ export async function loadModelCatalog(params?: {
       // Inject models from Verso Config (custom providers)
       const providers = (cfg.models?.providers ?? {}) as Record<
         string,
-        { models?: Array<{ id: string }> }
+        { models?: Array<{ id: string }>; api?: string }
       >;
       for (const [providerId, conf] of Object.entries(providers)) {
         if (!conf?.models || !Array.isArray(conf.models)) {
@@ -132,7 +130,7 @@ export async function loadModelCatalog(params?: {
               // Since we are forcing custom-openai, this is the correct default.
               // We cast as any because DiscoveredModel usually doesn't expose api in the public type,
               // but it passes through to Model<Api> in the runner.
-              api: (conf as any).api ?? "openai-responses",
+              api: conf.api ?? "openai-responses",
               contextWindow: undefined, // Could assume default or unknown
               reasoning: undefined,
               input: undefined,

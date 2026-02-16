@@ -162,7 +162,8 @@ vi.mock("../pi-embedded-helpers.js", async () => {
       if (!err) {
         return false;
       }
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : "unknown error";
       const lower = msg.toLowerCase();
       return lower.includes("request_too_large") || lower.includes("request size exceeds");
     }),

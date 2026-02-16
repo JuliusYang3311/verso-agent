@@ -76,7 +76,7 @@ function makeToolPolicyMatcher(policy: SandboxToolPolicy) {
   };
 }
 
-const DEFAULT_SUBAGENT_TOOL_DENY = [
+const _DEFAULT_SUBAGENT_TOOL_DENY = [
   // Session management - main agent orchestrates
   "sessions_list",
   "sessions_history",
@@ -95,7 +95,7 @@ const DEFAULT_SUBAGENT_TOOL_DENY = [
   "memory_get",
 ];
 
-export function resolveSubagentToolPolicy(cfg?: VersoConfig): SandboxToolPolicy {
+export function resolveSubagentToolPolicy(_cfg?: VersoConfig): SandboxToolPolicy {
   // Subagent functionality has been removed. This function is kept for backward compatibility
   // and returns an empty policy (no restrictions).
   return { allow: undefined, deny: [] };

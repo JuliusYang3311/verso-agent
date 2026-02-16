@@ -380,7 +380,7 @@ function ensureAllowlisted(cfg: VersoConfig, pluginId: string): VersoConfig {
   };
 }
 
-function enablePluginEntry(cfg: VersoConfig, pluginId: string): VersoConfig {
+function _enablePluginEntry(cfg: VersoConfig, pluginId: string): VersoConfig {
   const entries = {
     ...cfg.plugins?.entries,
     [pluginId]: {

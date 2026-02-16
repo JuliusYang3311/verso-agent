@@ -3,7 +3,7 @@ import path from "node:path";
 import type { VersoConfig, MemorySearchConfig } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import { clampInt, clampNumber, resolveUserPath } from "../utils.js";
-import { resolveAgentConfig, resolveAgentModelPrimary } from "./agent-scope.js";
+import { resolveAgentConfig } from "./agent-scope.js";
 
 export type ResolvedMemorySearchConfig = {
   enabled: boolean;
@@ -121,7 +121,7 @@ function mergeConfig(
   defaults: MemorySearchConfig | undefined,
   overrides: MemorySearchConfig | undefined,
   agentId: string,
-  cfg: VersoConfig,
+  _cfg: VersoConfig,
 ): ResolvedMemorySearchConfig {
   const enabled = overrides?.enabled ?? defaults?.enabled ?? true;
   const sessionMemory =
@@ -294,7 +294,7 @@ function mergeConfig(
   };
 }
 
-function deriveProviderFromModel(model?: string): "openai" | "gemini" | undefined {
+function _deriveProviderFromModel(model?: string): "openai" | "gemini" | undefined {
   if (!model) {
     return undefined;
   }

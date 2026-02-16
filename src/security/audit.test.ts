@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChannelPlugin } from "../channels/plugins/types.js";
 import type { VersoConfig } from "../config/config.js";
@@ -443,8 +442,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -489,8 +491,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -534,8 +539,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -573,8 +581,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -613,8 +624,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -651,8 +665,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevStateDir == null) delete process.env.VERSO_STATE_DIR;
-      else process.env.VERSO_STATE_DIR = prevStateDir;
+      if (prevStateDir == null) {
+        delete process.env.VERSO_STATE_DIR;
+      } else {
+        process.env.VERSO_STATE_DIR = prevStateDir;
+      }
     }
   });
 
@@ -799,8 +816,11 @@ describe("security audit", () => {
         ]),
       );
     } finally {
-      if (prevToken === undefined) delete process.env.VERSO_GATEWAY_TOKEN;
-      else process.env.VERSO_GATEWAY_TOKEN = prevToken;
+      if (prevToken === undefined) {
+        delete process.env.VERSO_GATEWAY_TOKEN;
+      } else {
+        process.env.VERSO_GATEWAY_TOKEN = prevToken;
+      }
     }
   });
 

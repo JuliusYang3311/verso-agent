@@ -86,7 +86,7 @@ export async function callTaskClassifier(
 
   // Force baseUrl on the model object because pi-ai openai-responses only looks at model.baseUrl
   if (auth.baseUrl) {
-    (modelObj as any).baseUrl = auth.baseUrl;
+    (modelObj as Record<string, unknown>).baseUrl = auth.baseUrl;
   }
 
   // INTERNAL RETRY LOOP
@@ -112,7 +112,7 @@ export async function callTaskClassifier(
       };
 
       const result = await completeSimple(
-        modelObj as Model<Api>,
+        modelObj,
         {
           messages: [{ role: "user", content: prompt, timestamp: Date.now() }],
         },
@@ -156,7 +156,7 @@ export async function callTaskClassifier(
       lastError = new Error("No text part in response");
       // Retry (loop continues)
     } catch (err) {
-      logVerbose(`[RouterClassifier] Attempt ${attempts} failed: ${err}`);
+      logVerbose(`[RouterClassifier] Attempt ${attempts} failed: ${String(err)}`);
       lastError = err;
       // Retry on error
     } finally {
@@ -167,7 +167,7 @@ export async function callTaskClassifier(
   // Fallback if all retries failed
   const duration = Date.now() - startTime;
   logVerbose(
-    `[RouterClassifier] Failed after ${maxRetries} attempts (${duration}ms): ${lastError}`,
+    `[RouterClassifier] Failed after ${maxRetries} attempts (${duration}ms): ${String(lastError)}`,
   );
   return "";
 }

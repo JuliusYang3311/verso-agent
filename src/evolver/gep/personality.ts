@@ -73,7 +73,7 @@ function ensureDir(dir: string): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-  } catch (e) {}
+  } catch {}
 }
 
 function readJsonIfExists<T>(filePath: string, fallback: T): T {
@@ -100,7 +100,7 @@ function writeJsonAtomic(filePath: string, obj: unknown): void {
 }
 
 function personalityFilePath(): string {
-  const memoryDir = getMemoryDir();
+  const _memoryDir = getMemoryDir();
   return path.join(getEvolutionDir(), "personality_state.json");
 }
 
@@ -284,7 +284,9 @@ function proposeMutations({
   signals: unknown;
 }): PersonalityMutation[] {
   const s = normalizePersonalityState(baseState);
-  const sig: string[] = Array.isArray(signals) ? signals.map((x: unknown) => String(x || "")) : [];
+  const sig: string[] = Array.isArray(signals)
+    ? signals.map((x: unknown) => (typeof x === "string" ? x : ""))
+    : [];
   const muts: PersonalityMutation[] = [];
 
   const r = String(reason || "");

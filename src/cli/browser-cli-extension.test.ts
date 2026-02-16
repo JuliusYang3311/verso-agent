@@ -62,7 +62,8 @@ describe("bundled extension resolver", () => {
 describe("browser extension install", () => {
   it("installs into the state dir (never node_modules)", async () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "verso-ext-"));
-    const { installChromeExtension } = await import("./browser-cli-extension.js");
+    const { installChromeExtension: _installChromeExtension } =
+      await import("./browser-cli-extension.js");
 
     try {
       const { installChromeExtension } = await import("./browser-cli-extension.js");

@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { google } from "googleapis";
+import type { AnyAgentTool } from "./common.js";
 import { getGoogleOAuthClient } from "../google-auth.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
-import type { AnyAgentTool } from "./common.js";
 
 export const gmailListMessages: AnyAgentTool = {
   name: "gmail_list_messages",
@@ -18,7 +18,9 @@ export const gmailListMessages: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const gmail = google.gmail({ version: "v1", auth });
     const q = readStringParam(params, "q") || "";
@@ -43,7 +45,9 @@ export const gmailGetMessage: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const gmail = google.gmail({ version: "v1", auth });
     const id = readStringParam(params, "id", { required: true });
@@ -55,7 +59,7 @@ export const gmailGetMessage: AnyAgentTool = {
 
     // Simple text extraction for the agent
     const part =
-      res.data.payload?.parts?.find((p: any) => p.mimeType === "text/plain") || res.data.payload;
+      res.data.payload?.parts?.find((p) => p.mimeType === "text/plain") || res.data.payload;
     const body = part?.body?.data ? Buffer.from(part.body.data, "base64").toString("utf-8") : "";
 
     return jsonResult({
@@ -76,7 +80,9 @@ export const gmailSendEmail: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const gmail = google.gmail({ version: "v1", auth });
     const to = readStringParam(params, "to", { required: true });
@@ -125,7 +131,9 @@ export const gmailSendEmailWithAttachment: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const gmail = google.gmail({ version: "v1", auth });
     const to = readStringParam(params, "to", { required: true });

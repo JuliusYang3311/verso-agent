@@ -405,7 +405,6 @@ class VersoA2UIHost extends LitElement {
       try {
         // WebKit message handlers support structured objects; Android's JS interface expects strings.
         if (
-          handler === globalThis.versoCanvasA2UIAction ||
           handler === globalThis.versoCanvasA2UIAction
         ) {
           handler.postMessage(JSON.stringify({ userAction }));

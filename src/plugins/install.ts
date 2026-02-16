@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { LEGACY_MANIFEST_KEY, MANIFEST_KEY } from "../compat/legacy-names.js";
+import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
 import {
   extractArchive,
   fileExists,

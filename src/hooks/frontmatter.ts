@@ -6,7 +6,7 @@ import type {
   HookInvocationPolicy,
   ParsedHookFrontmatter,
 } from "./types.js";
-import { LEGACY_MANIFEST_KEYS, MANIFEST_KEY } from "../compat/legacy-names.js";
+import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
 import { parseFrontmatterBlock } from "../markdown/frontmatter.js";
 import { parseBooleanValue } from "../utils/boolean.js";
 
@@ -84,9 +84,7 @@ export function resolveVersoMetadata(
     return undefined;
   }
   try {
-    const parsed = JSON5.parse(raw) as { verso?: unknown } & Partial<
-      Record<typeof LEGACY_MANIFEST_KEY, unknown>
-    >;
+    const parsed = JSON5.parse(raw);
     if (!parsed || typeof parsed !== "object") {
       return undefined;
     }

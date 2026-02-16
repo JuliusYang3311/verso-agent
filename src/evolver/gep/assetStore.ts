@@ -269,7 +269,7 @@ function ensureSchemaFields(obj: Record<string, unknown>): Record<string, unknow
   if (!obj.asset_id) {
     try {
       obj.asset_id = computeAssetId(obj);
-    } catch (_e) {
+    } catch {
       /* ignored */
     }
   }

@@ -7,7 +7,7 @@ export const worldHandlers: GatewayRequestHandlers = {
     try {
       const limit = typeof params.limit === "number" ? params.limit : undefined;
       const hours = typeof params.hours === "number" ? params.hours : undefined;
-      const result = await worldMonitor.getBrief(limit, hours);
+      const result = worldMonitor.getBrief(limit, hours);
       respond(true, result);
     } catch (err) {
       respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, String(err)));

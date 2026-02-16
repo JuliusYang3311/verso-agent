@@ -4,7 +4,7 @@ import { DEFAULT_PROVIDER } from "../agents/defaults.js";
 import { parseModelRef } from "../agents/model-selection.js";
 import { ensureModelAllowlistEntry } from "./model-allowlist.js";
 
-const SUPPORTED_EMBEDDING_PROVIDERS = new Set(["openai", "gemini", "google"]);
+const _SUPPORTED_EMBEDDING_PROVIDERS = new Set(["openai", "gemini", "google"]);
 
 function normalizeEmbeddingProvider(provider: string): "openai" | "gemini" | undefined {
   if (provider === "openai") {

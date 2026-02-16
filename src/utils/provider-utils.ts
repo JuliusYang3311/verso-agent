@@ -9,7 +9,7 @@
  */
 export function isReasoningTagProvider(
   provider: string | undefined | null,
-  model?: string | undefined | null,
+  model?: string | null,
 ): boolean {
   if (!provider) {
     return false;

@@ -1,8 +1,7 @@
-import { normalizeProviderId } from "../agents/model-selection.js";
 import type { VersoConfig } from "../config/config.js";
 import type { ModelDefinitionConfig } from "../config/types.js";
-import { validateApiKeyInput } from "./auth-choice.api-key.js";
 import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
+import { validateApiKeyInput } from "./auth-choice.api-key.js";
 import { applyDefaultModelChoice } from "./auth-choice.default-model.js";
 import { applyAuthProfileConfig } from "./onboard-auth.js";
 
@@ -14,11 +13,11 @@ function applyCustomProviderConfig(params: {
   models?: ModelDefinitionConfig[];
 }): VersoConfig {
   const { config, providerId, baseUrl, apiKey, models } = params;
-  const providers = { ...(config.models?.providers ?? {}) };
+  const providers = { ...config.models?.providers };
 
   // Create or update the provider entry
   providers[providerId] = {
-    ...(providers[providerId] ?? {}),
+    ...providers[providerId],
     auth: "api-key",
     apiKey,
     baseUrl,
@@ -66,7 +65,9 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
       placeholder: "e.g. llama3, deepseek-coder",
       validate: (val: string) => (val.trim().length > 0 ? undefined : "Required"),
     });
-    if (typeof idInput === "symbol") break; // Cancelled
+    if (typeof idInput === "symbol") {
+      break; // Cancelled
+    }
     const id = idInput.trim();
 
     const contextWindowInput = await prompter.text({
@@ -74,7 +75,9 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
       initialValue: "128000",
       validate: (val: string) => (!isNaN(Number(val)) ? undefined : "Must be a number"),
     });
-    if (typeof contextWindowInput === "symbol") break;
+    if (typeof contextWindowInput === "symbol") {
+      break;
+    }
     const contextWindow = Number(contextWindowInput);
 
     const maxTokensInput = await prompter.text({
@@ -82,14 +85,18 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
       initialValue: "4096",
       validate: (val: string) => (!isNaN(Number(val)) ? undefined : "Must be a number"),
     });
-    if (typeof maxTokensInput === "symbol") break;
+    if (typeof maxTokensInput === "symbol") {
+      break;
+    }
     const maxTokens = Number(maxTokensInput);
 
     const reasoning = await prompter.confirm({
       message: `Does ${id} support reasoning/thinking?`,
       initialValue: false,
     });
-    if (typeof reasoning === "symbol") break;
+    if (typeof reasoning === "symbol") {
+      break;
+    }
 
     const inputChoice = await prompter.multiselect({
       message: `Supported inputs for ${id}`,
@@ -101,8 +108,10 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
       ],
       initialValues: ["text"],
     });
-    if (typeof inputChoice === "symbol") break;
-    const input = inputChoice as string[];
+    if (typeof inputChoice === "symbol") {
+      break;
+    }
+    const input = inputChoice;
 
     models.push({
       id,
@@ -118,7 +127,9 @@ async function promptModelList(prompter: Prompter): Promise<ModelDefinitionConfi
       message: "Add another model?",
       initialValue: false,
     });
-    if (typeof more === "symbol") break;
+    if (typeof more === "symbol") {
+      break;
+    }
     addMore = more;
   }
 
@@ -146,7 +157,7 @@ export async function applyAuthChoiceCustom(
     const apiKey = "ollama";
 
     // Prompt for models in a loop
-    const models = await promptModelList(prompter as any);
+    const models = await promptModelList(prompter as unknown as Prompter);
 
     nextConfig = applyCustomProviderConfig({
       config: nextConfig,
@@ -194,7 +205,9 @@ export async function applyAuthChoiceCustom(
       applyProviderConfig: (cfg) => cfg,
       noteDefault: defaultModelRef,
       noteAgentModel: async (model) => {
-        if (!params.agentId) return;
+        if (!params.agentId) {
+          return;
+        }
         await prompter.note(`Default model set to ${model}`, "Model configured");
       },
       prompter,
@@ -223,7 +236,7 @@ export async function applyAuthChoiceCustom(
     });
 
     // Prompt for models in a loop
-    const models = await promptModelList(prompter as any);
+    const models = await promptModelList(prompter as unknown as Prompter);
 
     nextConfig = applyCustomProviderConfig({
       config: nextConfig,
@@ -268,7 +281,9 @@ export async function applyAuthChoiceCustom(
       applyProviderConfig: (cfg) => cfg,
       noteDefault: fullModelRef,
       noteAgentModel: async (model) => {
-        if (!params.agentId) return;
+        if (!params.agentId) {
+          return;
+        }
         await prompter.note(`Default model set to ${model}`, "Model configured");
       },
       prompter,
@@ -282,7 +297,7 @@ export async function applyAuthChoiceCustom(
       initialValue: true,
     });
 
-    if (useForEmbeddings === true) {
+    if (useForEmbeddings) {
       const embeddingModel = await prompter.text({
         message: "Embedding Model ID",
         placeholder: "e.g. text-embedding-3-small",

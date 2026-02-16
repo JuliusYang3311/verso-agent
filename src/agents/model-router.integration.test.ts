@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createClassifierFn } from "./model-router-classifier.js";
 import type { VersoConfig } from "../config/config.js";
+import { createClassifierFn } from "./model-router-classifier.js";
 
 // Mock @mariozechner/pi-ai
 const mockCompleteSimple = vi.fn();
@@ -8,7 +8,7 @@ vi.mock("@mariozechner/pi-ai", async () => {
   const actual = await vi.importActual("@mariozechner/pi-ai");
   return {
     ...actual,
-    completeSimple: (...args: any[]) => mockCompleteSimple(...args),
+    completeSimple: (...args: unknown[]) => mockCompleteSimple(...args),
     getModel: vi.fn().mockImplementation((p, m) => ({ id: m, provider: p, name: m })),
   };
 });

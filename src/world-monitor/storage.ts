@@ -37,7 +37,7 @@ export class WorldMonitorStorage {
       const data = await fs.readFile(SIGNALS_FILE, "utf-8");
       return JSON.parse(data) as WorldSignal[];
     } catch (error) {
-      if ((error as any).code === "ENOENT") {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         return [];
       }
       console.error("Failed to load signals:", error);
@@ -66,7 +66,7 @@ export class WorldMonitorStorage {
       const data = await fs.readFile(BRIEFS_FILE, "utf-8");
       return JSON.parse(data) as WorldBrief[];
     } catch (error) {
-      if ((error as any).code === "ENOENT") {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         return [];
       }
       console.error("Failed to load briefs:", error);

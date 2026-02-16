@@ -775,7 +775,7 @@ export async function runGatewayUpdate(opts: UpdateRunnerOptions = {}): Promise<
       };
     }
 
-    const doctorArgv = [process.execPath, doctorEntry, "doctor", "--non-interactive"];
+    const _doctorArgv = [process.execPath, doctorEntry, "doctor", "--non-interactive"];
     const doctorStep = await runStep(
       step(
         "verso doctor",

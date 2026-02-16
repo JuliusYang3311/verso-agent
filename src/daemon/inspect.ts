@@ -76,9 +76,9 @@ function hasGatewayServiceMarker(content: string): boolean {
   const markerKeys = ["openclaw_service_marker"];
   const kindKeys = ["openclaw_service_kind"];
   const markerValues = [GATEWAY_SERVICE_MARKER.toLowerCase()];
-  const hasMarkerKey = markerKeys.some((key) => lower.includes(key));
-  const hasKindKey = kindKeys.some((key) => lower.includes(key));
-  const hasMarkerValue = markerValues.some((value) => lower.includes(value));
+  const _hasMarkerKey = markerKeys.some((key) => lower.includes(key));
+  const _hasKindKey = kindKeys.some((key) => lower.includes(key));
+  const _hasMarkerValue = markerValues.some((value) => lower.includes(value));
   return (
     lower.includes("verso_service_marker") &&
     lower.includes(GATEWAY_SERVICE_MARKER.toLowerCase()) &&

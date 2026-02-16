@@ -422,7 +422,7 @@ export function createBrowserTool(opts?: {
               const snapshotDefaults = loadConfig().browser?.snapshotDefaults;
               const format =
                 params.snapshotFormat === "ai" || params.snapshotFormat === "aria"
-                  ? (params.snapshotFormat as "ai" | "aria")
+                  ? params.snapshotFormat
                   : "ai";
               const mode =
                 params.mode === "efficient"

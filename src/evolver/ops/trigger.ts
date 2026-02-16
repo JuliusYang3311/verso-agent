@@ -24,7 +24,7 @@ export function clear(): void {
     if (fs.existsSync(WAKE_FILE)) {
       fs.unlinkSync(WAKE_FILE);
     }
-  } catch (_e: unknown) {
+  } catch {
     // intentionally ignored
   }
 }

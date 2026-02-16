@@ -158,7 +158,7 @@ export function extractSignals({
       const clipped = errLine.replace(/\s+/g, " ").slice(0, 260);
       signals.push("errsig:" + clipped);
     }
-  } catch (_e) {}
+  } catch {}
 
   if (lower.includes("memory.md missing")) {
     signals.push("memory_missing");
@@ -206,7 +206,7 @@ export function extractSignals({
       })[0];
       signals.push("recurring_errsig(" + topErr[1] + "x):" + topErr[0].slice(0, 150));
     }
-  } catch (_e) {}
+  } catch {}
 
   // --- Unsupported input type (e.g. GIF, video formats the LLM can't handle) ---
   if (/unsupported mime|unsupported.*type|invalid.*mime/i.test(lower)) {

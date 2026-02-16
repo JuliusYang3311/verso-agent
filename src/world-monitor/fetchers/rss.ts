@@ -3,7 +3,7 @@ import type { WorldSignal } from "../types.js";
 import { classifyByKeyword } from "../classifier.js";
 import { generateId, isFeedOnCooldown, recordFeedFailure, recordFeedSuccess } from "../utils.js";
 
-interface FeedItem {
+interface _FeedItem {
   title: string;
   link: string;
   pubDate: Date;
@@ -52,7 +52,7 @@ export async function fetchRssFeed(feedName: string, url: string): Promise<World
       isAtom = true;
     }
 
-    const parsedSignals: WorldSignal[] = items.slice(0, 10).map((item: any) => {
+    const parsedSignals: WorldSignal[] = items.slice(0, 10).map((item) => {
       const title = item.querySelector("title")?.textContent || "Untitled";
 
       let link = "";

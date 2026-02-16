@@ -27,7 +27,7 @@ try {
         }
       });
   }
-} catch (_e: unknown) {
+} catch {
   // intentionally ignored
 }
 
@@ -52,7 +52,7 @@ export function checkSkill(skillName: string): SkillIssue | null {
     if (!fs.statSync(skillPath).isDirectory()) {
       return null;
     }
-  } catch (_e: unknown) {
+  } catch {
     return null;
   }
 
@@ -77,13 +77,13 @@ export function checkSkill(skillName: string): SkillIssue | null {
                 timeout: 5000,
                 cwd: skillPath,
               });
-            } catch (_e: unknown) {
+            } catch {
               issues.push("Missing node_modules (needs npm install)");
             }
           }
         }
       }
-    } catch (_e: unknown) {
+    } catch {
       issues.push("Invalid package.json");
     }
   }
@@ -93,7 +93,7 @@ export function checkSkill(skillName: string): SkillIssue | null {
     if (fs.existsSync(entryPoint)) {
       try {
         execSync('node -c "' + entryPoint + '"', { stdio: "ignore", timeout: 5000 });
-      } catch (_e: unknown) {
+      } catch {
         issues.push("Syntax Error in " + mainFile);
       }
     }
@@ -121,7 +121,7 @@ export function autoHeal(skillName: string, issues: string[]): string[] {
         });
         healed.push(issues[i]);
         console.log("[SkillsMonitor] Auto-healed " + skillName + ": npm install");
-      } catch (_e: unknown) {
+      } catch {
         // intentionally ignored
       }
     } else if (issues[i] === "Missing SKILL.md") {
@@ -133,7 +133,7 @@ export function autoHeal(skillName: string, issues: string[]): string[] {
         );
         healed.push(issues[i]);
         console.log("[SkillsMonitor] Auto-healed " + skillName + ": created SKILL.md stub");
-      } catch (_e: unknown) {
+      } catch {
         // intentionally ignored
       }
     }

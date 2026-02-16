@@ -38,7 +38,7 @@ async function ensureData(forceRefresh = false) {
     try {
       await service.refreshFeeds();
     } catch (err) {
-      defaultRuntime.log(`Warning: Failed to refresh feeds: ${err}`);
+      defaultRuntime.log(`Warning: Failed to refresh feeds: ${String(err)}`);
     }
   }
 

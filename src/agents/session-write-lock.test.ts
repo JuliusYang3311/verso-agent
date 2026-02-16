@@ -75,7 +75,7 @@ describe("acquireSessionWriteLock", () => {
   it("removes held locks on termination signals", async () => {
     const signals = ["SIGINT", "SIGTERM", "SIGQUIT", "SIGABRT"] as const;
     // Mock process.kill to prevent actually killing the vitest worker
-    const originalKill = process.kill.bind(process) as typeof process.kill;
+    const originalKill = process.kill.bind(process);
     process.kill = (() => true) as unknown as typeof process.kill;
     try {
       for (const signal of signals) {
@@ -110,7 +110,7 @@ describe("acquireSessionWriteLock", () => {
   });
   it("cleans up locks on SIGINT without removing other handlers", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "verso-lock-"));
-    const originalKill = process.kill.bind(process) as typeof process.kill;
+    const originalKill = process.kill.bind(process);
     const killCalls: Array<NodeJS.Signals | undefined> = [];
     let otherHandlerCalled = false;
 

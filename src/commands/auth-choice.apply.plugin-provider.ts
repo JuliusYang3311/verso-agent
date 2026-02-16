@@ -1,4 +1,6 @@
 import type { VersoConfig } from "../config/config.js";
+import type { ProviderPlugin, ProviderAuthMethod } from "../plugins/types.js";
+import type { ApplyAuthChoiceParams, ApplyAuthChoiceResult } from "./auth-choice.apply.js";
 import { resolveVersoAgentDir } from "../agents/agent-paths.js";
 import {
   resolveDefaultAgentId,

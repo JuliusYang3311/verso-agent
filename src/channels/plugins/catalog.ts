@@ -4,7 +4,6 @@ import type { VersoPackageManifest } from "../../plugins/manifest.js";
 import type { PluginOrigin } from "../../plugins/types.js";
 import type { ChannelMeta } from "./types.js";
 import { LEGACY_MANIFEST_KEY } from "../../compat/legacy-names.js";
-import { MANIFEST_KEY } from "../../compat/legacy-names.js";
 import { discoverVersoPlugins } from "../../plugins/discovery.js";
 import { CONFIG_DIR, resolveUserPath } from "../../utils.js";
 

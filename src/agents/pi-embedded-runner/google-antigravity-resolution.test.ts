@@ -1,11 +1,10 @@
-import path from "node:path";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { registerGoogleAntigravityApi } from "../pi-model-discovery.js";
+import type { VersoConfig } from "../../config/config.js";
 import { resolveModel } from "./model.js";
 
 // Mock dependencies
 vi.mock("../pi-model-discovery.js", async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
     discoverAuthStorage: vi.fn(() => ({
@@ -33,7 +32,7 @@ describe("resolveModel for google-antigravity", () => {
       "google-antigravity",
       "google-antigravity/gemini-3-flash-preview",
       "/tmp/test-agent-dir",
-      { agents: { defaults: { contextTokens: 2000000 } } } as any,
+      { agents: { defaults: { contextTokens: 2000000 } } } as Partial<VersoConfig> as VersoConfig,
     );
 
     expect(result.model).toBeDefined();
@@ -51,7 +50,7 @@ describe("resolveModel for google-antigravity", () => {
       "google-antigravity",
       "gemini-3-flash-preview",
       "/tmp/test-agent-dir",
-      {} as any,
+      {} as Partial<VersoConfig> as VersoConfig,
     );
 
     expect(result.model).toBeDefined();

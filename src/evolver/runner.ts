@@ -114,7 +114,7 @@ function parseMs(v: string | number | undefined | null, fallback: number): numbe
  */
 export async function runEvolutionCycle(options: EvolverRunOptions): Promise<RunCycleResult> {
   const workspace = getWorkspaceRoot(options.workspace);
-  const evolverRoot = getEvolverRoot();
+  const _evolverRoot = getEvolverRoot();
   const t0 = Date.now();
 
   try {

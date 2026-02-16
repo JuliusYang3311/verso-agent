@@ -150,7 +150,7 @@ function rollbackFiles(workspace: string, files: string[]): void {
 /**
  * Create a code agent function that can be passed to the evolver runner.
  */
-export function createEvolverCodeAgent(options: {
+export function createEvolverCodeAgent(_options: {
   workspace: string;
   sandboxValidate?: boolean;
   requireReview?: boolean;

@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { MANIFEST_KEY } from "../compat/legacy-names.js";
 import {
   extractArchive,
   fileExists,
@@ -45,7 +44,7 @@ function unscopedPackageName(name: string): string {
   return trimmed.includes("/") ? (trimmed.split("/").pop() ?? trimmed) : trimmed;
 }
 
-function safeDirName(input: string): string {
+function _safeDirName(input: string): string {
   const trimmed = input.trim();
   if (!trimmed) {
     return trimmed;

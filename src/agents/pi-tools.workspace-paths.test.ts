@@ -27,7 +27,7 @@ describe("workspace path resolution", () => {
   it("reads relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("verso-ws-", async (workspaceDir) => {
       await withTempDir("verso-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
+        const _prevCwd = process.cwd();
         const testFile = "read.txt";
         const contents = "workspace read ok";
         await fs.writeFile(path.join(workspaceDir, testFile), contents, "utf8");
@@ -50,7 +50,7 @@ describe("workspace path resolution", () => {
   it("writes relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("verso-ws-", async (workspaceDir) => {
       await withTempDir("verso-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
+        const _prevCwd = process.cwd();
         const testFile = "write.txt";
         const contents = "workspace write ok";
 
@@ -77,7 +77,7 @@ describe("workspace path resolution", () => {
   it("edits relative paths against workspaceDir even after cwd changes", async () => {
     await withTempDir("verso-ws-", async (workspaceDir) => {
       await withTempDir("verso-cwd-", async (otherDir) => {
-        const prevCwd = process.cwd();
+        const _prevCwd = process.cwd();
         const testFile = "edit.txt";
         await fs.writeFile(path.join(workspaceDir, testFile), "hello world", "utf8");
 

@@ -160,7 +160,7 @@ describe("dispatchReplyFromConfig - async dispatch mode", () => {
 
   it("should fire-and-forget new agent turn in async mode when no active run", async () => {
     const { isEmbeddedPiRunActive } = await import("../../agents/pi-embedded-runner/runs.js");
-    const { getReplyFromConfig } = await import("../reply.js");
+    const { getReplyFromConfig: _getReplyFromConfig } = await import("../reply.js");
 
     // Enable async mode
     mockConfig.agents!.defaults!.asyncDispatch = true;

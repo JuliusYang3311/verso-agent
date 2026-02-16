@@ -283,7 +283,7 @@ export function resolveConfigDir(
   if (override) {
     return resolveUserPath(override);
   }
-  const legacyDir = path.join(homedir(), ".verso");
+  const _legacyDir = path.join(homedir(), ".verso");
   const newDir = path.join(homedir(), ".verso");
   try {
     const hasNew = fs.existsSync(newDir);

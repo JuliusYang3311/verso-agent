@@ -230,7 +230,7 @@ function clamp01(x: unknown): number {
   return Math.max(0, Math.min(1, n));
 }
 
-function safeJsonParse<T>(text: string, fallback: T): T {
+function _safeJsonParse<T>(text: string, fallback: T): T {
   try {
     return JSON.parse(text) as T;
   } catch {
@@ -254,7 +254,12 @@ function readJsonIfExists<T>(filePath: string, fallback: T): T {
 }
 
 function stableHash(input: unknown): string {
-  const s = String(input || "");
+  const s =
+    typeof input === "string"
+      ? input
+      : typeof input === "number" || typeof input === "boolean"
+        ? String(input)
+        : "";
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -297,16 +302,18 @@ function gitListChangedFiles({ repoRoot }: { repoRoot: string }): string[] {
     for (const line of String(s1.out)
       .split("\n")
       .map((l) => l.trim())
-      .filter(Boolean))
+      .filter(Boolean)) {
       files.add(line);
+    }
   }
   const s2 = tryRunCmd("git diff --cached --name-only", { cwd: repoRoot, timeoutMs: 60000 });
   if (s2.ok) {
     for (const line of String(s2.out)
       .split("\n")
       .map((l) => l.trim())
-      .filter(Boolean))
+      .filter(Boolean)) {
       files.add(line);
+    }
   }
   const s3 = tryRunCmd("git ls-files --others --exclude-standard", {
     cwd: repoRoot,
@@ -316,8 +323,9 @@ function gitListChangedFiles({ repoRoot }: { repoRoot: string }): string[] {
     for (const line of String(s3.out)
       .split("\n")
       .map((l) => l.trim())
-      .filter(Boolean))
+      .filter(Boolean)) {
       files.add(line);
+    }
   }
   return Array.from(files);
 }
@@ -357,7 +365,9 @@ function countFileLines(absPath: string): number {
     }
     let n = 1;
     for (let i = 0; i < buf.length; i++) {
-      if (buf[i] === 10) n++;
+      if (buf[i] === 10) {
+        n++;
+      }
     }
     return n;
   } catch {
@@ -443,7 +453,7 @@ function checkConstraints({
   if (!gene || gene.type !== "Gene") {
     return { ok: true, violations };
   }
-  const constraints = (gene.constraints || {}) as Record<string, unknown>;
+  const constraints = gene.constraints || {};
   const maxFiles = Number(constraints.max_files);
   if (Number.isFinite(maxFiles) && maxFiles > 0) {
     if (Number(blast.files) > maxFiles) {
@@ -466,7 +476,7 @@ function checkConstraints({
 // ---------------------------------------------------------------------------
 
 export function readStateForSolidify(): SolidifyState {
-  const memoryDir = getMemoryDir();
+  const _memoryDir = getMemoryDir();
   const statePath = path.join(getEvolutionDir(), "evolution_solidify_state.json");
   return readJsonIfExists<SolidifyState>(statePath, { last_run: null });
 }
@@ -908,7 +918,7 @@ export function solidify({
     String(intent) !== String(mutation.category);
   if (intentMismatch) {
     protocolViolations.push(
-      `intent_mismatch_with_mutation:${String(intent)}!=${String(mutation!.category)}`,
+      `intent_mismatch_with_mutation:${String(intent)}!=${String(mutation.category)}`,
     );
   }
 
@@ -1054,7 +1064,7 @@ export function solidify({
     lastRun && lastRun.run_id
       ? String(lastRun.run_id)
       : stableHash(`${parentEventId || "root"}|${geneId || "none"}|${signalKey}`);
-  (state as SolidifyState).last_solidify = {
+  state.last_solidify = {
     run_id: runId,
     at: ts,
     event_id: event.id,

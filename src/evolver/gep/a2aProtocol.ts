@@ -279,7 +279,7 @@ export function unwrapAssetFromMessage(input: unknown): Record<string, unknown> 
   }
   // If it is a plain asset (Gene/Capsule/EvolutionEvent), return as-is.
   if (obj.type === "Gene" || obj.type === "Capsule" || obj.type === "EvolutionEvent") {
-    return obj as Record<string, unknown>;
+    return obj;
   }
   return null;
 }

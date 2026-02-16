@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { google } from "googleapis";
+import type { AnyAgentTool } from "./common.js";
 import { getGoogleOAuthClient } from "../google-auth.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
-import type { AnyAgentTool } from "./common.js";
 
 export const docsCreateDocument: AnyAgentTool = {
   name: "docs_create_document",
@@ -14,7 +14,9 @@ export const docsCreateDocument: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const docsClient = google.docs({ version: "v1", auth });
     const driveClient = google.drive({ version: "v3", auth }); // Drive is easier for initial title
@@ -36,7 +38,9 @@ export const docsCreateDocument: AnyAgentTool = {
     });
 
     const documentId = res.data.id;
-    if (!documentId) throw new Error("Failed to create document");
+    if (!documentId) {
+      throw new Error("Failed to create document");
+    }
 
     if (content) {
       await docsClient.documents.batchUpdate({
@@ -71,7 +75,9 @@ export const sheetsCreateSpreadsheet: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const driveClient = google.drive({ version: "v3", auth });
     const title = readStringParam(params, "title", { required: true });
@@ -108,12 +114,14 @@ export const sheetsAppendValues: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const sheets = google.sheets({ version: "v4", auth });
     const spreadsheetId = readStringParam(params, "spreadsheetId", { required: true });
     const range = readStringParam(params, "range", { required: true });
-    const values = params.values as any[][];
+    const values = params.values as unknown[][];
 
     const res = await sheets.spreadsheets.values.append({
       spreadsheetId,
@@ -142,7 +150,9 @@ export const calendarListEvents: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const calendar = google.calendar({ version: "v3", auth });
     const maxResults = readNumberParam(params, "maxResults") || 10;
@@ -173,7 +183,9 @@ export const calendarCreateEvent: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const calendar = google.calendar({ version: "v3", auth });
     const summary = readStringParam(params, "summary", { required: true });
@@ -214,7 +226,9 @@ export const driveListFiles: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const drive = google.drive({ version: "v3", auth });
     const q = readStringParam(params, "q") || "";
@@ -239,7 +253,9 @@ export const slidesCreatePresentation: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const driveClient = google.drive({ version: "v3", auth });
     const title = readStringParam(params, "title", { required: true });
@@ -277,7 +293,9 @@ export const driveUploadFile: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const drive = google.drive({ version: "v3", auth });
     const filePath = readStringParam(params, "filePath", { required: true });
@@ -319,7 +337,9 @@ export const driveDownloadFile: AnyAgentTool = {
   }),
   async execute(_toolCallId, params) {
     const auth = await getGoogleOAuthClient();
-    if (!auth) throw new Error("Google Workspace is not enabled in your configuration.");
+    if (!auth) {
+      throw new Error("Google Workspace is not enabled in your configuration.");
+    }
 
     const drive = google.drive({ version: "v3", auth });
     const fileId = readStringParam(params, "fileId", { required: true });
@@ -359,7 +379,7 @@ export const driveDownloadFile: AnyAgentTool = {
     const dest = fs.createWriteStream(localPath);
 
     return new Promise((resolve, reject) => {
-      (res.data as any)
+      res.data
         .on("end", () => {
           resolve(
             jsonResult({

@@ -52,7 +52,7 @@ export function getRunningPids(): number[] {
       }
     }
     return [...new Set(pids)].filter(isPidRunning);
-  } catch (_e: unknown) {
+  } catch {
     return [];
   }
 }
@@ -61,7 +61,7 @@ function isPidRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
-  } catch (_e: unknown) {
+  } catch {
     return false;
   }
 }
@@ -69,7 +69,7 @@ function isPidRunning(pid: number): boolean {
 function getCmdLine(pid: number): string | null {
   try {
     return execSync("ps -p " + pid + " -o args=", { encoding: "utf8" }).trim();
-  } catch (_e: unknown) {
+  } catch {
     return null;
   }
 }
@@ -139,7 +139,7 @@ export function stop(): StopResult {
     console.log("[Lifecycle] Stopping PID " + pids[i] + "...");
     try {
       process.kill(pids[i], "SIGTERM");
-    } catch (_e: unknown) {
+    } catch {
       // intentionally ignored
     }
   }
@@ -153,7 +153,7 @@ export function stop(): StopResult {
     console.log("[Lifecycle] SIGKILL PID " + remaining[j]);
     try {
       process.kill(remaining[j], "SIGKILL");
-    } catch (_e: unknown) {
+    } catch {
       // intentionally ignored
     }
   }

@@ -4,7 +4,6 @@ import chokidar from "chokidar";
 import * as fsSync from "node:fs";
 import fs from "node:fs/promises";
 import http, { type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import os from "node:os";
 import path from "node:path";
 import { type WebSocket, WebSocketServer } from "ws";
 import type { RuntimeEnv } from "../runtime.js";

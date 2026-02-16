@@ -165,7 +165,7 @@ export async function modelsProvidersAddCommand(runtime: RuntimeEnv) {
     cancel(stylePromptTitle("Cancelled.") ?? "Cancelled.");
     return;
   }
-  const api = apiChoice as ModelApi;
+  const api = apiChoice;
 
   const apiKeyInput = await text({
     message: stylePromptMessage("API key (or env var name)"),

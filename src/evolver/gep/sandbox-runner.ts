@@ -75,7 +75,7 @@ interface VerifySrcChangesParams {
 
 // ---------- Utility functions ----------
 
-function nowIso(): string {
+function _nowIso(): string {
   return new Date().toISOString();
 }
 
@@ -279,14 +279,14 @@ export function runInSandbox(params?: RunInSandboxParams): SandboxRunResult {
     let sandbox: DockerSandboxResult | TmpdirSandboxResult;
     if (mode === "docker") {
       sandbox = createDockerSandbox(workspaceRoot);
-      if (sandbox.ok && (sandbox as DockerSandboxResult).containerName) {
-        sandboxRef = { type: "docker", id: (sandbox as DockerSandboxResult).containerName! };
+      if (sandbox.ok && sandbox.containerName) {
+        sandboxRef = { type: "docker", id: sandbox.containerName };
       }
     } else {
       // Both tmpdir and subprocess modes use tmpdir isolation
       sandbox = createTmpdirSandbox(workspaceRoot);
-      if (sandbox.ok && (sandbox as TmpdirSandboxResult).sandboxDir) {
-        sandboxRef = { type: "tmpdir", id: (sandbox as TmpdirSandboxResult).sandboxDir! };
+      if (sandbox.ok && sandbox.sandboxDir) {
+        sandboxRef = { type: "tmpdir", id: sandbox.sandboxDir };
       }
     }
 

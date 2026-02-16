@@ -1,7 +1,7 @@
+import type { OAuth2Client } from "google-auth-library";
+import { google } from "googleapis";
 import fs from "node:fs";
 import path from "node:path";
-import { google } from "googleapis";
-import type { OAuth2Client } from "google-auth-library";
 import { loadConfig } from "../config/config.js";
 import { STATE_DIR } from "../config/paths.js";
 import { log } from "./auth-profiles/constants.js";
@@ -88,7 +88,7 @@ export async function getGoogleOAuthClient(): Promise<OAuth2Client | null> {
   }
 
   // Refresh token if needed
-  oAuth2Client.on("tokens", (tokens: any) => {
+  oAuth2Client.on("tokens", (tokens) => {
     // Save tokens whenever they are updated (e.g. access token refreshed)
     const currentTokens = fs.existsSync(tokensPath)
       ? JSON.parse(fs.readFileSync(tokensPath, "utf-8"))
@@ -102,7 +102,9 @@ export async function getGoogleOAuthClient(): Promise<OAuth2Client | null> {
 
 export async function exchangeCodeForTokens(code: string): Promise<void> {
   const oAuth2Client = await getGoogleOAuthClientWithoutTokens();
-  if (!oAuth2Client) throw new Error("Google Workspace not enabled or OAuth credentials missing.");
+  if (!oAuth2Client) {
+    throw new Error("Google Workspace not enabled or OAuth credentials missing.");
+  }
 
   const { tokens } = await oAuth2Client.getToken(code);
 
@@ -120,7 +122,9 @@ export async function exchangeCodeForTokens(code: string): Promise<void> {
 
 export async function getGoogleAuthUrl(): Promise<string> {
   const oAuth2Client = await getGoogleOAuthClientWithoutTokens();
-  if (!oAuth2Client) throw new Error("Google Workspace not enabled or OAuth credentials missing.");
+  if (!oAuth2Client) {
+    throw new Error("Google Workspace not enabled or OAuth credentials missing.");
+  }
   return oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,

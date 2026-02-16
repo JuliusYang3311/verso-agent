@@ -9,6 +9,7 @@ import type { VersoConfig as OpenClawConfig } from "../config/config.js";
 import type { ModelAuthMode } from "./model-auth.js";
 import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxContext } from "./sandbox.js";
+import type { SandboxFsBridge } from "./sandbox/fs-bridge.js";
 import { logWarn } from "../logger.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
@@ -237,10 +238,12 @@ export function createOpenClawCodingTools(options?: {
     sandbox?.tools,
     subagentPolicy,
   ]);
-  const callbackHostname = undefined;
+  const _callbackHostname = undefined;
   const execConfig = resolveExecConfig({ cfg: options?.config, agentId });
   const sandboxRoot = sandbox?.workspaceDir;
-  const sandboxFsBridge = (sandbox as any)?.fsBridge;
+  const sandboxFsBridge = (sandbox as Record<string, unknown> | null)?.fsBridge as
+    | SandboxFsBridge
+    | undefined;
   const allowWorkspaceWrites = sandbox?.workspaceAccess !== "ro";
   const workspaceRoot = options?.workspaceDir ?? process.cwd();
   const applyPatchConfig = options?.config?.tools?.exec?.applyPatch;

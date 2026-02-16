@@ -44,7 +44,7 @@ let previousConfigPath: string | undefined;
 let previousSkipBrowserControl: string | undefined;
 let previousSkipGmailWatcher: string | undefined;
 let previousSkipCanvasHost: string | undefined;
-let previousBundledPluginsDir: string | undefined;
+let _previousBundledPluginsDir: string | undefined;
 let tempHome: string | undefined;
 let tempConfigRoot: string | undefined;
 

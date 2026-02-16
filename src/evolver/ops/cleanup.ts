@@ -39,7 +39,7 @@ export function run(): number {
       try {
         fs.unlinkSync(files[i].path);
         deleted++;
-      } catch (_e: unknown) {
+      } catch {
         // intentionally ignored
       }
     }

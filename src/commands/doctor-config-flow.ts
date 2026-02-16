@@ -83,7 +83,7 @@ function stripUnknownConfigKeys(config: VersoConfig): {
     return { config, removed: [] };
   }
 
-  const next = structuredClone(config) as VersoConfig;
+  const next = structuredClone(config);
   const removed: string[] = [];
   for (const issue of parsed.error.issues) {
     if (!isUnrecognizedKeysIssue(issue)) {
@@ -244,7 +244,7 @@ export async function loadAndMaybeMigrateDoctorConfig(params: {
 
   const baseCfg = snapshot.config ?? {};
   let cfg: VersoConfig = baseCfg;
-  let candidate = structuredClone(baseCfg) as VersoConfig;
+  let candidate = structuredClone(baseCfg);
   let pendingChanges = false;
   let shouldWriteConfig = false;
   const fixHints: string[] = [];

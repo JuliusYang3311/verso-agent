@@ -5,7 +5,7 @@ import path from "node:path";
 import type { MemoryAdvice as GraphMemoryAdvice } from "./gep/memoryGraph.js";
 import type { Mutation } from "./gep/mutation.js";
 import type { PersonalityState } from "./gep/personality.js";
-import type { Gene, Capsule, SelectorDecision, MemoryAdvice } from "./gep/selector.js";
+import type { Gene, Capsule, MemoryAdvice } from "./gep/selector.js";
 import type { SolidifyState } from "./gep/solidify.js";
 import {
   loadGenes,
@@ -42,7 +42,7 @@ const WORKSPACE_ROOT: string = getWorkspaceRoot();
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("dotenv").config({ path: path.join(WORKSPACE_ROOT, ".env"), quiet: true });
-} catch (_e) {
+} catch {
   // dotenv might not be installed or .env missing, proceed gracefully
 }
 
@@ -65,8 +65,10 @@ const TODAY_LOG: string = path.join(MEMORY_DIR, new Date().toISOString().split("
 
 // Ensure memory directory exists so state/cache writes work.
 try {
-  if (!fs.existsSync(MEMORY_DIR)) fs.mkdirSync(MEMORY_DIR, { recursive: true });
-} catch (_e) {
+  if (!fs.existsSync(MEMORY_DIR)) {
+    fs.mkdirSync(MEMORY_DIR, { recursive: true });
+  }
+} catch {
   // ignored
 }
 
@@ -98,7 +100,9 @@ function formatSessionLog(jsonlContent: string): string {
   };
 
   for (const line of lines) {
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      continue;
+    }
     try {
       const data: SessionLogData = JSON.parse(line);
       let entry = "";
@@ -109,8 +113,12 @@ function formatSessionLog(jsonlContent: string): string {
         if (Array.isArray(data.message.content)) {
           content = (data.message.content as Array<{ type?: string; text?: string; name?: string }>)
             .map((c) => {
-              if (c.type === "text") return c.text;
-              if (c.type === "toolCall") return `[TOOL: ${c.name}]`;
+              if (c.type === "text") {
+                return c.text;
+              }
+              if (c.type === "toolCall") {
+                return `[TOOL: ${c.name}]`;
+              }
               return "";
             })
             .join(" ");
@@ -130,8 +138,12 @@ function formatSessionLog(jsonlContent: string): string {
         }
 
         // Filter: Skip Heartbeats to save noise
-        if (content.trim() === "HEARTBEAT_OK") continue;
-        if (content.includes("NO_REPLY") && !data.message.errorMessage) continue;
+        if (content.trim() === "HEARTBEAT_OK") {
+          continue;
+        }
+        if (content.includes("NO_REPLY") && !data.message.errorMessage) {
+          continue;
+        }
 
         // Clean up newlines for compact reading
         content = content.replace(/\n+/g, " ").slice(0, 300);
@@ -153,16 +165,20 @@ function formatSessionLog(jsonlContent: string): string {
           }
         }
 
-        if (data.content)
+        if (data.content) {
           resContent =
             typeof data.content === "string" ? data.content : JSON.stringify(data.content);
+        }
 
         if (
           resContent.length < 50 &&
           (resContent.includes("success") || resContent.includes("done"))
-        )
+        ) {
           continue;
-        if (resContent.trim() === "" || resContent === "{}") continue;
+        }
+        if (resContent.trim() === "" || resContent === "{}") {
+          continue;
+        }
 
         // Improvement: Show snippet of result (especially errors) instead of hiding it
         const preview = resContent.replace(/\n+/g, " ").slice(0, 200);
@@ -178,7 +194,7 @@ function formatSessionLog(jsonlContent: string): string {
           lastLine = entry;
         }
       }
-    } catch (_e) {
+    } catch {
       continue;
     }
   }
@@ -194,7 +210,9 @@ interface FileInfo {
 
 function readRealSessionLog(): string {
   try {
-    if (!fs.existsSync(AGENT_SESSIONS_DIR)) return "[NO SESSION LOGS FOUND]";
+    if (!fs.existsSync(AGENT_SESSIONS_DIR)) {
+      return "[NO SESSION LOGS FOUND]";
+    }
 
     const now = Date.now();
     const ACTIVE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -209,14 +227,16 @@ function readRealSessionLog(): string {
         try {
           const st = fs.statSync(path.join(AGENT_SESSIONS_DIR, f));
           return { name: f, time: st.mtime.getTime(), size: st.size };
-        } catch (_e) {
+        } catch {
           return null;
         }
       })
       .filter((f): f is FileInfo => f !== null && now - f.time < ACTIVE_WINDOW_MS)
-      .sort((a, b) => b.time - a.time); // Newest first
+      .toSorted((a, b) => b.time - a.time); // Newest first
 
-    if (files.length === 0) return "[NO JSONL FILES]";
+    if (files.length === 0) {
+      return "[NO JSONL FILES]";
+    }
 
     // Skip evolver's own sessions to avoid self-reference loops
     const nonEvolverFiles = files.filter((f) => !f.name.startsWith("evolver_hand_"));
@@ -249,7 +269,9 @@ function readRealSessionLog(): string {
 
 function readRecentLog(filePath: string, size: number = 10000): string {
   try {
-    if (!fs.existsSync(filePath)) return `[MISSING] ${filePath}`;
+    if (!fs.existsSync(filePath)) {
+      return `[MISSING] ${filePath}`;
+    }
     const stats = fs.statSync(filePath);
     const start = Math.max(0, stats.size - size);
     const buffer = Buffer.alloc(stats.size - start);
@@ -285,7 +307,7 @@ function checkSystemHealth(): string {
       const usedPercent = Math.round((used / total) * 100);
       report.push(`Disk: ${usedPercent}% (${freeGb}G free)`);
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -298,7 +320,7 @@ function checkSystemHealth(): string {
         timeout: 2000,
       });
       report.push(`Node Processes: ${pgrep.trim()}`);
-    } catch (_e) {
+    } catch {
       // Fallback to ps if pgrep fails/missing
       const ps = execSync("ps aux | grep node | grep -v grep | wc -l", {
         encoding: "utf8",
@@ -307,14 +329,16 @@ function checkSystemHealth(): string {
       });
       report.push(`Node Processes: ${ps.trim()}`);
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
   // Integration Health Checks (Env Vars)
   try {
     const issues: string[] = [];
-    if (!process.env.GEMINI_API_KEY) issues.push("Gemini Key Missing");
+    if (!process.env.GEMINI_API_KEY) {
+      issues.push("Gemini Key Missing");
+    }
 
     // Generic Integration Status Check (Decoupled)
     if (process.env.INTEGRATION_STATUS_CMD) {
@@ -324,8 +348,10 @@ function checkSystemHealth(): string {
           stdio: ["ignore", "pipe", "ignore"],
           timeout: 2000,
         });
-        if (status.trim()) issues.push(status.trim());
-      } catch (_e) {
+        if (status.trim()) {
+          issues.push(status.trim());
+        }
+      } catch {
         // ignored
       }
     }
@@ -335,7 +361,7 @@ function checkSystemHealth(): string {
     } else {
       report.push("Integrations: Nominal");
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -394,22 +420,26 @@ const USER_FILE: string = path.join(WORKSPACE_ROOT, "USER.md");
 
 function readMemorySnippet(): string {
   try {
-    if (!fs.existsSync(MEMORY_FILE)) return "[MEMORY.md MISSING]";
+    if (!fs.existsSync(MEMORY_FILE)) {
+      return "[MEMORY.md MISSING]";
+    }
     const content = fs.readFileSync(MEMORY_FILE, "utf8");
     // Optimization: Increased limit from 2000 to 50000 for modern context windows
     return content.length > 50000
       ? content.slice(0, 50000) + `\n... [TRUNCATED: ${content.length - 50000} chars remaining]`
       : content;
-  } catch (_e) {
+  } catch {
     return "[ERROR READING MEMORY.md]";
   }
 }
 
 function readUserSnippet(): string {
   try {
-    if (!fs.existsSync(USER_FILE)) return "[USER.md MISSING]";
+    if (!fs.existsSync(USER_FILE)) {
+      return "[USER.md MISSING]";
+    }
     return fs.readFileSync(USER_FILE, "utf8");
-  } catch (_e) {
+  } catch {
     return "[ERROR READING USER.md]";
   }
 }
@@ -425,7 +455,7 @@ function getNextCycleId(): string {
     if (fs.existsSync(STATE_FILE)) {
       state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8")) as EvolutionState;
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -434,7 +464,7 @@ function getNextCycleId(): string {
 
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -448,28 +478,34 @@ interface FileStatEntry {
 
 function performMaintenance(): void {
   try {
-    if (!fs.existsSync(AGENT_SESSIONS_DIR)) return;
+    if (!fs.existsSync(AGENT_SESSIONS_DIR)) {
+      return;
+    }
 
     // Count files
     const files = fs.readdirSync(AGENT_SESSIONS_DIR).filter((f) => f.endsWith(".jsonl"));
-    if (files.length < 100) return; // Limit before cleanup
+    if (files.length < 100) {
+      return; // Limit before cleanup
+    }
 
     console.log(`[Maintenance] Found ${files.length} session logs. Archiving old ones...`);
 
     const ARCHIVE_DIR = path.join(AGENT_SESSIONS_DIR, "archive");
-    if (!fs.existsSync(ARCHIVE_DIR)) fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+    if (!fs.existsSync(ARCHIVE_DIR)) {
+      fs.mkdirSync(ARCHIVE_DIR, { recursive: true });
+    }
 
     // Sort by time (oldest first)
     const fileStats: FileStatEntry[] = files
       .map((f): FileStatEntry | null => {
         try {
           return { name: f, time: fs.statSync(path.join(AGENT_SESSIONS_DIR, f)).mtime.getTime() };
-        } catch (_e) {
+        } catch {
           return null;
         }
       })
       .filter((f): f is FileStatEntry => f !== null)
-      .sort((a, b) => a.time - b.time);
+      .toSorted((a, b) => a.time - b.time);
 
     // Keep last 50 files, archive the rest
     const toArchive = fileStats.slice(0, fileStats.length - 50);
@@ -563,7 +599,7 @@ async function run(): Promise<void> {
           return;
         }
       }
-    } catch (_e) {
+    } catch {
       // If we cannot read state, proceed (fail open) to avoid deadlock.
     }
   }
@@ -633,7 +669,7 @@ async function run(): Promise<void> {
             };
             fileList = cached.list;
             useCache = true;
-          } catch (_e) {
+          } catch {
             // ignored
           }
         }
@@ -652,7 +688,7 @@ async function run(): Promise<void> {
               if (pkg.description) {
                 desc = pkg.description.slice(0, 100) + (pkg.description.length > 100 ? "..." : "");
               }
-            } catch (_e) {
+            } catch {
               try {
                 const skillMdPath = path.join(skillsDir, name, "SKILL.md");
                 if (fs.existsSync(skillMdPath)) {
@@ -681,7 +717,7 @@ async function run(): Promise<void> {
                     desc = desc.slice(0, 100) + "...";
                   }
                 }
-              } catch (_e2) {
+              } catch {
                 // ignored
               }
             }
@@ -692,7 +728,7 @@ async function run(): Promise<void> {
         // Write cache
         try {
           fs.writeFileSync(SKILLS_CACHE_FILE, JSON.stringify({ list: fileList }, null, 2));
-        } catch (_e) {
+        } catch {
           // ignored
         }
       }
@@ -715,7 +751,7 @@ async function run(): Promise<void> {
       };
       moodStatus = `Mood: ${moodData.current_mood || "Neutral"} (Intensity: ${moodData.intensity || 0})`;
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -738,7 +774,7 @@ async function run(): Promise<void> {
       return Array.isArray(all)
         ? (all.filter((e) => e && e.type === "EvolutionEvent").slice(-80) as EvolutionEvent[])
         : [];
-    } catch (_e) {
+    } catch {
       return [];
     }
   })();
@@ -806,7 +842,7 @@ async function run(): Promise<void> {
   for (const c of newCandidates) {
     try {
       appendCandidateJsonl(c as unknown as Record<string, unknown>);
-    } catch (_e) {
+    } catch {
       // ignored
     }
   }
@@ -898,7 +934,7 @@ async function run(): Promise<void> {
         2,
       )}\n\`\`\``;
     }
-  } catch (_e) {
+  } catch {
     // ignored
   }
 
@@ -1061,7 +1097,7 @@ async function run(): Promise<void> {
         .split("\n")
         .map((l) => l.trim())
         .filter(Boolean);
-    } catch (_e) {
+    } catch {
       // ignored
     }
 
@@ -1073,7 +1109,7 @@ async function run(): Promise<void> {
         timeout: 4000,
       });
       baselineHead = String(out || "").trim() || null;
-    } catch (_e) {
+    } catch {
       // ignored
     }
 
@@ -1242,7 +1278,7 @@ ${mutationDirective}
       if (st && st.last_run && st.last_run.run_id) {
         runId = String(st.last_run.run_id);
       }
-    } catch (_e) {
+    } catch {
       // ignored
     }
     let artifact: { promptPath: string; metaPath: string } | null = null;
@@ -1264,7 +1300,7 @@ ${mutationDirective}
               : null,
         },
       });
-    } catch (_e) {
+    } catch {
       artifact = null;
     }
 

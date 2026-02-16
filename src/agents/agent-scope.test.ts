@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { VersoConfig } from "../config/config.js";
 import {
   resolveAgentConfig,
-  resolveAgentDir,
   resolveAgentModelFallbacksOverride,
   resolveAgentModelPrimary,
-  resolveAgentWorkspaceDir,
 } from "./agent-scope.js";
 
 afterEach(() => {

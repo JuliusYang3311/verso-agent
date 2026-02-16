@@ -6,7 +6,7 @@
 import type { VersoConfig } from "../config/config.js";
 import type { RouterConfig } from "../config/types.router.js";
 import { logVerbose } from "../globals.js";
-import { parseModelRef, type ModelRef } from "./model-selection.js";
+import { parseModelRef } from "./model-selection.js";
 
 const DEFAULT_CLASSIFICATION_TIMEOUT_MS = 30000;
 
@@ -197,7 +197,7 @@ export async function selectDynamicModel(params: SelectDynamicModelParams): Prom
 
       continue;
     } catch (err) {
-      logVerbose(`[RouterLoop] Error during classification attempt ${attempts}: ${err}`);
+      logVerbose(`[RouterLoop] Error during classification attempt ${attempts}: ${String(err)}`);
       if (attempts >= maxAttempts) {
         break;
       } // Break only if max attempts reached? No, break immediately on unexpected error makes sense but we want to know why.
@@ -271,7 +271,7 @@ export async function resolveRouterModel(params: {
   // 1. Skip explicit classification step as requested ("match model itself, not task").
   // We used to call classifyTask here. Now we treat all inputs as "general" or "dynamic"
   // and let the model selector decide purely based on capabilities.
-  const taskType = "general";
+  const _taskType = "general";
   const timeMs = 0;
 
   // 2. Static Mapping removed. System is Pure Dynamic.

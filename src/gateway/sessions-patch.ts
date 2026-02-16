@@ -365,7 +365,8 @@ export async function applySessionsPatchToStore(params: {
   }
 
   if ("authProfileOverride" in patch || "authProfileId" in patch) {
-    const raw = (patch as any).authProfileOverride ?? (patch as any).authProfileId;
+    const patchRecord = patch as Record<string, unknown>;
+    const raw = patchRecord.authProfileOverride ?? patchRecord.authProfileId;
     if (raw === null) {
       delete next.authProfileOverride;
     } else if (typeof raw === "string") {

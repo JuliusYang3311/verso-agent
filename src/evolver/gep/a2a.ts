@@ -128,7 +128,7 @@ export function computeCapsuleSuccessStreak(params: ComputeStreakParams): number
     if (!ev || ev.type !== "EvolutionEvent") {
       continue;
     }
-    if (!ev.capsule_id || String(ev.capsule_id) !== id) {
+    if (!ev.capsule_id || (typeof ev.capsule_id === "string" ? ev.capsule_id : "") !== id) {
       continue;
     }
     const st =

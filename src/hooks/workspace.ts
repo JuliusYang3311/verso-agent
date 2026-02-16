@@ -10,7 +10,6 @@ import type {
   ParsedHookFrontmatter,
 } from "./types.js";
 import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
-import { MANIFEST_KEY } from "../compat/legacy-names.js";
 import { CONFIG_DIR, resolveUserPath } from "../utils.js";
 import { resolveBundledHooksDir } from "./bundled-dir.js";
 import { shouldIncludeHook } from "./config.js";

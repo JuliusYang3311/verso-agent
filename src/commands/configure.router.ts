@@ -5,16 +5,16 @@
 
 import type { VersoConfig } from "../config/config.js";
 import type { RouterConfig } from "../config/types.router.js";
-import { confirm, text } from "./configure.shared.js";
-import { guardCancel } from "./onboard-helpers.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { defaultRuntime } from "../runtime.js";
 import { note } from "../terminal/note.js";
 import { syncEmbeddingProviderWithModel } from "./auth-choice.default-model.js";
+import { confirm, text } from "./configure.shared.js";
+import { guardCancel } from "./onboard-helpers.js";
 
 const DEFAULT_CLASSIFIER_MODEL = "google/gemini-2.5-pro";
 
-const TASK_TYPE_OPTIONS = [
+const _TASK_TYPE_OPTIONS = [
   { value: "coding", label: "Coding", hint: "Programming, debugging, code review" },
   { value: "writing", label: "Writing", hint: "Creative writing, essays, documentation" },
   { value: "analysis", label: "Analysis", hint: "Data analysis, research, summarization" },
@@ -102,7 +102,9 @@ export async function promptRouterConfig(
   // (Used when router is disabled, fails, or returns no result)
   const existingDefault = (() => {
     const m = cfg.agents?.defaults?.model;
-    if (typeof m === "string") return m;
+    if (typeof m === "string") {
+      return m;
+    }
     return m?.primary;
   })();
 

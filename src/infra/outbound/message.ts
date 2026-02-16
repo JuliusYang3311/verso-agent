@@ -1,4 +1,3 @@
-import type { ChannelId } from "../../channels/plugins/types.js";
 import type { VersoConfig } from "../../config/config.js";
 import type { PollInput } from "../../polls.js";
 import { getChannelPlugin, normalizeChannelId } from "../../channels/plugins/index.js";

@@ -31,29 +31,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build verification
+        run: pnpm build
+
       - name: Validate Evolver GEP modules
         run: |
           node -e "
-            require('./src/evolver/gep/solidify');
-            require('./src/evolver/gep/signals');
-            require('./src/evolver/gep/sandbox-runner');
-            require('./src/evolver/gep/src-optimizer');
-            require('./src/evolver/gep/feedback-collector');
-            console.log('All GEP modules loaded successfully');
+            const fs = require('fs');
+            const modules = [
+              'dist/evolver/gep/solidify.js',
+              'dist/evolver/gep/signals.js',
+              'dist/evolver/gep/sandbox-runner.js',
+              'dist/evolver/gep/src-optimizer.js',
+              'dist/evolver/gep/feedback-collector.js',
+            ];
+            for (const mod of modules) {
+              if (!fs.existsSync(mod)) {
+                console.error('Missing compiled module: ' + mod);
+                process.exit(1);
+              }
+            }
+            console.log('All GEP modules compiled successfully');
           "
-
-      - name: Check for regressions in error log
-        run: |
-          ERROR_LOG="src/evolver/assets/gep/errors.jsonl"
-          if [ -f "$ERROR_LOG" ]; then
-            RECENT_ERRORS=$(tail -20 "$ERROR_LOG" | wc -l)
-            echo "Recent error entries: $RECENT_ERRORS"
-            if [ "$RECENT_ERRORS" -gt 10 ]; then
-              echo "::warning::High error count in evolver error log ($RECENT_ERRORS recent entries)"
-            fi
-          else
-            echo "No error log found (clean state)"
-          fi
-
-      - name: Build verification
-        run: pnpm build

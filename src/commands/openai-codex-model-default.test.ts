@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { VersoConfig } from "../config/config.js";
+import type { ModelProviderConfig } from "../config/types.models.js";
 import {
   applyOpenAICodexModelDefault,
   OPENAI_CODEX_DEFAULT_MODEL,
 } from "./openai-codex-model-default.js";
-import { OPENAI_DEFAULT_MODEL } from "./openai-model-default.js";
 
 describe("applyOpenAICodexModelDefault", () => {
   it("sets openai-codex default when model is unset", () => {
@@ -31,7 +31,9 @@ describe("applyOpenAICodexModelDefault", () => {
   it("does not override openai-codex/*", () => {
     const cfg: VersoConfig = {
       agents: { defaults: { model: "openai-codex/gpt-5.2" } },
-      models: { providers: { "openai-codex": {} as any } },
+      models: {
+        providers: { "openai-codex": {} as Partial<ModelProviderConfig> as ModelProviderConfig },
+      },
     };
     const applied = applyOpenAICodexModelDefault(cfg);
     expect(applied.changed).toBe(false);

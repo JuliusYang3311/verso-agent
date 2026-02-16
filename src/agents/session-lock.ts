@@ -6,10 +6,7 @@
  */
 
 import type { VersoConfig } from "../config/config.js";
-import {
-  resolveMainSessionKey,
-  resolveAgentMainSessionKey,
-} from "../config/sessions/main-session.js";
+import { resolveMainSessionKey } from "../config/sessions/main-session.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 
 const logger = createSubsystemLogger("session-lock");

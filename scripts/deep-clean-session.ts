@@ -33,22 +33,24 @@ async function main() {
         continue;
       }
 
-      let entry: any;
+      let entry: Record<string, unknown>;
       try {
         entry = JSON.parse(line);
-      } catch (e) {
+      } catch {
         console.warn("Skipping invalid JSON line:", line.slice(0, 50));
         continue;
       }
 
       if (entry.type === "message" && entry.data) {
-        const msg = entry.data;
+        const msg = entry.data as Record<string, unknown>;
 
         // Check for error/aborted stop reasons
         const stopReason = msg.stopReason;
         if (stopReason === "error" || stopReason === "aborted") {
           // Log details about what we are dropping
-          const timestamp = msg.timestamp ? new Date(msg.timestamp).toISOString() : "unknown time";
+          const timestamp = msg.timestamp
+            ? new Date(msg.timestamp as string | number).toISOString()
+            : "unknown time";
           console.log(
             `[Clean] Dropping aborted message at ${timestamp} (stopReason=${stopReason})`,
           );
@@ -56,7 +58,9 @@ async function main() {
           // Check if it has tool use
           const hasToolUse =
             Array.isArray(msg.content) &&
-            msg.content.some((c: any) => c.type === "toolUse" || c.type === "toolCall");
+            msg.content.some(
+              (c: Record<string, unknown>) => c.type === "toolUse" || c.type === "toolCall",
+            );
           if (hasToolUse) {
             console.log("       -> Confirmed incomplete tool call present.");
           }
@@ -103,4 +107,4 @@ async function main() {
   }
 }
 
-main();
+void main();

@@ -1,9 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Mutation } from "./mutation.js";
 import type { PersonalityState } from "./personality.js";
 import { isValidMutation, normalizeMutation } from "./mutation.js";
-import { getMemoryDir, getEvolutionDir } from "./paths.js";
+import { getEvolutionDir } from "./paths.js";
 import {
   normalizePersonalityState,
   isValidPersonalityState,
@@ -243,13 +242,24 @@ function ensureDir(dir: string): void {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-  } catch (_e) {
+  } catch {
     // Silently ignore directory creation errors.
   }
 }
 
+/** Safely coerce an unknown value to a string, avoiding Object.prototype.toString. */
+function safeStr(v: unknown): string {
+  if (typeof v === "string") {
+    return v;
+  }
+  if (typeof v === "number" || typeof v === "boolean") {
+    return String(v);
+  }
+  return "";
+}
+
 function stableHash(input: unknown): string {
-  const s = String(input || "");
+  const s = safeStr(input);
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -263,7 +273,7 @@ function nowIso(): string {
 }
 
 function normalizeErrorSignature(text: unknown): string | null {
-  const s = String(text || "").trim();
+  const s = safeStr(text).trim();
   if (!s) {
     return null;
   }
@@ -287,7 +297,7 @@ function normalizeSignalsForMatching(signals: unknown[]): string[] {
   const list = Array.isArray(signals) ? signals : [];
   const out: string[] = [];
   for (const s of list) {
-    const str = String(s || "").trim();
+    const str = safeStr(s).trim();
     if (!str) {
       continue;
     }
@@ -314,7 +324,7 @@ function extractErrorSignatureFromSignals(signals: unknown[]): string | null {
   // Convention: signals can include "errsig:<raw>" emitted by signals extractor.
   const list = Array.isArray(signals) ? signals : [];
   for (const s of list) {
-    const str = String(s || "");
+    const str = safeStr(s);
     if (str.startsWith("errsig:")) {
       return normalizeErrorSignature(str.slice("errsig:".length));
     }
@@ -347,7 +357,7 @@ function readJsonIfExists<T>(filePath: string, fallback: T): T {
       return fallback;
     }
     return JSON.parse(raw) as T;
-  } catch (_e) {
+  } catch {
     return fallback;
   }
 }
@@ -376,12 +386,12 @@ export function tryReadMemoryGraphEvents(limitLines: number = 2000): MemoryGraph
       .map((l): MemoryGraphEvent | null => {
         try {
           return JSON.parse(l) as MemoryGraphEvent;
-        } catch (_e) {
+        } catch {
           return null;
         }
       })
       .filter((x): x is MemoryGraphEvent => x !== null);
-  } catch (_e) {
+  } catch {
     return [];
   }
 }
@@ -399,7 +409,9 @@ function jaccard(aList: unknown[], bList: unknown[]): number {
   }
   let inter = 0;
   for (const x of a) {
-    if (b.has(x)) inter++;
+    if (b.has(x)) {
+      inter++;
+    }
   }
   const union = a.size + b.size - inter;
   return union === 0 ? 0 : inter / union;
@@ -563,7 +575,7 @@ export function getMemoryAdvice({
       if (!g || g.type !== "Gene" || !g.id) {
         continue;
       }
-      const gId = String(g.id);
+      const gId = safeStr(g.id);
       const k = `${ck.key}::${gId}`;
       const edge = edges.get(k);
       const cur = byGene.get(gId) || {
@@ -652,7 +664,7 @@ export function recordSignalSnapshot({
     ts,
     signal: {
       key: signalKey,
-      signals: signalList.map((s) => String(s || "")),
+      signals: signalList.map((s) => safeStr(s)),
       error_signature: errsig || null,
     },
     observed: observations && typeof observations === "object" ? observations : null,
@@ -705,7 +717,7 @@ export function recordHypothesis({
     ts,
     signal: {
       key: signalKey,
-      signals: signalList.map((s) => String(s || "")),
+      signals: signalList.map((s) => safeStr(s)),
       error_signature: errsig || null,
     },
     hypothesis: {
@@ -787,7 +799,7 @@ export function recordAttempt({
     ts,
     signal: {
       key: signalKey,
-      signals: signalList.map((s) => String(s || "")),
+      signals: signalList.map((s) => safeStr(s)),
       error_signature: errsig || null,
     },
     mutation: mutNorm
@@ -828,7 +840,7 @@ export function recordAttempt({
   state.last_action = {
     action_id: actionId,
     signal_key: signalKey,
-    signals: signalList.map((s) => String(s || "")),
+    signals: signalList.map((s) => safeStr(s)),
     mutation_id: mutNorm ? mutNorm.id : null,
     mutation_category: mutNorm ? mutNorm.category : null,
     mutation_risk_level: mutNorm ? mutNorm.risk_level : null,
@@ -909,7 +921,7 @@ function tryParseLastEvolutionEventOutcome(evidenceText: string): InferredOutcom
         score: score != null ? score : status === "success" ? 0.75 : 0.25,
         note: "evolutionevent_observed",
       };
-    } catch (_e) {
+    } catch {
       continue;
     }
   }
@@ -924,15 +936,13 @@ function inferOutcomeEnhanced({
 }: InferOutcomeEnhancedParams): InferredOutcome {
   const evidence =
     currentObserved &&
-    (currentObserved as Record<string, unknown>).evidence &&
-    (((currentObserved as Record<string, unknown>).evidence as Record<string, unknown>)
-      .recent_session_tail ||
-      ((currentObserved as Record<string, unknown>).evidence as Record<string, unknown>)
-        .today_log_tail)
-      ? ((currentObserved as Record<string, unknown>).evidence as Record<string, unknown>)
+    currentObserved.evidence &&
+    ((currentObserved.evidence as Record<string, unknown>).recent_session_tail ||
+      (currentObserved.evidence as Record<string, unknown>).today_log_tail)
+      ? (currentObserved.evidence as Record<string, unknown>)
       : null;
   const combinedEvidence = evidence
-    ? `${String(evidence.recent_session_tail || "")}\n${String(evidence.today_log_tail || "")}`
+    ? `${safeStr(evidence.recent_session_tail)}\n${safeStr(evidence.today_log_tail)}`
     : "";
   const observed = tryParseLastEvolutionEventOutcome(combinedEvidence);
   if (observed) {
@@ -1000,7 +1010,7 @@ function buildConfidenceEdgeEvent({
     ts,
     signal: {
       key: signalKey,
-      signals: Array.isArray(signals) ? signals.map((s) => String(s || "")) : [],
+      signals: Array.isArray(signals) ? signals.map((s) => safeStr(s)) : [],
     },
     gene: { id: geneId, category: geneCategory || null },
     edge: { signal_key: signalKey, gene_id: geneId },
@@ -1112,7 +1122,7 @@ export function recordOutcomeFromState({
       status: inferred.status,
       score: inferred.score,
       note: inferred.note,
-      observed: { current_signals: signalList.map((s) => String(s || "")) },
+      observed: { current_signals: signalList.map((s) => safeStr(s)) },
     },
     confidence: {
       // Interpretable, decayed success estimate derived from outcomes; aggregation is computed at read-time.
@@ -1148,7 +1158,7 @@ export function recordOutcomeFromState({
       });
       appendJsonl(memoryGraphPath(), geneEv);
     }
-  } catch (_e) {
+  } catch {
     // Silently ignore confidence snapshot errors.
   }
 
@@ -1171,8 +1181,8 @@ export function recordExternalCandidate({
   if (!a) {
     return null;
   }
-  const assetType = a.type ? String(a.type) : null;
-  const assetId = a.id ? String(a.id) : null;
+  const assetType = a.type ? safeStr(a.type) : null;
+  const assetId = a.id ? safeStr(a.id) : null;
   if (!assetType || !assetId) {
     return null;
   }
@@ -1185,7 +1195,7 @@ export function recordExternalCandidate({
     kind: "external_candidate",
     id: `mge_${Date.now()}_${stableHash(`${assetType}|${assetId}|external|${ts}`)}`,
     ts,
-    signal: { key: signalKey, signals: signalList.map((s) => String(s || "")) },
+    signal: { key: signalKey, signals: signalList.map((s) => safeStr(s)) },
     external: {
       source: source || "external",
       received_at: ts,
@@ -1194,7 +1204,7 @@ export function recordExternalCandidate({
     candidate: {
       // Minimal hints for later local triggering/validation.
       trigger: assetType === "Capsule" && Array.isArray(a.trigger) ? (a.trigger as unknown[]) : [],
-      gene: assetType === "Capsule" && a.gene ? String(a.gene) : null,
+      gene: assetType === "Capsule" && a.gene ? safeStr(a.gene) : null,
       confidence:
         assetType === "Capsule" && Number.isFinite(Number(a.confidence))
           ? Number(a.confidence)

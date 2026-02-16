@@ -13,7 +13,6 @@ import { estimateTokens } from "@mariozechner/pi-coding-agent";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { estimateMessagesTokens } from "./compaction.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

@@ -25,7 +25,7 @@ export function parseAgentSessionKey(
   return { agentId, rest };
 }
 
-export function isSubagentSessionKey(sessionKey: string | undefined | null): boolean {
+export function isSubagentSessionKey(_sessionKey: string | undefined | null): boolean {
   // Subagent functionality has been removed. This function is kept for backward compatibility
   // and always returns false.
   return false;

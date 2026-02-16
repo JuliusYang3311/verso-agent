@@ -60,7 +60,9 @@ function uniqStrings(list: unknown): string[] {
 }
 
 function hasErrorishSignal(signals: unknown): boolean {
-  const list: string[] = Array.isArray(signals) ? signals.map((s: unknown) => String(s || "")) : [];
+  const list: string[] = Array.isArray(signals)
+    ? signals.map((s: unknown) => (typeof s === "string" ? s : ""))
+    : [];
   if (list.includes("log_error")) {
     return true;
   }
@@ -81,7 +83,9 @@ export const OPPORTUNITY_SIGNALS: readonly string[] = [
 ];
 
 export function hasOpportunitySignal(signals: unknown): boolean {
-  const list: string[] = Array.isArray(signals) ? signals.map((s: unknown) => String(s || "")) : [];
+  const list: string[] = Array.isArray(signals)
+    ? signals.map((s: unknown) => (typeof s === "string" ? s : ""))
+    : [];
   for (let i = 0; i < OPPORTUNITY_SIGNALS.length; i++) {
     if (list.includes(OPPORTUNITY_SIGNALS[i])) {
       return true;
@@ -111,7 +115,7 @@ function mutationCategoryFromContext({
 }
 
 function expectedEffectFromCategory(category: unknown): string {
-  const c = String(category || "");
+  const c = typeof category === "string" ? category : "";
   if (c === "repair") {
     return "reduce runtime errors, increase stability, and lower failure rate";
   }
@@ -233,7 +237,10 @@ export function isValidMutation(obj: unknown): obj is Mutation {
   if (!o.id || typeof o.id !== "string") {
     return false;
   }
-  if (!o.category || !["repair", "optimize", "innovate"].includes(String(o.category))) {
+  if (
+    !o.category ||
+    !["repair", "optimize", "innovate"].includes(typeof o.category === "string" ? o.category : "")
+  ) {
     return false;
   }
   if (!Array.isArray(o.trigger_signals)) {
@@ -245,7 +252,10 @@ export function isValidMutation(obj: unknown): obj is Mutation {
   if (!o.expected_effect || typeof o.expected_effect !== "string") {
     return false;
   }
-  if (!o.risk_level || !["low", "medium", "high"].includes(String(o.risk_level))) {
+  if (
+    !o.risk_level ||
+    !["low", "medium", "high"].includes(typeof o.risk_level === "string" ? o.risk_level : "")
+  ) {
     return false;
   }
   return true;

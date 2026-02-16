@@ -3,10 +3,7 @@ import type {
   SignalSummary,
   CountrySignalCluster,
   RegionalConvergence,
-  GeoSignal,
 } from "./types.js";
-import { classifyByKeyword } from "./classifier.js";
-import { generateId } from "./utils.js";
 
 // Basic country codes map
 const TIER1_COUNTRIES: Record<string, string> = {
@@ -92,7 +89,7 @@ const COUNTRY_TO_CODE: Record<string, string> = {
   France: "FR",
 };
 
-function normalizeCountryCode(country: string): string {
+function _normalizeCountryCode(country: string): string {
   if (country.length === 2) {
     return country.toUpperCase();
   }

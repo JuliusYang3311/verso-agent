@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { VersoConfig } from "../config/config.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { resolveUserPath } from "../utils.js";
@@ -41,7 +40,7 @@ export async function promptEvolverConfig(
       initialValue: existing.review ?? false,
     }),
     runtime,
-  ) as boolean;
+  );
 
   const verifyCmdInput = guardCancel(
     await text({

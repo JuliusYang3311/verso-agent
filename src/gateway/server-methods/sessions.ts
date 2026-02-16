@@ -28,7 +28,6 @@ import {
 import {
   archiveFileOnDisk,
   listSessionsFromStore,
-  loadCombinedSessionStoreForGateway,
   loadSessionEntry,
   readSessionPreviewItemsFromTranscript,
   resolveGatewaySessionStoreTarget,

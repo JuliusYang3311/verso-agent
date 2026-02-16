@@ -1,4 +1,5 @@
 import type { VersoConfig } from "../config/config.js";
+import type { MemorySearchConfig } from "../config/types.tools.js";
 import type { WizardPrompter, WizardSelectOption } from "../wizard/prompts.js";
 import { ensureAuthProfileStore, listProfilesForProvider } from "../agents/auth-profiles.js";
 import { DEFAULT_MODEL, DEFAULT_PROVIDER } from "../agents/defaults.js";
@@ -557,6 +558,9 @@ export function applyModelFallbacksFromSelection(
     },
   };
 }
+
+type EmbeddingProvider = "openai" | "gemini" | "local" | "auto" | "anthropic";
+
 export async function promptEmbeddingModel(params: {
   config: VersoConfig;
   prompter: WizardPrompter;
@@ -568,7 +572,7 @@ export async function promptEmbeddingModel(params: {
   clearRemote?: boolean;
 }> {
   const current = params.config.agents?.defaults?.memorySearch;
-  const options: WizardSelectOption<string>[] = [
+  const options: WizardSelectOption[] = [
     {
       value: "openai/text-embedding-3-small",
       label: "OpenAI: text-embedding-3-small",
@@ -613,7 +617,7 @@ export async function promptEmbeddingModel(params: {
       preferredProvider === "gemini" ||
       preferredProvider === "anthropic" ||
       preferredProvider === "local") &&
-    (current?.provider !== preferredProvider || (current as any)?.remote?.baseUrl)
+    (current?.provider !== preferredProvider || current?.remote?.baseUrl)
   ) {
     const model =
       preferredProvider === "gemini"
@@ -632,7 +636,7 @@ export async function promptEmbeddingModel(params: {
 
   if (selection === KEEP_VALUE) {
     return {
-      provider: (current?.provider ?? "auto") as any,
+      provider: (current?.provider ?? "auto") as EmbeddingProvider,
       model: current?.model ?? "auto",
     };
   }
@@ -643,11 +647,11 @@ export async function promptEmbeddingModel(params: {
       validate: (v) => (v?.includes("/") ? undefined : "Required format: provider/model"),
     });
     const [p, m] = (input || "").split("/");
-    return { provider: p as any, model: m };
+    return { provider: p as EmbeddingProvider, model: m };
   }
 
-  const [p, m] = (selection as string).split("/");
-  return { provider: p as any, model: m };
+  const [p, m] = selection.split("/");
+  return { provider: p as EmbeddingProvider, model: m };
 }
 
 export function applyEmbeddingModel(
@@ -659,7 +663,7 @@ export function applyEmbeddingModel(
   const nextMemorySearch = {
     ...memorySearch,
     enabled: memorySearch.enabled ?? true,
-    provider: params.provider as any,
+    provider: params.provider as MemorySearchConfig["provider"],
     model: params.model,
   };
 
@@ -669,13 +673,13 @@ export function applyEmbeddingModel(
   if (
     params.clearRemote ||
     memorySearch.provider !== params.provider ||
-    (((params.provider as any) === "gemini" ||
-      (params.provider as any) === "anthropic" ||
-      (params.provider as any) === "openai" ||
-      (params.provider as any) === "local") &&
+    ((params.provider === "gemini" ||
+      params.provider === "anthropic" ||
+      params.provider === "openai" ||
+      params.provider === "local") &&
       "remote" in nextMemorySearch)
   ) {
-    delete (nextMemorySearch as any).remote;
+    delete (nextMemorySearch as Record<string, unknown>).remote;
   }
 
   return {

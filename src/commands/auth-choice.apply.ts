@@ -1,4 +1,5 @@
 import type { VersoConfig } from "../config/config.js";
+import type { MemorySearchConfig } from "../config/types.tools.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type { WizardPrompter } from "../wizard/prompts.js";
 import type { AuthChoice } from "./onboard-types.js";
@@ -74,13 +75,13 @@ export async function applyAuthChoice(
         const target =
           preferred === "google"
             ? "gemini"
-            : ((preferred === "lmstudio" ? "local" : preferred) as any);
+            : ((preferred === "lmstudio" ? "local" : preferred) as MemorySearchConfig["provider"]);
         const current = result.config.agents?.defaults?.memorySearch;
 
         // If the embedding provider matches the main provider but is using a proxy,
         // OR if the embedding provider is different from the new main provider choice,
         // we offer a "synchronize" behavior by cleaning it up.
-        if (current && current.provider === target && (current as any).remote) {
+        if (current && current.provider === target && current.remote) {
           const model =
             target === "gemini"
               ? "gemini-embedding-001"
