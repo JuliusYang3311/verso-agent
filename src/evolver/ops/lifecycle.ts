@@ -41,14 +41,8 @@ export function getRunningPids(): number[] {
       if (pid === process.pid) {
         continue;
       }
-      if (cmd.includes("node") && cmd.includes("index.js") && cmd.includes("--loop")) {
-        if (
-          cmd.includes("feishu-evolver-wrapper") ||
-          cmd.includes("skills/evolver") ||
-          cmd.includes("evolver/daemon-entry")
-        ) {
-          pids.push(pid);
-        }
+      if (cmd.includes("evolver/daemon-entry") || cmd.includes("evolver/runner")) {
+        pids.push(pid);
       }
     }
     return [...new Set(pids)].filter(isPidRunning);

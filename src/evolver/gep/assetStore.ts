@@ -99,7 +99,7 @@ function getDefaultGenes(): GenesFile {
           "Prefer reusing existing Gene/Capsule; only create if no match exists",
           "Refactor prompt assembly to embed assets (genes, capsules, parent event)",
           "Reduce noise and ambiguity; enforce strict output schema",
-          "Validate by running node index.js run and ensuring no runtime errors",
+          "Validate by running pnpm evolve run and ensuring no runtime errors",
           "Solidify: record EvolutionEvent, update Gene definitions, create Capsule on success",
         ],
         constraints: { max_files: 20, forbidden_paths: [".git", "node_modules"] },

@@ -1312,11 +1312,11 @@ ${mutationDirective}
         : "Prompt file: (unavailable)",
       "",
       "After applying changes and validations, you MUST run:",
-      "  node index.js solidify",
+      "  pnpm evolve solidify",
       "",
       "Loop chaining (only if you are running in loop mode): after solidify succeeds, print a sessions_spawn call to start the next loop run with a short delay.",
       "Example:",
-      'sessions_spawn({ task: "exec: sleep 3 && node index.js --loop", agentId: "main", cleanup: "delete", label: "gep_loop_next" })',
+      'sessions_spawn({ task: "exec: sleep 3 && pnpm evolve --loop", agentId: "main", cleanup: "delete", label: "gep_loop_next" })',
       "",
       "GEP protocol prompt (may be truncated here; prefer the prompt file if provided):",
       clip(prompt, 24000),
@@ -1338,7 +1338,7 @@ ${mutationDirective}
   } else {
     console.log(prompt);
     console.log(
-      "\n[SOLIDIFY REQUIRED] After applying the patch and validations, run: node index.js solidify",
+      "\n[SOLIDIFY REQUIRED] After applying the patch and validations, run: pnpm evolve solidify",
     );
   }
 }
