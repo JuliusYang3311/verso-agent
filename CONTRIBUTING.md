@@ -1,9 +1,5 @@
 # Contributing to Verso
 
-1. **Bugs & small fixes** → Open a PR!
-2. **New features / architecture** → Start a [GitHub Discussion](https://github.com/verso/verso/discussions) or ask in Discord first
-3. **Questions** → Discord #setup-help
-
 ## Before You PR
 
 - Test locally with your Verso instance
