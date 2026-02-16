@@ -71,6 +71,8 @@ apps/ios/*.mobileprovision
 .local/
 IDENTITY.md
 USER.md
+Soul.md
+memory.md
 .tgz
 
 # local tooling
