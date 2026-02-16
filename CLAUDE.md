@@ -56,17 +56,17 @@ web-search, brave-search, novel-writer
 
 **GEP 协议**（`src/evolver/gep/`）:
 
-- `src-optimizer.js` — src/ 优化器，6 个预定义 Genes
-- `sandbox-runner.js` — 沙盒测试（Docker / 子进程隔离 / tmpdir 副本）
-- `solidify.js` — 验证 + 沙盒测试 → 部署/回滚
-- `signals.js` — 信号提取（含 SLOW_RESPONSE, MEMORY_LEAK, HIGH_TOKEN_USAGE 等）
-- `prompt.js`, `mutation.js`, `crossover.js`, `capsule.js` 等
+- `src-optimizer.ts` — src/ 优化器，6 个预定义 Genes
+- `sandbox-runner.ts` — 沙盒测试（Docker / 子进程隔离 / tmpdir 副本）
+- `solidify.ts` — 验证 + 沙盒测试 → 部署/回滚
+- `signals.ts` — 信号提取（含 SLOW_RESPONSE, MEMORY_LEAK, HIGH_TOKEN_USAGE 等）
+- `prompt.ts`, `mutation.ts`, `crossover.ts`, `capsule.ts` 等
 
 **运维模块**（`src/evolver/ops/`）:
 
-- `lifecycle.js` — 进程生命周期管理
-- `build-verify.js` — 构建验证
-- `error-record.js` — 错误记录
+- `lifecycle.ts` — 进程生命周期管理
+- `build-verify.ts` — 构建验证
+- `error-record.ts` — 错误记录
 
 **资产文件**（`src/evolver/assets/gep/`）:
 
@@ -543,9 +543,9 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ### 阶段 3（架构改造 — 已完成 ✅）
 
-**新建**: session-lock.ts, dynamic-context.ts, tool-resume.ts, dispatch-from-config.async.test.ts, context_params.json
+**新建**: session-lock.ts, dynamic-context.ts, tool-resume.ts, dispatch-from-config.async.test.ts, context*params.json
 **修改**: attempt.ts (dynamic context integration), dispatch-from-config.ts (async dispatch), types.agent-defaults.ts, cache-trace.ts
-**删除**: subagent-_.ts (5+), sessions-_-tool.ts (6+), subagent test files (12+), docs/tools/subagents.md
+**删除**: subagent-*.ts (5+), sessions-\_-tool.ts (6+), subagent test files (12+), docs/tools/subagents.md
 **Stubs**: pi-tools.policy.ts (resolveSubagentToolPolicy), session-key-utils.ts (isSubagentSessionKey)
 
 ### 阶段 4（代码瘦身 — 已完成 ✅）

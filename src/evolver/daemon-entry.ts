@@ -8,9 +8,7 @@ import { runDaemonLoop } from "./runner.js";
 
 const review = process.env.EVOLVER_REVIEW === "true";
 const workspace = process.env.VERSO_WORKSPACE || process.env.OPENCLAW_WORKSPACE;
-const verifyCmd = process.env.EVOLVER_VERIFY_CMD || "pnpm build";
-
-// Model/auth references inherited from the main session (resolved on demand, not snapshotted).
+const verifyCmd = process.env.EVOLVER_VERIFY_CMD || "pnpm lint && pnpm build && pnpm vitest run";
 const model = process.env.EVOLVER_MODEL || undefined;
 const agentDir = process.env.EVOLVER_AGENT_DIR || undefined;
 

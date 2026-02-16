@@ -31,8 +31,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build verification
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
         run: pnpm build
+
+      - name: Test
+        run: pnpm vitest run
 
       - name: Validate Evolver GEP modules
         run: |

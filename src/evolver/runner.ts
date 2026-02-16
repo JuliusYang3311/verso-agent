@@ -274,6 +274,53 @@ function appendErrorRecord(workspace: string, errorType: string, details: unknow
   fs.appendFileSync(errorsPath, JSON.stringify(record) + "\n");
 }
 
+// ---------- Auto-Deploy (Local Git Commit) ----------
+
+function autoCommitChanges(workspace: string): void {
+  // Check if there are changes to commit
+  const status = spawnSync("git", ["status", "--porcelain"], {
+    cwd: workspace,
+    encoding: "utf-8",
+  });
+  const changes = (status.stdout ?? "").trim();
+  if (!changes) {
+    logger.info("evolver-runner: no changes to commit");
+    return;
+  }
+
+  // Build a summary from changed files
+  const files = changes
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => line.replace(/^.{3}/, "").trim());
+  const fileCount = files.length;
+  const summary =
+    fileCount <= 5 ? files.join(", ") : `${files.slice(0, 3).join(", ")} and ${fileCount - 3} more`;
+
+  // Stage all changes
+  const addResult = spawnSync("git", ["add", "-A"], {
+    cwd: workspace,
+    encoding: "utf-8",
+  });
+  if (addResult.status !== 0) {
+    logger.warn("evolver-runner: git add failed", { stderr: addResult.stderr });
+    return;
+  }
+
+  // Commit with evolver prefix
+  const message = `evolve: auto-deploy ${fileCount} file(s) — ${summary}`;
+  const commitResult = spawnSync("git", ["commit", "-m", message], {
+    cwd: workspace,
+    encoding: "utf-8",
+  });
+  if (commitResult.status !== 0) {
+    logger.warn("evolver-runner: git commit failed", { stderr: commitResult.stderr });
+    return;
+  }
+
+  logger.info("evolver-runner: auto-deployed", { files: fileCount, message });
+}
+
 // ---------- Daemon Loop ----------
 
 /**
@@ -282,9 +329,10 @@ function appendErrorRecord(workspace: string, errorType: string, details: unknow
  */
 export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> {
   const workspace = getWorkspaceRoot(options.workspace);
-  const verifyCmd = options.verifyCmd ?? "pnpm build";
+  const verifyCmd = options.verifyCmd ?? "pnpm lint && pnpm build && pnpm vitest run";
   const rollbackEnabled = options.rollbackEnabled ?? true;
   const cleanEnabled = options.cleanEnabled ?? true;
+  const reviewMode = options.review ?? false;
 
   const minSleepMs = parseMs(process.env.EVOLVER_MIN_SLEEP_MS, 2000);
   const maxSleepMs = parseMs(process.env.EVOLVER_MAX_SLEEP_MS, 300000);
@@ -324,7 +372,14 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
     if (result.ok) {
       // Verify build after successful evolution
       const verify = runVerify(workspace, verifyCmd);
-      if (!verify.ok && rollbackEnabled) {
+      if (verify.ok) {
+        // Verification passed — auto-deploy locally (git commit) unless review mode
+        if (!reviewMode) {
+          autoCommitChanges(workspace);
+        } else {
+          logger.info("evolver-runner: verification passed, awaiting review (review mode on)");
+        }
+      } else if (rollbackEnabled) {
         rollbackChanges(workspace, cleanEnabled);
         appendErrorRecord(workspace, "verify_failed", {
           stdout: verify.stdout.slice(0, 2000),

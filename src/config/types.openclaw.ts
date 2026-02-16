@@ -117,18 +117,8 @@ export type MoltbookConfig = {
 };
 
 export type EvolverConfig = {
-  /** Path to evolver repo directory. */
-  dir?: string;
-  /** Workspace directory used for verify/rollback (defaults to agents.defaults.workspace). */
-  workspace?: string;
   /** Use evolver review mode (run --review). */
   review?: boolean;
-  /** Verify command to run after evolver iteration. */
-  verifyCmd?: string;
-  /** Enable rollback on failure (default true). */
-  rollback?: boolean;
-  /** Allow git clean -fd during rollback (default true). */
-  clean?: boolean;
 };
 
 export type ConfigValidationIssue = {
