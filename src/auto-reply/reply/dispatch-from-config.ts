@@ -6,6 +6,7 @@ import { resolveSessionAgentId } from "../../agents/agent-scope.js";
 import {
   isEmbeddedPiRunActive,
   queueEmbeddedPiMessage,
+  waitForEmbeddedPiRunEnd,
 } from "../../agents/pi-embedded-runner/runs.js";
 import { loadSessionStore, resolveStorePath } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
@@ -20,6 +21,7 @@ import { maybeApplyTtsToPayload, normalizeTtsAutoMode, resolveTtsConfig } from "
 import { getReplyFromConfig } from "../reply.js";
 import { formatAbortReplyText, tryFastAbortFromMessage } from "./abort.js";
 import { shouldSkipDuplicateInbound } from "./inbound-dedupe.js";
+import { probeInterstitialReply } from "./interstitial-reply.js";
 import { isRoutableChannel, routeReply } from "./route-reply.js";
 
 const AUDIO_PLACEHOLDER_RE = /^<media:audio>(\s*\([^)]*\))?$/i;
@@ -305,7 +307,118 @@ export async function dispatchReplyFromConfig(params: {
       const hasActiveRun = isEmbeddedPiRunActive(sessionIdForRuns);
 
       if (hasActiveRun) {
-        // Active run exists: try to steer the message into it (non-blocking).
+        // Active run exists: probe the model to decide between immediate reply or queued turn.
+        const probeResult = await probeInterstitialReply({
+          message: ctx.Body ?? "",
+          sessionKey: sessionIdForRuns,
+          agentId,
+          cfg,
+        });
+
+        if (probeResult?.type === "text") {
+          // Model answered without tools — deliver immediately.
+          logVerbose(
+            `dispatch-from-config: interstitial probe - immediate text reply (session=${sessionIdForRuns})`,
+          );
+          const payload: ReplyPayload = { text: probeResult.text };
+          const ttsPayload = await maybeApplyTtsToPayload({
+            payload,
+            cfg,
+            channel: ttsChannel,
+            kind: "final",
+            inboundAudio,
+            ttsAuto: sessionTtsAuto,
+          });
+          if (shouldRouteToOriginating && originatingChannel && originatingTo) {
+            await routeReply({
+              payload: ttsPayload,
+              channel: originatingChannel,
+              to: originatingTo,
+              sessionKey: ctx.SessionKey,
+              accountId: ctx.AccountId,
+              threadId: ctx.MessageThreadId,
+              cfg,
+            });
+          } else {
+            dispatcher.sendFinalReply(ttsPayload);
+          }
+          await dispatcher.waitForIdle();
+          const counts = dispatcher.getQueuedCounts();
+          recordProcessed("completed", { reason: "interstitial_immediate" });
+          markIdle("message_completed");
+          return { queuedFinal: true, counts };
+        }
+
+        if (probeResult?.type === "needs_tools") {
+          // Model needs tools — queue a full turn behind the current one.
+          logVerbose(
+            `dispatch-from-config: interstitial probe - queuing full turn behind active run (session=${sessionIdForRuns})`,
+          );
+          const queuedTurnTask = (async () => {
+            // Wait for the current turn to complete (5-minute timeout).
+            const ended = await waitForEmbeddedPiRunEnd(sessionIdForRuns, 300_000);
+            if (!ended) {
+              logVerbose("dispatch-from-config: queued turn - wait timeout, running anyway");
+            }
+            // Now dispatch the full turn with tools.
+            await (params.replyResolver ?? getReplyFromConfig)(
+              ctx,
+              {
+                ...params.replyOptions,
+                onToolResult: shouldSendToolSummaries
+                  ? (payload: ReplyPayload) => {
+                      const run = async () => {
+                        const ttsPayload = await maybeApplyTtsToPayload({
+                          payload,
+                          cfg,
+                          channel: ttsChannel,
+                          kind: "tool",
+                          inboundAudio,
+                          ttsAuto: sessionTtsAuto,
+                        });
+                        if (shouldRouteToOriginating) {
+                          await sendPayloadAsync(ttsPayload, undefined, false);
+                        } else {
+                          dispatcher.sendToolResult(ttsPayload);
+                        }
+                      };
+                      return run();
+                    }
+                  : undefined,
+                onBlockReply: (payload: ReplyPayload, context) => {
+                  const run = async () => {
+                    const ttsPayload = await maybeApplyTtsToPayload({
+                      payload,
+                      cfg,
+                      channel: ttsChannel,
+                      kind: "block",
+                      inboundAudio,
+                      ttsAuto: sessionTtsAuto,
+                    });
+                    if (shouldRouteToOriginating) {
+                      await sendPayloadAsync(ttsPayload, context?.abortSignal, false);
+                    } else {
+                      dispatcher.sendBlockReply(ttsPayload);
+                    }
+                  };
+                  return run();
+                },
+              },
+              cfg,
+            );
+          })();
+          queuedTurnTask.catch((err) => {
+            logVerbose(
+              `dispatch-from-config: queued turn error: ${err instanceof Error ? err.message : String(err)}`,
+            );
+          });
+          markIdle("message_queued_behind_turn");
+          const counts = dispatcher.getQueuedCounts();
+          recordProcessed("completed", { reason: "interstitial_queued" });
+          return { queuedFinal: false, counts };
+        }
+
+        // Probe returned null (rate-limited or failed) — fall back to steer.
         const steered = queueEmbeddedPiMessage(sessionIdForRuns, ctx.Body ?? "");
         if (steered) {
           logVerbose(
@@ -316,7 +429,7 @@ export async function dispatchReplyFromConfig(params: {
           recordProcessed("completed", { reason: "async_steered" });
           return { queuedFinal: false, counts };
         }
-        // Failed to steer (run not streaming or compacting) - fall through to start new run.
+        // Failed to steer - fall through to start new run.
         logVerbose(
           `dispatch-from-config: async mode - failed to steer, starting new run (session=${sessionIdForRuns})`,
         );
