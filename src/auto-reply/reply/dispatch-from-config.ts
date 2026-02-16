@@ -3,6 +3,10 @@ import type { FinalizedMsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import type { ReplyDispatcher, ReplyDispatchKind } from "./reply-dispatcher.js";
 import { resolveSessionAgentId } from "../../agents/agent-scope.js";
+import {
+  isEmbeddedPiRunActive,
+  queueEmbeddedPiMessage,
+} from "../../agents/pi-embedded-runner/runs.js";
 import { loadSessionStore, resolveStorePath } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
 import { isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
@@ -249,7 +253,7 @@ export async function dispatchReplyFromConfig(params: {
     const fastAbort = await tryFastAbortFromMessage({ ctx, cfg });
     if (fastAbort.handled) {
       const payload = {
-        text: formatAbortReplyText(fastAbort.stoppedSubagents),
+        text: formatAbortReplyText(),
       } satisfies ReplyPayload;
       let queuedFinal = false;
       let routedFinalCount = 0;
@@ -291,6 +295,132 @@ export async function dispatchReplyFromConfig(params: {
 
     const shouldSendToolSummaries = ctx.ChatType !== "group" && ctx.CommandSource !== "native";
 
+    // Check if async dispatch is enabled for this agent.
+    const agentId = resolveSessionAgentId({ sessionKey: ctx.SessionKey, config: cfg });
+    const asyncDispatchEnabled = cfg.agents?.defaults?.asyncDispatch === true;
+    const sessionIdForRuns = ctx.SessionKey ?? agentId;
+
+    // Async dispatch mode: check if there's an active run and steer or fire-and-forget.
+    if (asyncDispatchEnabled && sessionIdForRuns) {
+      const hasActiveRun = isEmbeddedPiRunActive(sessionIdForRuns);
+
+      if (hasActiveRun) {
+        // Active run exists: try to steer the message into it (non-blocking).
+        const steered = queueEmbeddedPiMessage(sessionIdForRuns, ctx.Body ?? "");
+        if (steered) {
+          logVerbose(
+            `dispatch-from-config: async mode - steered message to active run (session=${sessionIdForRuns})`,
+          );
+          markIdle("message_steered");
+          const counts = dispatcher.getQueuedCounts();
+          recordProcessed("completed", { reason: "async_steered" });
+          return { queuedFinal: false, counts };
+        }
+        // Failed to steer (run not streaming or compacting) - fall through to start new run.
+        logVerbose(
+          `dispatch-from-config: async mode - failed to steer, starting new run (session=${sessionIdForRuns})`,
+        );
+      }
+
+      // No active run or steering failed: fire-and-forget new agent turn.
+      // Start the agent turn in the background without awaiting.
+      logVerbose(
+        `dispatch-from-config: async mode - fire-and-forget agent turn (session=${sessionIdForRuns})`,
+      );
+
+      const fireAndForgetTask = (async () => {
+        try {
+          await (params.replyResolver ?? getReplyFromConfig)(
+            ctx,
+            {
+              ...params.replyOptions,
+              onToolResult: shouldSendToolSummaries
+                ? (payload: ReplyPayload) => {
+                    const run = async () => {
+                      const ttsPayload = await maybeApplyTtsToPayload({
+                        payload,
+                        cfg,
+                        channel: ttsChannel,
+                        kind: "tool",
+                        inboundAudio,
+                        ttsAuto: sessionTtsAuto,
+                      });
+                      if (shouldRouteToOriginating) {
+                        await sendPayloadAsync(ttsPayload, undefined, false);
+                      } else {
+                        dispatcher.sendToolResult(ttsPayload);
+                      }
+                    };
+                    return run();
+                  }
+                : undefined,
+              onBlockReply: (payload: ReplyPayload, context) => {
+                const run = async () => {
+                  const ttsPayload = await maybeApplyTtsToPayload({
+                    payload,
+                    cfg,
+                    channel: ttsChannel,
+                    kind: "block",
+                    inboundAudio,
+                    ttsAuto: sessionTtsAuto,
+                  });
+                  if (shouldRouteToOriginating) {
+                    await sendPayloadAsync(ttsPayload, context?.abortSignal, false);
+                  } else {
+                    dispatcher.sendBlockReply(ttsPayload);
+                  }
+                };
+                return run();
+              },
+            },
+            cfg,
+          );
+        } catch (err) {
+          logVerbose(
+            `dispatch-from-config: async mode - fire-and-forget error: ${err instanceof Error ? err.message : String(err)}`,
+          );
+          // Try to send error to user.
+          try {
+            const errorPayload: ReplyPayload = {
+              text: `Error processing your message: ${err instanceof Error ? err.message : String(err)}`,
+            };
+            if (shouldRouteToOriginating && originatingChannel && originatingTo) {
+              await routeReply({
+                payload: errorPayload,
+                channel: originatingChannel,
+                to: originatingTo,
+                sessionKey: ctx.SessionKey,
+                accountId: ctx.AccountId,
+                threadId: ctx.MessageThreadId,
+                cfg,
+              });
+            } else {
+              dispatcher.sendFinalReply(errorPayload);
+            }
+          } catch (deliveryErr) {
+            logVerbose(
+              `dispatch-from-config: async mode - failed to deliver error: ${String(deliveryErr)}`,
+            );
+          }
+        }
+      })();
+
+      // Don't await the task - fire and forget.
+      // Catch unhandled rejections to prevent process crashes.
+      fireAndForgetTask.catch((err) => {
+        logVerbose(
+          `dispatch-from-config: async mode - unhandled fire-and-forget rejection: ${String(err)}`,
+        );
+      });
+
+      // Return immediately - agent turn continues in background.
+      markIdle("message_dispatched_async");
+      const counts = dispatcher.getQueuedCounts();
+      recordProcessed("completed", { reason: "async_dispatched" });
+      return { queuedFinal: false, counts };
+    }
+
+    // Synchronous (blocking) mode - original behavior.
     const replyResult = await (params.replyResolver ?? getReplyFromConfig)(
       ctx,
       {

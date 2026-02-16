@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CoreConfig } from "../types.js";
+
+// Mock the Matrix bot SDK to avoid loading the native crypto addon
+// (@matrix-org/matrix-sdk-crypto-nodejs-darwin-x64) which is not installed.
+vi.mock("@vector-im/matrix-bot-sdk", async () => import("../__mocks__/matrix-bot-sdk.js"));
+
 import { resolveMatrixAccount } from "./accounts.js";
 
 vi.mock("./credentials.js", () => ({

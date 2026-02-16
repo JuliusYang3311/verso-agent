@@ -1,6 +1,11 @@
 import type { PluginRuntime } from "verso/plugin-sdk";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CoreConfig } from "./types.js";
+
+// Mock the Matrix bot SDK to avoid loading the native crypto addon
+// (@matrix-org/matrix-sdk-crypto-nodejs-darwin-x64) which is not installed.
+vi.mock("@vector-im/matrix-bot-sdk", async () => import("./__mocks__/matrix-bot-sdk.js"));
+
 import { matrixPlugin } from "./channel.js";
 import { setMatrixRuntime } from "./runtime.js";
 

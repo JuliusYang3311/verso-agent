@@ -39,13 +39,13 @@ describe("buildInlineProviderModels", () => {
         ...makeModel("alpha-model"),
         provider: "alpha",
         baseUrl: "http://alpha.local",
-        api: undefined,
+        api: "openai-responses",
       },
       {
         ...makeModel("beta-model"),
         provider: "beta",
         baseUrl: "http://beta.local",
-        api: undefined,
+        api: "openai-responses",
       },
     ]);
   });

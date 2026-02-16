@@ -1,6 +1,11 @@
 import path from "node:path";
 import { resolveVersoAgentDir } from "../../agents/agent-paths.js";
 import {
+  resolveAgentDir,
+  resolveAgentModelFallbacksOverride,
+  resolveAgentModelPrimary,
+} from "../../agents/agent-scope.js";
+import {
   buildAuthHealthSummary,
   DEFAULT_OAUTH_WARN_MS,
   formatRemainingShort,

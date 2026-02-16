@@ -284,6 +284,7 @@ describe("chrome extension relay server", () => {
       params?: unknown;
     }> = [];
     received.push(JSON.parse(await q.next()) as never);
+    received.push(JSON.parse(await q.next()) as never);
 
     const res2 = received.find((m) => m.id === 2);
     expect(res2?.id).toBe(2);
@@ -354,6 +355,7 @@ describe("chrome extension relay server", () => {
     );
 
     const received: Array<{ method?: string; params?: unknown }> = [];
+    received.push(JSON.parse(await q.next()) as never);
     received.push(JSON.parse(await q.next()) as never);
 
     const detached = received.find((m) => m.method === "Target.detachedFromTarget");

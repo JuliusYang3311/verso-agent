@@ -16,11 +16,6 @@ import {
 } from "../../agents/auth-profiles.js";
 import { getCustomProviderApiKey, resolveEnvApiKey } from "../../agents/model-auth.js";
 import { normalizeProviderId } from "../../agents/model-selection.js";
-import { listSubagentRunsForRequester } from "../../agents/subagent-registry.js";
-import {
-  resolveInternalSessionKey,
-  resolveMainSessionAlias,
-} from "../../agents/tools/sessions-helpers.js";
 import { logVerbose } from "../../globals.js";
 import {
   formatUsageWindowSummary,
@@ -30,7 +25,6 @@ import {
 import { normalizeGroupActivation } from "../group-activation.js";
 import { buildStatusMessage } from "../status.js";
 import { getFollowupQueueDepth, resolveQueueSettings } from "./queue.js";
-import { resolveSubagentLabel } from "./subagents-utils.js";
 
 function formatApiKeySnippet(apiKey: string): string {
   const compact = apiKey.replace(/\s+/g, "");
@@ -184,27 +178,6 @@ export async function buildStatusReply(params: {
     sessionEntry?.queueDebounceMs ?? sessionEntry?.queueCap ?? sessionEntry?.queueDrop,
   );
 
-  let subagentsLine: string | undefined;
-  if (sessionKey) {
-    const { mainKey, alias } = resolveMainSessionAlias(cfg);
-    const requesterKey = resolveInternalSessionKey({ key: sessionKey, alias, mainKey });
-    const runs = listSubagentRunsForRequester(requesterKey);
-    const verboseEnabled = resolvedVerboseLevel && resolvedVerboseLevel !== "off";
-    if (runs.length > 0) {
-      const active = runs.filter((entry) => !entry.endedAt);
-      const done = runs.length - active.length;
-      if (verboseEnabled) {
-        const labels = active
-          .map((entry) => resolveSubagentLabel(entry, ""))
-          .filter(Boolean)
-          .slice(0, 3);
-        const labelText = labels.length ? ` (${labels.join(", ")})` : "";
-        subagentsLine = `🤖 Subagents: ${active.length} active${labelText} · ${done} done`;
-      } else if (active.length > 0) {
-        subagentsLine = `🤖 Subagents: ${active.length} active`;
-      }
-    }
-  }
   const groupActivation = isGroup
     ? (normalizeGroupActivation(sessionEntry?.groupActivation) ?? defaultGroupActivation())
     : undefined;
@@ -240,7 +213,7 @@ export async function buildStatusReply(params: {
       dropPolicy: queueSettings.dropPolicy,
       showDetails: queueOverrides,
     },
-    subagentsLine,
+    subagentsLine: undefined,
     mediaDecisions: params.mediaDecisions,
     includeTranscriptUsage: false,
   });

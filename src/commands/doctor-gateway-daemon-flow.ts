@@ -1,4 +1,5 @@
 import type { VersoConfig } from "../config/config.js";
+import { formatCliCommand } from "../cli/command-format.js";
 import { resolveGatewayPort } from "../config/config.js";
 import {
   resolveGatewayLaunchAgentLabel,

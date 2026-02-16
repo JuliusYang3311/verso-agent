@@ -261,13 +261,13 @@ export async function agentCommand(
       });
     }
 
-    if (opts.authProfileId && sessionEntry && sessionStore && sessionKey) {
+    if (opts.authProfileId && sessionStore && sessionKey) {
       const entry = sessionStore[sessionKey] ??
         sessionEntry ?? { sessionId, updatedAt: Date.now() };
       const next: SessionEntry = {
         ...entry,
         authProfileOverride: opts.authProfileId,
-        authProfileOverrideSource: "user", // Treat as explicit user override for now? Or maybe a new source "spawn"?
+        authProfileOverrideSource: opts.authProfileOverrideSource ?? "user",
         updatedAt: Date.now(),
       };
       // If it's a new session, "user" source is fine.

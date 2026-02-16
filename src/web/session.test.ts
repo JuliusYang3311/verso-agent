@@ -169,6 +169,7 @@ describe("web session", () => {
     const sock = getLastSocket();
 
     sock.ev.emit("creds.update", {});
+    sock.ev.emit("creds.update", {});
 
     await new Promise<void>((resolve) => setImmediate(resolve));
     expect(inFlight).toBe(1);

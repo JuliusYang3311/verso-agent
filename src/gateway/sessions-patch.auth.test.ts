@@ -19,14 +19,14 @@ describe("sessions-patch auth profile preservation", () => {
     },
   ]);
 
-  it("preserves authProfileOverride when patching model", async () => {
+  it("clears authProfileOverride when patching model without explicit auth", async () => {
     const store: Record<string, SessionEntry> = {
       "agent:main:s1": {
         sessionId: "s1",
         updatedAt: 100,
         providerOverride: "old-p",
         modelOverride: "old-m",
-        authProfileOverride: "auth-123", // Existing auth profile
+        authProfileOverride: "auth-123",
         authProfileOverrideSource: "user",
       },
     };
@@ -47,10 +47,10 @@ describe("sessions-patch auth profile preservation", () => {
     }
 
     expect(result.entry.modelOverride).toBe("new-model");
-    // This expectation should FAIL currently if the bug exists
-    expect(result.entry.authProfileOverride).toBe("auth-123");
-    expect(result.entry.authProfileOverride).toBe("auth-123");
-    expect(result.entry.authProfileOverrideSource).toBe("user");
+    // When model changes without explicit auth override in the patch,
+    // the old auth profile is cleared so it can be re-resolved for the new provider.
+    expect(result.entry.authProfileOverride).toBeUndefined();
+    expect(result.entry.authProfileOverrideSource).toBeUndefined();
   });
 
   it("updates authProfileOverride when provided in patch", async () => {

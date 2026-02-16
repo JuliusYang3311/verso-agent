@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => {
   return {
     store,
     resolveVersoAgentDir: vi.fn().mockReturnValue("/tmp/verso-agent"),
+    resolveAgentDir: vi.fn().mockReturnValue("/tmp/verso-agent"),
+    resolveAgentModelPrimary: vi.fn().mockReturnValue(undefined),
+    resolveAgentModelFallbacksOverride: vi.fn().mockReturnValue(undefined),
     ensureAuthProfileStore: vi.fn().mockReturnValue(store),
     listProfilesForProvider: vi.fn((s: typeof store, provider: string) => {
       return Object.entries(s.profiles)
@@ -71,6 +74,13 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("../../agents/agent-paths.js", () => ({
   resolveVersoAgentDir: mocks.resolveVersoAgentDir,
+}));
+
+vi.mock("../../agents/agent-scope.js", () => ({
+  resolveAgentDir: mocks.resolveAgentDir,
+  resolveAgentModelPrimary: mocks.resolveAgentModelPrimary,
+  resolveAgentModelFallbacksOverride: mocks.resolveAgentModelFallbacksOverride,
+  listAgentIds: () => ["main", "jeremiah"],
 }));
 
 vi.mock("../../agents/auth-profiles.js", async (importOriginal) => {

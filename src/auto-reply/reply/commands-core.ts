@@ -30,7 +30,6 @@ import {
   handleStopCommand,
   handleUsageCommand,
 } from "./commands-session.js";
-import { handleSubagentsCommand } from "./commands-subagents.js";
 import { handleTtsCommands } from "./commands-tts.js";
 import { routeReply } from "./route-reply.js";
 
@@ -54,7 +53,6 @@ export async function handleCommands(params: HandleCommandsParams): Promise<Comm
       handleApproveCommand,
       handleContextCommand,
       handleWhoamiCommand,
-      handleSubagentsCommand,
       handleConfigCommand,
       handleDebugCommand,
       handleModelsCommand,

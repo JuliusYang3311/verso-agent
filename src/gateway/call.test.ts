@@ -345,13 +345,13 @@ describe("callGateway url override auth requirements", () => {
   });
 
   afterEach(() => {
-    delete process.env.OPENCLAW_GATEWAY_TOKEN;
-    delete process.env.OPENCLAW_GATEWAY_PASSWORD;
+    delete process.env.VERSO_GATEWAY_TOKEN;
+    delete process.env.VERSO_GATEWAY_PASSWORD;
   });
 
   it("throws when url override is set without explicit credentials", async () => {
-    process.env.OPENCLAW_GATEWAY_TOKEN = "env-token";
-    process.env.OPENCLAW_GATEWAY_PASSWORD = "env-password";
+    process.env.VERSO_GATEWAY_TOKEN = "env-token";
+    process.env.VERSO_GATEWAY_PASSWORD = "env-password";
     loadConfig.mockReturnValue({
       gateway: {
         mode: "local",
@@ -449,7 +449,7 @@ describe("callGateway password resolution", () => {
   });
 
   it("uses explicit password when url override is set", async () => {
-    process.env.OPENCLAW_GATEWAY_PASSWORD = "from-env";
+    process.env.VERSO_GATEWAY_PASSWORD = "from-env";
     loadConfig.mockReturnValue({
       gateway: {
         mode: "local",

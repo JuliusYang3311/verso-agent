@@ -91,12 +91,9 @@ export function resolveModel(
   // Fix: If modelId incorrectly includes the provider prefix (e.g. "custom-openai/my-model"),
   // strip it so we look up "my-model" instead. This ensures API calls use the clean ID.
   // This happens if the caller passes the full key as the model ID.
-  // STRICT CHECK: Only apply this to custom-openai (enforced by config wizard) and ollama.
-  if (provider === "custom-openai" || provider === "ollama") {
-    const prefix = `${provider}/`;
-    if (modelId.startsWith(prefix)) {
-      modelId = modelId.slice(prefix.length);
-    }
+  const prefix = `${provider}/`;
+  if (modelId.startsWith(prefix)) {
+    modelId = modelId.slice(prefix.length);
   }
 
   // 1. Try to find in registry (built-in or dynamic providers)

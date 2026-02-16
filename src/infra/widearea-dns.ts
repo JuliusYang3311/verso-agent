@@ -6,6 +6,21 @@ import { CONFIG_DIR, ensureDir } from "../utils.js";
 export const WIDE_AREA_DISCOVERY_DOMAIN = "verso.internal.";
 export const WIDE_AREA_ZONE_FILENAME = "verso.internal.db";
 
+/**
+ * Normalize a wide-area domain candidate: trim, ensure trailing dot,
+ * and return null for empty/invalid values.
+ */
+function normalizeWideAreaDomain(candidate: string | null | undefined): string | null {
+  if (!candidate || typeof candidate !== "string") {
+    return null;
+  }
+  const trimmed = candidate.trim().toLowerCase();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.endsWith(".") ? trimmed : `${trimmed}.`;
+}
+
 export function resolveWideAreaDiscoveryDomain(params?: {
   env?: NodeJS.ProcessEnv;
   configDomain?: string | null;
@@ -127,7 +142,7 @@ function renderZone(opts: WideAreaGatewayZoneOpts & { serial: number }): string 
 
   const records: string[] = [];
 
-  records.push(`$ORIGIN ${domain}`);
+  records.push(`$ORIGIN ${opts.domain}`);
   records.push(`$TTL 60`);
   const soaLine = `@ IN SOA ns1 hostmaster ${opts.serial} 7200 3600 1209600 60`;
   records.push(soaLine);

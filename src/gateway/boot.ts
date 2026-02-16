@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { CliDeps } from "../cli/deps.js";
 import type { VersoConfig } from "../config/config.js";
+import { SILENT_REPLY_TOKEN } from "../auto-reply/tokens.js";
 import { agentCommand } from "../commands/agent.js";
 import { resolveMainSessionKey } from "../config/sessions/main-session.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";

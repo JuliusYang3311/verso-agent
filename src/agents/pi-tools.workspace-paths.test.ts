@@ -1,8 +1,8 @@
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { describe, expect, it } from "vitest";
 import { createVersoCodingTools } from "./pi-tools.js";
 
 vi.mock("../infra/shell-env.js", async (importOriginal) => {
@@ -154,6 +154,31 @@ describe("sandboxed workspace paths", () => {
   it("uses sandbox workspace for relative read/write/edit", async () => {
     await withTempDir("verso-sandbox-", async (sandboxDir) => {
       await withTempDir("verso-workspace-", async (workspaceDir) => {
+        const mockBridge = {
+          resolvePath: vi.fn((p: { filePath: string; cwd?: string }) => ({
+            hostPath: p.filePath,
+            containerPath: p.filePath,
+            isAbsolute: path.isAbsolute(p.filePath),
+          })),
+          readFile: vi.fn(async (p: { filePath: string; cwd?: string }) => {
+            return fsSync.readFileSync(p.filePath);
+          }),
+          writeFile: vi.fn(async (p: { filePath: string; cwd?: string; data: Buffer | string }) => {
+            fsSync.writeFileSync(p.filePath, p.data);
+          }),
+          mkdirp: vi.fn(),
+          remove: vi.fn(),
+          rename: vi.fn(),
+          stat: vi.fn(async (p: { filePath: string; cwd?: string }) => {
+            try {
+              const s = fsSync.statSync(p.filePath);
+              return { isFile: s.isFile(), isDirectory: s.isDirectory(), size: s.size };
+            } catch {
+              return null;
+            }
+          }),
+          listDir: vi.fn(),
+        };
         const sandbox = {
           enabled: true,
           sessionKey: "sandbox:test",
@@ -175,6 +200,7 @@ describe("sandboxed workspace paths", () => {
           },
           tools: { allow: [], deny: [] },
           browserAllowHostControl: false,
+          fsBridge: mockBridge,
         };
 
         const testFile = "sandbox.txt";

@@ -270,7 +270,7 @@ export async function createCanvasHostHandler(
     };
   }
 
-  const rootDir = resolveUserPath(opts.rootDir ?? path.join(os.homedir(), "verso", "canvas"));
+  const rootDir = resolveUserPath(opts.rootDir ?? resolveDefaultCanvasRoot());
   const rootReal = await prepareCanvasRoot(rootDir);
 
   const liveReload = opts.liveReload !== false;

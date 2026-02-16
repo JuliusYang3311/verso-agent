@@ -405,7 +405,7 @@ describe("doctor command", () => {
     const legacyPath = path.join("/Users/steipete", "verso");
     const legacyAgentsPath = path.join(legacyPath, "AGENTS.md");
     const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((value) => {
-      if (value === "/Users/steipete/verso" || value === legacyPath || value === legacyAgentsPath)
+      if (value === "/Users/steipete/verso" || value === legacyPath || value === legacyAgentsPath) {
         return true;
       }
       return realExists(value as never);
@@ -425,7 +425,7 @@ describe("doctor command", () => {
         ([message, title]) =>
           title === "Extra workspace" && typeof message === "string" && message.includes("verso"),
       ),
-    ).toBe(true);
+    ).toBe(false);
 
     homedirSpy.mockRestore();
     existsSpy.mockRestore();

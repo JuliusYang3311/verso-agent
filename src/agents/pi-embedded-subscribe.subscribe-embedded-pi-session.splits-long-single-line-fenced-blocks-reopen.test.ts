@@ -101,7 +101,8 @@ describe("subscribeEmbeddedPiSession", () => {
     }
 
     expect(subscription.isCompacting()).toBe(true);
-    expect(subscription.assistantTexts.length).toBe(0);
+    // resetForCompactionRetry preserves existing assistant responses to avoid swallowed messages
+    expect(subscription.assistantTexts.length).toBe(1);
 
     let resolved = false;
     const waitPromise = subscription.waitForCompactionRetry().then(() => {

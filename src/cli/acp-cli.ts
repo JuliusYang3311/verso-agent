@@ -20,7 +20,7 @@ export function registerAcpCli(program: Command) {
     .option("--verbose, -v", "Verbose logging to stderr", false)
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "docs.openclaw.ai/cli/acp")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/acp", "docs.verso.ai/cli/acp")}\n`,
     )
     .action((opts) => {
       try {

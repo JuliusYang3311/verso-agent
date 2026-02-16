@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "./test-helpers/fast-coding-tools.js";
 import { createVersoCodingTools } from "./pi-tools.js";
 
@@ -72,6 +72,15 @@ describe("createVersoCodingTools", () => {
     }
   });
   it("filters tools by sandbox policy", () => {
+    const mockBridge = {
+      resolvePath: vi.fn(),
+      readFile: vi.fn().mockResolvedValue(Buffer.from("")),
+      writeFile: vi.fn(),
+      mkdirp: vi.fn(),
+      remove: vi.fn(),
+      stat: vi.fn(),
+      listDir: vi.fn(),
+    };
     const sandbox = {
       enabled: true,
       sessionKey: "sandbox:test",
@@ -96,6 +105,7 @@ describe("createVersoCodingTools", () => {
         deny: ["browser"],
       },
       browserAllowHostControl: false,
+      fsBridge: mockBridge,
     };
     const tools = createVersoCodingTools({ sandbox });
     expect(tools.some((tool) => tool.name === "exec")).toBe(true);
@@ -103,6 +113,15 @@ describe("createVersoCodingTools", () => {
     expect(tools.some((tool) => tool.name === "browser")).toBe(false);
   });
   it("hard-disables write/edit when sandbox workspaceAccess is ro", () => {
+    const mockBridge = {
+      resolvePath: vi.fn(),
+      readFile: vi.fn().mockResolvedValue(Buffer.from("")),
+      writeFile: vi.fn(),
+      mkdirp: vi.fn(),
+      remove: vi.fn(),
+      stat: vi.fn(),
+      listDir: vi.fn(),
+    };
     const sandbox = {
       enabled: true,
       sessionKey: "sandbox:test",
@@ -127,6 +146,7 @@ describe("createVersoCodingTools", () => {
         deny: [],
       },
       browserAllowHostControl: false,
+      fsBridge: mockBridge,
     };
     const tools = createVersoCodingTools({ sandbox });
     expect(tools.some((tool) => tool.name === "read")).toBe(true);

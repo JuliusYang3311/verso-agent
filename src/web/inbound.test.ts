@@ -158,7 +158,7 @@ describe("web inbound helpers", () => {
         ],
       },
     } as unknown as import("@whiskeysockets/baileys").proto.IMessage);
-    expect(body).toBe("<contacts: Alice, +15555550101 +2 more>");
+    expect(body).toBe("<contacts: Alice, +15555550101 +1 more>");
   });
 
   it("summarizes empty WhatsApp contact cards with a count", () => {

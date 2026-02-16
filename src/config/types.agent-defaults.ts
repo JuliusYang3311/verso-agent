@@ -136,6 +136,12 @@ export type AgentDefaultsConfig = {
   contextPruning?: AgentContextPruningConfig;
   /** Compaction tuning and pre-compaction memory flush behavior. */
   compaction?: AgentCompactionConfig;
+  /**
+   * Enable dynamic context retrieval system (default: true).
+   * When enabled, uses vector search + dynamic recent message retention
+   * instead of full conversation history, reducing token usage.
+   */
+  dynamicContext?: boolean;
   /** Vector memory search configuration (per-agent overrides supported). */
   memorySearch?: MemorySearchConfig;
   /** Default thinking level when no /think directive is present. */
@@ -204,6 +210,14 @@ export type AgentDefaultsConfig = {
   };
   /** Max concurrent agent runs across all conversations. Default: 1 (sequential). */
   maxConcurrent?: number;
+  /**
+   * Async dispatch mode: fire-and-forget agent turn execution.
+   * When enabled, incoming messages are dispatched asynchronously (non-blocking).
+   * - If an active run exists, the message is steered into the active run
+   * - If no active run, a new agent turn is started in the background
+   * Default: false (blocking await for backward compatibility).
+   */
+  asyncDispatch?: boolean;
   /** Sub-agent defaults (spawned via sessions_spawn). */
   subagents?: {
     /** Max concurrent sub-agent runs (global lane: "subagent"). Default: 1. */

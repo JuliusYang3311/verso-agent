@@ -88,11 +88,7 @@ export function parseCliProfileArgs(argv: string[]): CliProfileParseResult {
   return { ok: true, profile, argv: out };
 }
 
-function resolveProfileStateDir(
-  profile: string,
-  env: Record<string, string | undefined>,
-  homedir: () => string,
-): string {
+function resolveProfileStateDir(profile: string, homedir: () => string): string {
   const suffix = profile.toLowerCase() === "default" ? "" : `-${profile}`;
   return path.join(homedir(), `.verso${suffix}`);
 }

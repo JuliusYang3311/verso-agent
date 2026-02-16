@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VersoConfig } from "../../config/config.js";
 import type { MsgContext } from "../templating.js";
-import { extractMessageText } from "./commands-subagents.js";
 import { buildCommandContext, handleCommands } from "./commands.js";
 import { parseConfigCommand } from "./config-commands.js";
 import { parseDebugCommand } from "./debug-commands.js";
@@ -87,26 +86,6 @@ describe("parseDebugCommand", () => {
   it("parses unset", () => {
     const cmd = parseDebugCommand("/debug unset foo.bar");
     expect(cmd).toEqual({ action: "unset", path: "foo.bar" });
-  });
-});
-
-describe("extractMessageText", () => {
-  it("preserves user text that looks like tool call markers", () => {
-    const message = {
-      role: "user",
-      content: "Here [Tool Call: foo (ID: 1)] ok",
-    };
-    const result = extractMessageText(message);
-    expect(result?.text).toContain("[Tool Call: foo (ID: 1)]");
-  });
-
-  it("sanitizes assistant tool call markers", () => {
-    const message = {
-      role: "assistant",
-      content: "Here [Tool Call: foo (ID: 1)] ok",
-    };
-    const result = extractMessageText(message);
-    expect(result?.text).toBe("Here ok");
   });
 });
 

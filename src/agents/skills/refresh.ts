@@ -41,8 +41,8 @@ export const DEFAULT_SKILLS_WATCH_IGNORED: RegExp[] = [
   // Data and media storage (prevents FD leaks from large media folders)
   /(^|[\\/])storage([\\/]|$)/,
   /(^|[\\/])cache_videos([\\/]|$)/,
-  // Hidden files and directories
-  /(^|[\\/])\../,
+  // Hidden files and directories (only match leaf components, not parent directories)
+  /(^|[\\/])\.[^.\\/][^\\/]*$/,
 ];
 
 function bumpVersion(current: number): number {

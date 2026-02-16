@@ -1,73 +1,148 @@
-# 🦞 Verso Custom — Personal AI Assistant
+# Verso
 
-> **This is a privately customized fork of [Verso](https://github.com/verso/verso), originally created by [Peter Steinberger](https://github.com/steipete).**
->
-> # This version has been modified and tailored for personal use.
+A self-evolving personal AI assistant platform with multi-channel messaging support.
 
-# 🦞 Verso — Personal AI Assistant
+Verso enhances the personal AI agent experience by enabling **asynchronous tool execution**, **dynamic context retrieval**, and **self-evolving code optimization** — letting the AI assistant gradually adapt to each user's workflow over time.
 
-<p align="center">
-    <picture>
-        <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text-dark.png">
-        <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="Verso" width="500">
-    </picture>
-</p>
->>>>>>> upstream/main
+## Key Features
 
----
+### Asynchronous Tool Execution
 
-## About
+Agent tool calls (shell commands, API requests, code generation) run asynchronously in the background. The agent can continue responding to user messages while tools execute, eliminating the blocking wait that traditional agent loops impose.
 
-# It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It also integrates deeply with **Google Workspace** (Gmail, Docs, Sheets, Slides, Calendar, Drive).
+- Message I/O layer and turn execution layer are fully decoupled
+- New user messages are steered into the active turn via `steer()` without interruption
+- Tool completion triggers automatic agent resume
 
-<p align="center">
-  <a href="https://github.com/openclaw/openclaw/actions/workflows/ci.yml?branch=main"><img src="https://img.shields.io/github/actions/workflow/status/openclaw/openclaw/ci.yml?branch=main&style=for-the-badge" alt="CI status"></a>
-  <a href="https://github.com/openclaw/openclaw/releases"><img src="https://img.shields.io/github/v/release/openclaw/openclaw?include_prereleases&style=for-the-badge" alt="GitHub release"></a>
-  <a href="https://discord.gg/clawd"><img src="https://img.shields.io/discord/1456350064065904867?label=Discord&logo=discord&logoColor=white&color=5865F2&style=for-the-badge" alt="Discord"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge" alt="MIT License"></a>
-</p>
+### Dynamic Context Retrieval
 
-**Verso** is a _personal AI assistant_ you run on your own devices.
-It answers you on the channels you already use (WhatsApp, Telegram, Slack, Discord, Google Chat, Signal, iMessage, Microsoft Teams, WebChat), plus extension channels like BlueBubbles, Matrix, Zalo, and Zalo Personal. It can speak and listen on macOS/iOS/Android, and can render a live Canvas you control. The Gateway is just the control plane — the product is the assistant.
+Instead of feeding the full conversation history into each LLM call (expensive and wasteful), Verso uses a **dynamic context builder** that intelligently selects what to include:
 
-> > > > > > > upstream/main
+- **Dynamic recent message retention** — keeps recent messages based on a token budget, not a fixed count
+- **Vector-based retrieval** — retrieves relevant older messages using similarity threshold (not fixed top-k), with time-decay weighting
+- **Adaptive ratio** — automatically adjusts the balance between recent messages and retrieved context based on conversation pace and tool usage patterns
+- All hyperparameters are tunable by the Evolver (see below)
 
-## Original Project
+### Self-Evolving Code (Evolver)
 
-<<<<<<< HEAD
-For the original project, documentation, and community support, please visit:
+The Evolver is an integrated self-optimization engine powered by a Gene Expression Programming (GEP) protocol:
 
-- **Repository**: [https://github.com/verso/verso](https://github.com/verso/verso)
-- **Documentation**: [https://docs.molt.bot](https://docs.molt.bot)
-- **Website**: [https://molt.bot](https://molt.bot)
-- **Discord**: [https://discord.gg/verso](https://discord.gg/verso)
+- **Sandbox-first** — all code modifications are tested in an isolated sandbox (`pnpm build` + `pnpm lint` + `pnpm test`) before deployment
+- **Automatic rollback** — failed changes are reverted and recorded in `errors.jsonl`
+- **Signal-driven** — extracts optimization signals from runtime logs (slow responses, high token usage, memory leaks, user corrections)
+- **Hyperparameter tuning** — automatically adjusts context retrieval parameters based on usage feedback
+- **User feedback loop** — implicit signals (repeated questions, interrupted tools) and explicit `/feedback` command drive optimization direction
 
-## Quick Start
+### Multi-Channel Messaging
 
-````bash
+Connect your AI assistant across multiple platforms:
+
+- **Telegram** — full bot support with group management
+- **Discord** — server and DM integration
+- **Slack** — workspace bot with thread support
+- **WhatsApp** — personal and group messaging
+- **Feishu (Lark)** — enterprise messaging integration
+
+### Additional Capabilities
+
+- **60+ Skills** — GitHub, Gmail, Calendar, Notion, Obsidian, crypto trading, video generation, web search, and more
+- **Browser Control** — built-in browser automation tool
+- **Cron Jobs** — scheduled task execution
+- **Gateway & Web UI** — HTTP/WebSocket gateway with control panel
+- **Memory System** — persistent memory with vector search (sqlite-vec)
+- **Identity Files** — AGENT.md, SOUL.md, MEMORY.md for personality and context
+
+## Architecture
+
+```
+User Message
+    |
+    v
++---------------------------------------------+
+|         Message I/O Layer                   |
+|  Receives messages, routes to active turn   |
+|  or starts new turn (fire-and-forget)       |
++----------------------+-----------------------+
+                       |
+                       v
++---------------------------------------------+
+|      Dynamic Context Builder                |
+|  Token-budget recent messages               |
+|  + Vector-retrieved relevant history        |
+|  + Compaction summary (safety net)          |
++----------------------+-----------------------+
+                       |
+                       v
++---------------------------------------------+
+|      Async Turn Execution Layer             |
+|  LLM -> tool_use -> execute -> tool_result  |
+|  -> LLM -> ... -> end_turn                  |
+|  (self-driving loop, non-blocking)          |
++----------------------+-----------------------+
+                       |
+                       v
++---------------------------------------------+
+|      Evolver (Background)                   |
+|  GEP signals -> mutation -> sandbox test    |
+|  -> deploy or rollback                      |
++---------------------------------------------+
+```
+
+## Tech Stack
+
+- **Runtime**: Node.js >= 22.12.0
+- **Language**: TypeScript (ESM)
+- **Package Manager**: pnpm 10.23.0
+- **Core Framework**: @mariozechner/pi-agent-core 0.52.9
+- **Vector DB**: sqlite-vec (hybrid vector + BM25 search)
+- **Testing**: Vitest (989 files, 6768 tests)
+
+## Getting Started
+
+```bash
 # Install dependencies
 pnpm install
 
-# Build the project
+# Build
 pnpm build
 
-# Run the gateway
-pnpm verso gateway --port 18789 --verbose
+# Run tests
+pnpm test
+
+# Start the gateway
+pnpm gateway:start
 ```
 
-## Requirements
+## Project Structure
 
+```
+src/
+  agents/          # Agent runtime, tools, dynamic context
+  auto-reply/      # Message routing and dispatch
+  evolver/         # Self-evolution engine (GEP protocol)
+    gep/           # Gene Expression Programming modules
+    ops/           # Lifecycle and build verification
+    assets/        # Tunable parameters and logs
+  gateway/         # HTTP/WebSocket gateway server
+  memory/          # Vector memory with sqlite-vec
+  config/          # Configuration and schema
+  approval/        # Exec approval workflow
+  heartbeat/       # Heartbeat and wake mechanisms
+  env/             # Environment and shell utilities
+  telegram/        # Telegram channel
+  discord/         # Discord channel
+  slack/           # Slack channel
+  web/             # WhatsApp (Baileys) channel
+  channels/        # Channel plugin system
+extensions/        # 32 active extensions
+skills/            # 65 skills (20 core)
+test/              # Integration and compatibility tests
+```
 
-- **Node.js**: ≥22
-- **Package Manager**: pnpm (recommended)
+## Acknowledgments
+
+This project is derived from [OpenClaw/MoltBot](https://github.com/moltbot/moltbot), originally created by **Peter Steinberger**. The OpenClaw framework provided the foundational multi-channel AI gateway architecture upon which Verso's async execution, dynamic context, and self-evolution capabilities were built. We sincerely thank Peter Steinberger and all OpenClaw contributors for their excellent work.
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
-
-This project is derived from Verso, originally created by Peter Steinberger.
-
----
-
-*Thank you to Peter Steinberger and all the contributors of the original Verso project! 🦞*
-````
+MIT License. See [LICENSE](LICENSE) for details.

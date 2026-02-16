@@ -66,7 +66,7 @@ export async function onboardCommand(opts: OnboardOptions, runtime: RuntimeEnv =
         "Windows detected — Verso runs great on WSL2!",
         "Native Windows might be trickier.",
         "Quick setup: wsl --install (one command, one reboot)",
-        "Guide: https://docs.openclaw.ai/windows",
+        "Guide: https://docs.verso.ai/windows",
       ].join("\n"),
     );
   }

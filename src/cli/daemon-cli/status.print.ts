@@ -63,6 +63,7 @@ export function printDaemonStatus(status: DaemonStatus, opts: { json: boolean })
   const spacer = () => defaultRuntime.log("");
 
   const { service, rpc, extraServices } = status;
+  const legacyServices: Array<{ label: string; detail: string }> = [];
   const serviceStatus = service.loaded
     ? okText(service.loadedText)
     : warnText(service.notLoadedText);

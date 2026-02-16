@@ -97,6 +97,7 @@ describe("browser server-context ensureTabAvailable", () => {
     const fetchMock = vi.fn();
     const responses = [
       [{ id: "A", type: "page", url: "https://a.example", webSocketDebuggerUrl: "ws://x/a" }],
+      [{ id: "A", type: "page", url: "https://a.example", webSocketDebuggerUrl: "ws://x/a" }],
     ];
 
     fetchMock.mockImplementation(async (url: unknown) => {

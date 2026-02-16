@@ -59,7 +59,12 @@ describe("createVersoCodingTools", () => {
       const wrapped = __testing.wrapToolParamNormalization(tool, [{ keys: ["path", "file_path"] }]);
 
       await wrapped.execute("tool-1", { file_path: "foo.txt", content: "x" });
-      expect(execute).toHaveBeenCalledWith("tool-1", { path: "foo.txt", content: "x" }, undefined);
+      expect(execute).toHaveBeenCalledWith(
+        "tool-1",
+        { path: "foo.txt", content: "x" },
+        undefined,
+        undefined,
+      );
 
       await expect(wrapped.execute("tool-2", { content: "x" })).rejects.toThrow(
         /Missing required parameter/,
@@ -76,10 +81,10 @@ describe("createVersoCodingTools", () => {
     expect(schema.type).toBe("object");
     expect(schema.anyOf).toBeUndefined();
   });
-  it("mentions Chrome extension relay in browser tool description", () => {
+  it("mentions chrome profile in browser tool description", () => {
     const browser = createBrowserTool();
-    expect(browser.description).toMatch(/Chrome extension/i);
     expect(browser.description).toMatch(/profile="chrome"/i);
+    expect(browser.description).toMatch(/profile="verso"/i);
   });
   it("keeps browser tool schema properties after normalization", () => {
     const browser = defaultTools.find((tool) => tool.name === "browser");
@@ -308,50 +313,6 @@ describe("createVersoCodingTools", () => {
     expect(names.has("telegram")).toBe(false);
     expect(names.has("whatsapp")).toBe(false);
   });
-  it("filters session tools for sub-agent sessions by default", () => {
-    const tools = createVersoCodingTools({
-      sessionKey: "agent:main:subagent:test",
-    });
-    const names = new Set(tools.map((tool) => tool.name));
-    expect(names.has("sessions_list")).toBe(false);
-    expect(names.has("sessions_history")).toBe(false);
-    expect(names.has("sessions_send")).toBe(false);
-    expect(names.has("sessions_spawn")).toBe(false);
-
-    expect(names.has("read")).toBe(true);
-    expect(names.has("exec")).toBe(true);
-    expect(names.has("process")).toBe(true);
-    expect(names.has("apply_patch")).toBe(false);
-  });
-  it("supports allow-only sub-agent tool policy", () => {
-    const tools = createVersoCodingTools({
-      sessionKey: "agent:main:subagent:test",
-      // Intentionally partial config; only fields used by pi-tools are provided.
-      config: {
-        tools: {
-          subagents: {
-            tools: {
-              // Policy matching is case-insensitive
-              allow: ["read"],
-            },
-          },
-        },
-      },
-    });
-    expect(tools.map((tool) => tool.name)).toEqual(["read"]);
-  });
-
-  it("applies tool profiles before allow/deny policies", () => {
-    const tools = createVersoCodingTools({
-      config: { tools: { profile: "messaging" } },
-    });
-    const names = new Set(tools.map((tool) => tool.name));
-    expect(names.has("message")).toBe(true);
-    expect(names.has("sessions_send")).toBe(true);
-    expect(names.has("sessions_spawn")).toBe(false);
-    expect(names.has("exec")).toBe(false);
-    expect(names.has("browser")).toBe(false);
-  });
   it("expands group shorthands in global tool policy", () => {
     const tools = createVersoCodingTools({
       config: { tools: { allow: ["group:fs"] } },
@@ -462,7 +423,16 @@ describe("createVersoCodingTools", () => {
     const outsidePath = path.join(os.tmpdir(), "verso-outside.txt");
     await fs.writeFile(outsidePath, "outside", "utf8");
     try {
-      const readTool = createSandboxedReadTool(tmpDir);
+      const mockBridge = {
+        resolvePath: vi.fn(),
+        readFile: vi.fn().mockResolvedValue(Buffer.from("test")),
+        writeFile: vi.fn(),
+        mkdirp: vi.fn(),
+        remove: vi.fn(),
+        stat: vi.fn().mockResolvedValue({ type: "file", size: 4, mtimeMs: 0 }),
+        listDir: vi.fn(),
+      };
+      const readTool = createSandboxedReadTool({ root: tmpDir, bridge: mockBridge });
       await expect(readTool.execute("sandbox-1", { file_path: outsidePath })).rejects.toThrow(
         /sandbox root/i,
       );

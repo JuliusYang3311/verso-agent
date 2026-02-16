@@ -6,7 +6,9 @@ import {
   parseModelRef,
   resolveModelRefFromString,
 } from "../../agents/model-selection.js";
+import { formatCliCommand } from "../../cli/command-format.js";
 import { type VersoConfig, readConfigFileSnapshot, writeConfigFile } from "../../config/config.js";
+import { normalizeAgentId } from "../../routing/session-key.js";
 
 export const ensureFlagCompatibility = (opts: { json?: boolean; plain?: boolean }) => {
   if (opts.json && opts.plain) {
@@ -105,7 +107,7 @@ export function resolveKnownAgentId(params: {
   const knownAgents = listAgentIds(params.cfg);
   if (!knownAgents.includes(agentId)) {
     throw new Error(
-      `Unknown agent id "${raw}". Use "${formatCliCommand("openclaw agents list")}" to see configured agents.`,
+      `Unknown agent id "${raw}". Use "${formatCliCommand("verso agents list")}" to see configured agents.`,
     );
   }
   return agentId;

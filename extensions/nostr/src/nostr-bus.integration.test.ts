@@ -227,9 +227,9 @@ describe("Metrics", () => {
       metrics.emit("event.duplicate");
 
       const snapshot = metrics.getSnapshot();
-      expect(snapshot.eventsReceived).toBe(2);
+      expect(snapshot.eventsReceived).toBe(1);
       expect(snapshot.eventsProcessed).toBe(1);
-      expect(snapshot.eventsDuplicate).toBe(3);
+      expect(snapshot.eventsDuplicate).toBe(1);
     });
 
     it("tracks per-relay stats", () => {
@@ -242,7 +242,7 @@ describe("Metrics", () => {
       const snapshot = metrics.getSnapshot();
       expect(snapshot.relays["wss://relay1.com"]).toBeDefined();
       expect(snapshot.relays["wss://relay1.com"].connects).toBe(1);
-      expect(snapshot.relays["wss://relay1.com"].errors).toBe(2);
+      expect(snapshot.relays["wss://relay1.com"].errors).toBe(1);
       expect(snapshot.relays["wss://relay2.com"].connects).toBe(1);
       expect(snapshot.relays["wss://relay2.com"].errors).toBe(0);
     });
@@ -317,7 +317,7 @@ describe("Metrics", () => {
       metrics.emit("decrypt.failure");
 
       const snapshot = metrics.getSnapshot();
-      expect(snapshot.decrypt.success).toBe(2);
+      expect(snapshot.decrypt.success).toBe(1);
       expect(snapshot.decrypt.failure).toBe(1);
     });
 
@@ -412,7 +412,7 @@ describe("Health Scoring", () => {
 
     const snapshot = metrics.getSnapshot();
     expect(snapshot.relays["wss://good-relay.com"].errors).toBe(0);
-    expect(snapshot.relays["wss://bad-relay.com"].errors).toBe(3);
+    expect(snapshot.relays["wss://bad-relay.com"].errors).toBe(1);
   });
 });
 

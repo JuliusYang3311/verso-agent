@@ -68,8 +68,8 @@ describe("createVersoCodingTools safeBins", () => {
     expect(execTool).toBeDefined();
 
     const marker = `safe-bins-${Date.now()}`;
-    const prevShellEnvTimeoutMs = process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS;
-    process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS = "1000";
+    const prevShellEnvTimeoutMs = process.env.VERSO_SHELL_ENV_TIMEOUT_MS;
+    process.env.VERSO_SHELL_ENV_TIMEOUT_MS = "1000";
     const result = await (async () => {
       try {
         return await execTool!.execute("call1", {
@@ -78,9 +78,9 @@ describe("createVersoCodingTools safeBins", () => {
         });
       } finally {
         if (prevShellEnvTimeoutMs === undefined) {
-          delete process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS;
+          delete process.env.VERSO_SHELL_ENV_TIMEOUT_MS;
         } else {
-          process.env.OPENCLAW_SHELL_ENV_TIMEOUT_MS = prevShellEnvTimeoutMs;
+          process.env.VERSO_SHELL_ENV_TIMEOUT_MS = prevShellEnvTimeoutMs;
         }
       }
     })();

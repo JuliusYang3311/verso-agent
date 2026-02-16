@@ -102,7 +102,7 @@ export function registerBrowserExtensionCommands(
             `- “Load unpacked” → select: ${displayPath}`,
             `- Pin “Verso Browser Relay”, then click it on the tab (badge shows ON)`,
             "",
-            `${theme.muted("Docs:")} ${formatDocsLink("/tools/chrome-extension", "docs.openclaw.ai/tools/chrome-extension")}`,
+            `${theme.muted("Docs:")} ${formatDocsLink("/tools/chrome-extension", "docs.verso.ai/tools/chrome-extension")}`,
           ].join("\n"),
         ),
       );

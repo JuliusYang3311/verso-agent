@@ -1,3 +1,4 @@
+import { formatCliCommand } from "../cli/command-format.js";
 import {
   checkUpdateStatus,
   compareSemverStrings,

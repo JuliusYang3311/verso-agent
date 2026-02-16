@@ -7,8 +7,6 @@ import type { CronJob } from "./types.js";
 import { withTempHome as withTempHomeBase } from "../../test/helpers/temp-home.js";
 import { telegramOutbound } from "../channels/plugins/outbound/telegram.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
-import { createPluginRuntime } from "../plugins/runtime/index.js";
-import { createTestRegistry } from "../test-utils/channel-plugins.js";
 import { createOutboundTestPlugin, createTestRegistry } from "../test-utils/channel-plugins.js";
 
 vi.mock("../agents/pi-embedded.js", () => ({
@@ -19,13 +17,9 @@ vi.mock("../agents/pi-embedded.js", () => ({
 vi.mock("../agents/model-catalog.js", () => ({
   loadModelCatalog: vi.fn(),
 }));
-vi.mock("../agents/subagent-announce.js", () => ({
-  runSubagentAnnounceFlow: vi.fn(),
-}));
 
 import { loadModelCatalog } from "../agents/model-catalog.js";
 import { runEmbeddedPiAgent } from "../agents/pi-embedded.js";
-import { runSubagentAnnounceFlow } from "../agents/subagent-announce.js";
 import { runCronIsolatedAgentTurn } from "./isolated-agent.js";
 
 async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
@@ -92,7 +86,6 @@ describe("runCronIsolatedAgentTurn", () => {
   beforeEach(() => {
     vi.mocked(runEmbeddedPiAgent).mockReset();
     vi.mocked(loadModelCatalog).mockResolvedValue([]);
-    vi.mocked(runSubagentAnnounceFlow).mockReset().mockResolvedValue(true);
     setActivePluginRegistry(
       createTestRegistry([
         {
@@ -104,12 +97,15 @@ describe("runCronIsolatedAgentTurn", () => {
     );
   });
 
-  it("announces via shared subagent flow when delivery is requested", async () => {
+  it("delivers via outbound when delivery is requested", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -137,21 +133,19 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(runSubagentAnnounceFlow).toHaveBeenCalledTimes(1);
-      const announceArgs = vi.mocked(runSubagentAnnounceFlow).mock.calls[0]?.[0] as
-        | { announceType?: string }
-        | undefined;
-      expect(announceArgs?.announceType).toBe("cron job");
-      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
+      expect(deps.sendMessageTelegram).toHaveBeenCalled();
     });
   });
 
-  it("passes final payload text into shared subagent announce flow", async () => {
+  it("delivers final payload text via outbound", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -179,16 +173,11 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(runSubagentAnnounceFlow).toHaveBeenCalledTimes(1);
-      const announceArgs = vi.mocked(runSubagentAnnounceFlow).mock.calls[0]?.[0] as
-        | { roundOneReply?: string; requesterOrigin?: { threadId?: string | number } }
-        | undefined;
-      expect(announceArgs?.roundOneReply).toBe("Final weather summary");
-      expect(announceArgs?.requesterOrigin?.threadId).toBeUndefined();
+      expect(deps.sendMessageTelegram).toHaveBeenCalled();
     });
   });
 
-  it("passes resolved threadId into shared subagent announce flow", async () => {
+  it("resolves delivery target from session store last channel", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       await fs.writeFile(
@@ -210,7 +199,10 @@ describe("runCronIsolatedAgentTurn", () => {
       );
       const deps: CliDeps = {
         sendMessageWhatsApp: vi.fn(),
-        sendMessageTelegram: vi.fn(),
+        sendMessageTelegram: vi.fn().mockResolvedValue({
+          messageId: "t1",
+          chatId: "123",
+        }),
         sendMessageDiscord: vi.fn(),
         sendMessageSignal: vi.fn(),
         sendMessageIMessage: vi.fn(),
@@ -238,16 +230,11 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      const announceArgs = vi.mocked(runSubagentAnnounceFlow).mock.calls[0]?.[0] as
-        | { requesterOrigin?: { threadId?: string | number; channel?: string; to?: string } }
-        | undefined;
-      expect(announceArgs?.requesterOrigin?.channel).toBe("telegram");
-      expect(announceArgs?.requesterOrigin?.to).toBe("123");
-      expect(announceArgs?.requesterOrigin?.threadId).toBe(42);
+      expect(deps.sendMessageTelegram).toHaveBeenCalled();
     });
   });
 
-  it("skips announce when messaging tool already sent to target", async () => {
+  it("skips delivery when messaging tool already sent to target", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
@@ -282,12 +269,11 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(runSubagentAnnounceFlow).not.toHaveBeenCalled();
       expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
     });
   });
 
-  it("skips announce for heartbeat-only output", async () => {
+  it("skips delivery for heartbeat-only output", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
@@ -320,12 +306,11 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(runSubagentAnnounceFlow).not.toHaveBeenCalled();
       expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
     });
   });
 
-  it("fails when shared announce flow fails and best-effort is disabled", async () => {
+  it("fails when outbound delivery fails and best-effort is disabled", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
@@ -342,7 +327,6 @@ describe("runCronIsolatedAgentTurn", () => {
           agentMeta: { sessionId: "s", provider: "p", model: "m" },
         },
       });
-      vi.mocked(runSubagentAnnounceFlow).mockResolvedValue(false);
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
           channels: { telegram: { botToken: "t-1" } },
@@ -358,11 +342,10 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("error");
-      expect(res.error).toBe("cron announce delivery failed");
     });
   });
 
-  it("ignores shared announce flow failures when best-effort is enabled", async () => {
+  it("ignores outbound delivery failures when best-effort is enabled", async () => {
     await withTempHome(async (home) => {
       const storePath = await writeSessionStore(home);
       const deps: CliDeps = {
@@ -379,7 +362,6 @@ describe("runCronIsolatedAgentTurn", () => {
           agentMeta: { sessionId: "s", provider: "p", model: "m" },
         },
       });
-      vi.mocked(runSubagentAnnounceFlow).mockResolvedValue(false);
       const res = await runCronIsolatedAgentTurn({
         cfg: makeCfg(home, storePath, {
           channels: { telegram: { botToken: "t-1" } },
@@ -400,8 +382,6 @@ describe("runCronIsolatedAgentTurn", () => {
       });
 
       expect(res.status).toBe("ok");
-      expect(runSubagentAnnounceFlow).toHaveBeenCalledTimes(1);
-      expect(deps.sendMessageTelegram).not.toHaveBeenCalled();
     });
   });
 });

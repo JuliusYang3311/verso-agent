@@ -21,8 +21,8 @@ describe("canvas host state dir defaults", () => {
     restoreStateDirEnv(envSnapshot);
   });
 
-  it("uses OPENCLAW_STATE_DIR for the default canvas root", async () => {
-    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-canvas-state-"));
+  it("uses VERSO_STATE_DIR for the default canvas root", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "verso-canvas-state-"));
     const stateDir = path.join(tempRoot, "state");
     setStateDirEnv(stateDir);
     vi.resetModules();

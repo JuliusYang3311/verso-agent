@@ -217,9 +217,9 @@ export async function setupSkills(
         runtime.log(result.stdout.trim());
       }
       runtime.log(
-        `Tip: run \`${formatCliCommand("openclaw doctor")}\` to review skills + requirements.`,
+        `Tip: run \`${formatCliCommand("verso doctor")}\` to review skills + requirements.`,
       );
-      runtime.log("Docs: https://docs.openclaw.ai/skills");
+      runtime.log("Docs: https://docs.verso.ai/skills");
     }
   }
 

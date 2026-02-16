@@ -78,7 +78,7 @@ async function requireRiskAcknowledgement(params: {
       "verso security audit --deep",
       "verso security audit --fix",
       "",
-      "Must read: https://docs.openclaw.ai/gateway/security",
+      "Must read: https://docs.verso.ai/gateway/security",
     ].join("\n"),
     "Security",
   );
@@ -111,7 +111,7 @@ export async function runOnboardingWizard(
         [
           ...snapshot.issues.map((iss) => `- ${iss.path}: ${iss.message}`),
           "",
-          "Docs: https://docs.openclaw.ai/gateway/configuration",
+          "Docs: https://docs.verso.ai/gateway/configuration",
         ].join("\n"),
         "Config issues",
       );

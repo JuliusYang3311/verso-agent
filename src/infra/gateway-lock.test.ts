@@ -33,7 +33,11 @@ function resolveLockPath(env: NodeJS.ProcessEnv) {
 }
 
 function makeProcStat(pid: number, startTime: number) {
-  const fields = ["R", "1", String(startTime), "1"];
+  // After the closing paren, field indices are 0-based. readLinuxStartTime reads fields[19].
+  // We need at least 20 fields after the closing paren.
+  const fields = new Array(20).fill("0");
+  fields[0] = "R"; // state
+  fields[19] = String(startTime); // starttime
   return `${pid} (node) ${fields.join(" ")}`;
 }
 

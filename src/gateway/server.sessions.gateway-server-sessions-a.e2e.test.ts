@@ -18,7 +18,6 @@ import {
 
 const sessionCleanupMocks = vi.hoisted(() => ({
   clearSessionQueues: vi.fn(() => ({ followupCleared: 0, laneCleared: 0, keys: [] })),
-  stopSubagentsForRequester: vi.fn(() => ({ stopped: 0 })),
 }));
 
 vi.mock("../auto-reply/reply/queue.js", async () => {
@@ -28,16 +27,6 @@ vi.mock("../auto-reply/reply/queue.js", async () => {
   return {
     ...actual,
     clearSessionQueues: sessionCleanupMocks.clearSessionQueues,
-  };
-});
-
-vi.mock("../auto-reply/reply/abort.js", async () => {
-  const actual = await vi.importActual<typeof import("../auto-reply/reply/abort.js")>(
-    "../auto-reply/reply/abort.js",
-  );
-  return {
-    ...actual,
-    stopSubagentsForRequester: sessionCleanupMocks.stopSubagentsForRequester,
   };
 });
 
@@ -73,7 +62,6 @@ const openClient = async (opts?: Parameters<typeof connectOk>[1]) => {
 describe("gateway server sessions", () => {
   beforeEach(() => {
     sessionCleanupMocks.clearSessionQueues.mockClear();
-    sessionCleanupMocks.stopSubagentsForRequester.mockClear();
   });
 
   test("lists and patches session store via sessions.* RPC", async () => {
@@ -456,10 +444,6 @@ describe("gateway server sessions", () => {
     });
     expect(deleted.ok).toBe(true);
     expect(deleted.payload?.deleted).toBe(true);
-    expect(sessionCleanupMocks.stopSubagentsForRequester).toHaveBeenCalledWith({
-      cfg: expect.any(Object),
-      requesterSessionKey: "agent:main:discord:group:dev",
-    });
     expect(sessionCleanupMocks.clearSessionQueues).toHaveBeenCalledTimes(1);
     const clearedKeys = sessionCleanupMocks.clearSessionQueues.mock.calls[0]?.[0] as string[];
     expect(clearedKeys).toEqual(

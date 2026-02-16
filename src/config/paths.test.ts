@@ -39,7 +39,7 @@ describe("state + config path candidates", () => {
   it("prefers VERSO_STATE_DIR over legacy state dir env", () => {
     const env = {
       VERSO_STATE_DIR: "/new/state",
-      VERSO_STATE_DIR: "/legacy/state",
+      CLAWDBOT_STATE_DIR: "/legacy/state",
     } as NodeJS.ProcessEnv;
 
     expect(resolveStateDir(env, () => "/home/test")).toBe(path.resolve("/new/state"));
@@ -49,9 +49,9 @@ describe("state + config path candidates", () => {
     const home = "/home/test";
     const candidates = resolveDefaultConfigCandidates({} as NodeJS.ProcessEnv, () => home);
     expect(candidates[0]).toBe(path.join(home, ".verso", "verso.json"));
-    expect(candidates[1]).toBe(path.join(home, ".verso", "verso.json"));
-    expect(candidates[2]).toBe(path.join(home, ".verso", "verso.json"));
-    expect(candidates[3]).toBe(path.join(home, ".verso", "verso.json"));
+    expect(candidates[1]).toBe(path.join(home, ".verso", "clawdbot.json"));
+    expect(candidates[2]).toBe(path.join(home, ".verso", "moltbot.json"));
+    expect(candidates[3]).toBe(path.join(home, ".verso", "moldbot.json"));
   });
 
   it("prefers ~/.verso when it exists and legacy dir is missing", async () => {

@@ -15,6 +15,9 @@ export function normalizeOpenAiModel(model: string): string {
   if (!trimmed) {
     return DEFAULT_OPENAI_EMBEDDING_MODEL;
   }
+  if (trimmed.startsWith("custom-openai/")) {
+    return trimmed.slice("custom-openai/".length);
+  }
   if (trimmed.startsWith("openai/")) {
     return trimmed.slice("openai/".length);
   }

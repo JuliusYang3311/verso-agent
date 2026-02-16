@@ -10,6 +10,18 @@ vi.mock("../agents/pi-embedded.js", () => ({
 vi.mock("../agents/model-catalog.js", () => ({
   loadModelCatalog: vi.fn(),
 }));
+vi.mock("../agents/auth-profiles.js", () => ({
+  ensureAuthProfileStore: vi.fn(() => ({
+    profiles: {
+      "test-profile-123": {
+        provider: "anthropic",
+        mode: "api_key",
+        type: "api_key",
+      },
+    },
+  })),
+  resolveAuthProfileOrder: vi.fn(() => []),
+}));
 
 import type { RuntimeEnv } from "../runtime.js";
 import { loadModelCatalog } from "../agents/model-catalog.js";

@@ -10,8 +10,7 @@ vi.mock("../src/web/media.js", () => ({
 }));
 
 import type { WebInboundMessage } from "../src/web/inbound.js";
-import { defaultRuntime } from "../src/runtime.js";
-import { deliverWebReply } from "../src/web/auto-reply.js";
+import { deliverWebReply } from "../src/web/auto-reply/deliver-reply.js";
 
 const noopLogger = {
   info: vi.fn(),
@@ -56,8 +55,8 @@ describe("deliverWebReply retry", () => {
         replyResult: { text: "hi" },
         msg,
         maxMediaBytes: 5_000_000,
+        textLimit: 4096,
         replyLogger: noopLogger,
-        runtime: defaultRuntime,
         skipLog: true,
       }),
     ).resolves.toBeUndefined();
@@ -78,8 +77,8 @@ describe("deliverWebReply retry", () => {
         },
         msg,
         maxMediaBytes: 5_000_000,
+        textLimit: 4096,
         replyLogger: noopLogger,
-        runtime: defaultRuntime,
         skipLog: true,
       }),
     ).resolves.toBeUndefined();

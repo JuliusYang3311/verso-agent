@@ -106,6 +106,7 @@ describe("runGatewayUpdate", () => {
       JSON.stringify({ name: "verso", version: "1.0.0", packageManager: "pnpm@8.0.0" }),
       "utf-8",
     );
+    await fs.writeFile(path.join(tempDir, "openclaw.mjs"), "", "utf-8");
     const uiIndexPath = path.join(tempDir, "dist", "control-ui", "index.html");
     await fs.mkdir(path.dirname(uiIndexPath), { recursive: true });
     await fs.writeFile(uiIndexPath, "<html></html>", "utf-8");
@@ -379,6 +380,7 @@ describe("runGatewayUpdate", () => {
       JSON.stringify({ name: "openclaw", version: "1.0.0", packageManager: "pnpm@8.0.0" }),
       "utf-8",
     );
+    await fs.writeFile(path.join(tempDir, "openclaw.mjs"), "", "utf-8");
     const uiIndexPath = path.join(tempDir, "dist", "control-ui", "index.html");
     await fs.mkdir(path.dirname(uiIndexPath), { recursive: true });
     await fs.writeFile(uiIndexPath, "<html></html>", "utf-8");
@@ -420,9 +422,7 @@ describe("runGatewayUpdate", () => {
         await fs.writeFile(uiIndexPath, `<html>${uiBuildCount}</html>`, "utf-8");
         return { stdout: "", stderr: "", code: 0 };
       }
-      if (
-        key === `${process.execPath} ${path.join(tempDir, "openclaw.mjs")} doctor --non-interactive`
-      ) {
+      if (key === "pnpm verso doctor --non-interactive") {
         await fs.rm(path.join(tempDir, "dist", "control-ui"), { recursive: true, force: true });
         return { stdout: "", stderr: "", code: 0 };
       }
@@ -439,9 +439,7 @@ describe("runGatewayUpdate", () => {
     expect(result.status).toBe("ok");
     expect(uiBuildCount).toBe(2);
     expect(await pathExists(uiIndexPath)).toBe(true);
-    expect(calls).toContain(
-      `${process.execPath} ${path.join(tempDir, "openclaw.mjs")} doctor --non-interactive`,
-    );
+    expect(calls).toContain("pnpm verso doctor --non-interactive");
   });
 
   it("fails when UI assets are still missing after post-doctor repair", async () => {
@@ -451,6 +449,7 @@ describe("runGatewayUpdate", () => {
       JSON.stringify({ name: "openclaw", version: "1.0.0", packageManager: "pnpm@8.0.0" }),
       "utf-8",
     );
+    await fs.writeFile(path.join(tempDir, "openclaw.mjs"), "", "utf-8");
     const uiIndexPath = path.join(tempDir, "dist", "control-ui", "index.html");
     await fs.mkdir(path.dirname(uiIndexPath), { recursive: true });
     await fs.writeFile(uiIndexPath, "<html></html>", "utf-8");
@@ -491,9 +490,7 @@ describe("runGatewayUpdate", () => {
         }
         return { stdout: "", stderr: "", code: 0 };
       }
-      if (
-        key === `${process.execPath} ${path.join(tempDir, "openclaw.mjs")} doctor --non-interactive`
-      ) {
+      if (key === "pnpm verso doctor --non-interactive") {
         await fs.rm(path.join(tempDir, "dist", "control-ui"), { recursive: true, force: true });
         return { stdout: "", stderr: "", code: 0 };
       }

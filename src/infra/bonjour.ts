@@ -1,3 +1,4 @@
+import os from "node:os";
 import { logDebug, logWarn } from "../logger.js";
 import { getLogger } from "../logging.js";
 import { ignoreCiaoCancellationRejection } from "./bonjour-ciao.js";
@@ -106,7 +107,12 @@ export async function startGatewayBonjourAdvertiser(
   const instanceName =
     typeof opts.instanceName === "string" && opts.instanceName.trim()
       ? opts.instanceName.trim()
-      : `${hostname} (Verso)`;
+      : `${
+          (os.hostname() || hostname)
+            .replace(/\.local$/i, "")
+            .split(".")[0]
+            .trim() || hostname
+        } (Verso)`;
   const displayName = prettifyInstanceName(instanceName);
 
   const txtBase: Record<string, string> = {

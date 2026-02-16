@@ -1,7 +1,9 @@
 import path from "node:path";
 import type { VersoConfig } from "../config/config.js";
+import type { HookEntry, HookEligibilityContext, HookInstallSpec } from "./types.js";
 import { CONFIG_DIR } from "../utils.js";
 import { hasBinary, isConfigPathTruthy, resolveConfigPath, resolveHookConfig } from "./config.js";
+import { resolveHookKey } from "./frontmatter.js";
 import { loadWorkspaceHookEntries } from "./workspace.js";
 
 export type HookStatusConfigCheck = {
@@ -90,7 +92,7 @@ function buildHookStatus(
   config?: VersoConfig,
   eligibility?: HookEligibilityContext,
 ): HookStatusEntry {
-  const hookKey = resolveHookKey(entry);
+  const hookKey = resolveHookKey(entry.hook.name, entry);
   const hookConfig = resolveHookConfig(config, hookKey);
   const managedByPlugin = entry.hook.source === "verso-plugin";
   const disabled = managedByPlugin ? false : hookConfig?.enabled === false;

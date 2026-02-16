@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import type { ChannelPlugin } from "../channels/plugins/types.js";
 import type { VersoConfig } from "../config/config.js";
 import { setActivePluginRegistry } from "../plugins/runtime.js";
-import { createIMessageTestPlugin, createTestRegistry } from "../test-utils/channel-plugins.js";
+import { createOutboundTestPlugin, createTestRegistry } from "../test-utils/channel-plugins.js";
 import {
   extractHookToken,
   normalizeAgentPayload,
@@ -90,19 +90,27 @@ describe("gateway hooks helpers", () => {
     setActivePluginRegistry(
       createTestRegistry([
         {
-          pluginId: "imessage",
+          pluginId: "whatsapp",
           source: "test",
-          plugin: createIMessageTestPlugin(),
+          plugin: createOutboundTestPlugin({
+            id: "whatsapp",
+            label: "WhatsApp",
+            outbound: {
+              deliveryMode: "direct",
+              sendText: async () => ({ channel: "whatsapp", messageId: "w1" }),
+              sendMedia: async () => ({ channel: "whatsapp", messageId: "w1" }),
+            },
+          }),
         },
       ]),
     );
-    const imsg = normalizeAgentPayload(
-      { message: "yo", channel: "imsg" },
+    const wa = normalizeAgentPayload(
+      { message: "yo", channel: "whatsapp" },
       { idFactory: () => "x" },
     );
-    expect(imsg.ok).toBe(true);
-    if (imsg.ok) {
-      expect(imsg.value.channel).toBe("imessage");
+    expect(wa.ok).toBe(true);
+    if (wa.ok) {
+      expect(wa.value.channel).toBe("whatsapp");
     }
 
     setActivePluginRegistry(

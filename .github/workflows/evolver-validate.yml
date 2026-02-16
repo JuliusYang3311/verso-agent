@@ -1,0 +1,59 @@
+name: Evolver Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+  pull_request:
+    paths:
+      - "src/**"
+
+concurrency:
+  group: evolver-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  validate-evolver:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@10.23.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Evolver GEP modules
+        run: |
+          node -e "
+            require('./src/evolver/gep/solidify');
+            require('./src/evolver/gep/signals');
+            require('./src/evolver/gep/sandbox-runner');
+            require('./src/evolver/gep/src-optimizer');
+            require('./src/evolver/gep/feedback-collector');
+            console.log('All GEP modules loaded successfully');
+          "
+
+      - name: Check for regressions in error log
+        run: |
+          ERROR_LOG="src/evolver/assets/gep/errors.jsonl"
+          if [ -f "$ERROR_LOG" ]; then
+            RECENT_ERRORS=$(tail -20 "$ERROR_LOG" | wc -l)
+            echo "Recent error entries: $RECENT_ERRORS"
+            if [ "$RECENT_ERRORS" -gt 10 ]; then
+              echo "::warning::High error count in evolver error log ($RECENT_ERRORS recent entries)"
+            fi
+          else
+            echo "No error log found (clean state)"
+          fi
+
+      - name: Build verification
+        run: pnpm build

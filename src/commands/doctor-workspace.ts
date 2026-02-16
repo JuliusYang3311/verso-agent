@@ -1,7 +1,16 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { DEFAULT_AGENTS_FILENAME } from "../agents/workspace.js";
 import { shortenHomePath } from "../utils.js";
+
+const exists = fs.existsSync;
+
+/** Heuristic: directory contains at least one workspace marker file/dir. */
+function looksLikeWorkspaceDir(dir: string, existsFn: (p: string) => boolean): boolean {
+  const markers = [DEFAULT_AGENTS_FILENAME, "SOUL.md", "skills"];
+  return markers.some((m) => existsFn(path.join(dir, m)));
+}
 
 export const MEMORY_SYSTEM_PROMPT = [
   "Memory system not found in workspace.",
@@ -46,6 +55,7 @@ export function detectLegacyWorkspaceDirs(params: {
   workspaceDir: string;
 }): LegacyWorkspaceDetection {
   const activeWorkspace = path.resolve(params.workspaceDir);
+  const home = os.homedir();
   const candidates = [path.join(home, "verso")];
   const legacyDirs = candidates
     .filter((candidate) => {

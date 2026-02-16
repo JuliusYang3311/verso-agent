@@ -46,7 +46,12 @@ describe("before_tool_call hook integration", () => {
 
     await tool.execute("call-2", { cmd: "ls" }, undefined, undefined);
 
-    expect(execute).toHaveBeenCalledWith("call-2", { cmd: "ls", mode: "safe" }, undefined);
+    expect(execute).toHaveBeenCalledWith(
+      "call-2",
+      { cmd: "ls", mode: "safe" },
+      undefined,
+      undefined,
+    );
   });
 
   it("blocks tool execution when hook returns block=true", async () => {

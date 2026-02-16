@@ -435,6 +435,20 @@ async function executeJobCore(
     }
   }
 
+  // Inject the full output directly into the main session transcript.
+  const outputText = res.outputText?.trim();
+  if (state.deps.injectMainSessionMessage && outputText) {
+    try {
+      await state.deps.injectMainSessionMessage({
+        agentId: job.agentId,
+        text: outputText,
+        jobId: job.id,
+      });
+    } catch {
+      // Best-effort: don't fail the cron job if transcript injection fails.
+    }
+  }
+
   return {
     status: res.status,
     error: res.error,

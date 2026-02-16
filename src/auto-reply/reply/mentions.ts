@@ -68,8 +68,13 @@ export function buildMentionRegexes(cfg: VersoConfig | undefined, agentId?: stri
     .filter((value): value is RegExp => Boolean(value));
 }
 
+const LEGACY_BOT_NAMES: ReadonlySet<string> = new Set(["clawd", "clawdbot", "openclaw"]);
+
 export function normalizeMentionText(text: string): string {
-  return (text ?? "").replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f]/g, "").toLowerCase();
+  const cleaned = (text ?? "")
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u206f]/g, "")
+    .toLowerCase();
+  return LEGACY_BOT_NAMES.has(cleaned) ? "verso" : cleaned;
 }
 
 export function matchesMentionPatterns(text: string, mentionRegexes: RegExp[]): boolean {

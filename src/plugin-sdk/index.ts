@@ -76,8 +76,6 @@ export { normalizePluginHttpPath } from "../plugins/http-path.js";
 export { registerPluginHttpRoute } from "../plugins/http-registry.js";
 export { emptyPluginConfigSchema } from "../plugins/config-schema.js";
 export type { VersoConfig } from "../config/config.js";
-/** @deprecated Use VersoConfig instead */
-export type { VersoConfig as ClawdbotConfig } from "../config/config.js";
 export type { ChannelDock } from "../channels/dock.js";
 export { getChatChannelMeta } from "../channels/registry.js";
 export type {
@@ -102,9 +100,7 @@ export type {
 export {
   DiscordConfigSchema,
   GoogleChatConfigSchema,
-  IMessageConfigSchema,
   MSTeamsConfigSchema,
-  SignalConfigSchema,
   SlackConfigSchema,
   TelegramConfigSchema,
 } from "../config/zod-schema.providers-core.js";
@@ -124,8 +120,6 @@ export type { RuntimeEnv } from "../runtime.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "../routing/session-key.js";
 export type { ChatType } from "../channels/chat-type.js";
-/** @deprecated Use ChatType instead */
-export type { RoutePeerKind } from "../routing/resolve-route.js";
 export { resolveAckReaction } from "../agents/identity.js";
 export type { ReplyPayload } from "../auto-reply/types.js";
 export type { ChunkMode } from "../auto-reply/chunk.js";
@@ -172,14 +166,12 @@ export {
   resolveBlueBubblesGroupRequireMention,
   resolveDiscordGroupRequireMention,
   resolveGoogleChatGroupRequireMention,
-  resolveIMessageGroupRequireMention,
   resolveSlackGroupRequireMention,
   resolveTelegramGroupRequireMention,
   resolveWhatsAppGroupRequireMention,
   resolveBlueBubblesGroupToolPolicy,
   resolveDiscordGroupToolPolicy,
   resolveGoogleChatGroupToolPolicy,
-  resolveIMessageGroupToolPolicy,
   resolveSlackGroupToolPolicy,
   resolveTelegramGroupToolPolicy,
   resolveWhatsAppGroupToolPolicy,
@@ -235,7 +227,14 @@ export {
 } from "../agents/tools/common.js";
 export { formatDocsLink } from "../terminal/links.js";
 export type { HookEntry } from "../hooks/types.js";
-export { clamp, escapeRegExp, normalizeE164, safeParseJson, sleep } from "../utils.js";
+export {
+  clamp,
+  escapeRegExp,
+  normalizeE164,
+  safeParseJson,
+  sleep,
+  stripMarkdown,
+} from "../utils.js";
 export { stripAnsi } from "../terminal/ansi.js";
 export { missingTargetError } from "../infra/outbound/target-errors.js";
 export { registerLogTransport } from "../logging/logger.js";
@@ -279,19 +278,6 @@ export {
 } from "../channels/plugins/normalize/discord.js";
 export { collectDiscordStatusIssues } from "../channels/plugins/status-issues/discord.js";
 
-// Channel: iMessage
-export {
-  listIMessageAccountIds,
-  resolveDefaultIMessageAccountId,
-  resolveIMessageAccount,
-  type ResolvedIMessageAccount,
-} from "../imessage/accounts.js";
-export { imessageOnboardingAdapter } from "../channels/plugins/onboarding/imessage.js";
-export {
-  looksLikeIMessageTargetId,
-  normalizeIMessageMessagingTarget,
-} from "../channels/plugins/normalize/imessage.js";
-
 // Channel: Slack
 export {
   listEnabledSlackAccounts,
@@ -323,19 +309,6 @@ export {
 export { collectTelegramStatusIssues } from "../channels/plugins/status-issues/telegram.js";
 export { type TelegramProbe } from "../telegram/probe.js";
 
-// Channel: Signal
-export {
-  listSignalAccountIds,
-  resolveDefaultSignalAccountId,
-  resolveSignalAccount,
-  type ResolvedSignalAccount,
-} from "../signal/accounts.js";
-export { signalOnboardingAdapter } from "../channels/plugins/onboarding/signal.js";
-export {
-  looksLikeSignalTargetId,
-  normalizeSignalMessagingTarget,
-} from "../channels/plugins/normalize/signal.js";
-
 // Channel: WhatsApp
 export {
   listWhatsAppAccountIds,
@@ -354,36 +327,6 @@ export { collectWhatsAppStatusIssues } from "../channels/plugins/status-issues/w
 
 // Channel: BlueBubbles
 export { collectBlueBubblesStatusIssues } from "../channels/plugins/status-issues/bluebubbles.js";
-
-// Channel: LINE
-export {
-  listLineAccountIds,
-  normalizeAccountId as normalizeLineAccountId,
-  resolveDefaultLineAccountId,
-  resolveLineAccount,
-} from "../line/accounts.js";
-export { LineConfigSchema } from "../line/config-schema.js";
-export type {
-  LineConfig,
-  LineAccountConfig,
-  ResolvedLineAccount,
-  LineChannelData,
-} from "../line/types.js";
-export {
-  createInfoCard,
-  createListCard,
-  createImageCard,
-  createActionCard,
-  createReceiptCard,
-  type CardAction,
-  type ListItem,
-} from "../line/flex-templates.js";
-export {
-  processLineMessage,
-  hasMarkdownToConvert,
-  stripMarkdown,
-} from "../line/markdown-to-line.js";
-export type { ProcessedLineMessage } from "../line/markdown-to-line.js";
 
 // Media utilities
 export { loadWebMedia, type WebMediaResult } from "../web/media.js";

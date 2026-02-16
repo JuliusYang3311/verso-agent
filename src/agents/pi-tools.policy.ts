@@ -96,17 +96,9 @@ const DEFAULT_SUBAGENT_TOOL_DENY = [
 ];
 
 export function resolveSubagentToolPolicy(cfg?: VersoConfig): SandboxToolPolicy {
-  const configured = cfg?.tools?.subagents?.tools;
-  let deny = [
-    ...DEFAULT_SUBAGENT_TOOL_DENY,
-    ...(Array.isArray(configured?.deny) ? configured.deny : []),
-  ];
-  const allow = Array.isArray(configured?.allow) ? configured.allow : undefined;
-  if (Array.isArray(allow) && allow.length > 0) {
-    const allowSet = new Set(allow.map(normalizeToolName));
-    deny = deny.filter((name) => !allowSet.has(normalizeToolName(name)));
-  }
-  return { allow, deny };
+  // Subagent functionality has been removed. This function is kept for backward compatibility
+  // and returns an empty policy (no restrictions).
+  return { allow: undefined, deny: [] };
 }
 
 export function isToolAllowedByPolicyName(name: string, policy?: SandboxToolPolicy): boolean {

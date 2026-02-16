@@ -21,6 +21,7 @@ import {
   detectBrowserOpenSupport,
   formatControlUiSshHint,
   openUrl,
+  openUrlInBackground,
   probeGatewayReachable,
   waitForGatewayReachable,
   resolveControlUiLinks,
@@ -215,8 +216,8 @@ export async function finalizeOnboardingWizard(
       await prompter.note(
         [
           "Docs:",
-          "https://docs.openclaw.ai/gateway/health",
-          "https://docs.openclaw.ai/gateway/troubleshooting",
+          "https://docs.verso.ai/gateway/health",
+          "https://docs.verso.ai/gateway/troubleshooting",
         ].join("\n"),
         "Health check help",
       );
@@ -279,7 +280,7 @@ export async function finalizeOnboardingWizard(
         : undefined,
       `Gateway WS: ${links.wsUrl}`,
       gatewayStatusLine,
-      "Docs: https://docs.openclaw.ai/web/control-ui",
+      "Docs: https://docs.verso.ai/web/control-ui",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -387,15 +388,14 @@ export async function finalizeOnboardingWizard(
   }
 
   await prompter.note(
-    [
-      "Back up your agent workspace.",
-      "Docs: https://docs.openclaw.ai/concepts/agent-workspace",
-    ].join("\n"),
+    ["Back up your agent workspace.", "Docs: https://docs.verso.ai/concepts/agent-workspace"].join(
+      "\n",
+    ),
     "Workspace backup",
   );
 
   await prompter.note(
-    "Running agents on your computer is risky — harden your setup: https://docs.openclaw.ai/security",
+    "Running agents on your computer is risky — harden your setup: https://docs.verso.ai/security",
     "Security",
   );
 
@@ -450,7 +450,7 @@ export async function finalizeOnboardingWizard(
           webSearchKey
             ? "API key: stored in config (tools.web.search.apiKey)."
             : "API key: provided via BRAVE_API_KEY env var (Gateway environment).",
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.verso.ai/tools/web",
         ].join("\n")
       : [
           "If you want your agent to be able to search the web, you’ll need an API key.",
@@ -462,13 +462,13 @@ export async function finalizeOnboardingWizard(
           "- Enable web_search and paste your Brave Search API key",
           "",
           "Alternative: set BRAVE_API_KEY in the Gateway environment (no config changes).",
-          "Docs: https://docs.openclaw.ai/tools/web",
+          "Docs: https://docs.verso.ai/tools/web",
         ].join("\n"),
     "Web search (optional)",
   );
 
   await prompter.note(
-    'What now: https://openclaw.ai/showcase ("What People Are Building").',
+    'What now: https://verso.ai/showcase ("What People Are Building").',
     "What now",
   );
 

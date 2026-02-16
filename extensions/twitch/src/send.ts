@@ -7,6 +7,7 @@
 
 import type { VersoConfig } from "verso/plugin-sdk";
 import { getClientManager as getRegistryClientManager } from "./client-manager-registry.js";
+import { DEFAULT_ACCOUNT_ID, getAccountConfig } from "./config.js";
 import { resolveTwitchToken } from "./token.js";
 import { stripMarkdownForTwitch } from "./utils/markdown.js";
 import { generateMessageId, isAccountConfigured, normalizeTwitchChannel } from "./utils/twitch.js";

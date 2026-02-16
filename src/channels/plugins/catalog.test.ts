@@ -7,7 +7,7 @@ import { getChannelPluginCatalogEntry, listChannelPluginCatalogEntries } from ".
 describe("channel plugin catalog", () => {
   it("includes Microsoft Teams", () => {
     const entry = getChannelPluginCatalogEntry("msteams");
-    expect(entry?.install.npmSpec).toBe("@verso/msteams");
+    expect(entry?.install.npmSpec).toBe("@openclaw/msteams");
     expect(entry?.meta.aliases).toContain("teams");
   });
 

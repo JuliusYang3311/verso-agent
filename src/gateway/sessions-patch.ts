@@ -262,6 +262,9 @@ export async function applySessionsPatchToStore(params: {
 
   if ("model" in patch) {
     const raw = patch.model;
+    // When only the model is being changed (no explicit auth override in the patch),
+    // clear the auth profile so it gets re-resolved for the new provider.
+    const patchHasAuthOverride = "authProfileOverride" in patch || "authProfileId" in patch;
     if (raw === null) {
       applyModelOverrideToSessionEntry({
         entry: next,
@@ -270,6 +273,8 @@ export async function applySessionsPatchToStore(params: {
           model: resolvedDefault.model,
           isDefault: true,
         },
+        profileOverride: patchHasAuthOverride ? next.authProfileOverride : undefined,
+        profileOverrideSource: patchHasAuthOverride ? next.authProfileOverrideSource : undefined,
       });
     } else if (raw !== undefined) {
       const trimmed = String(raw).trim();
@@ -303,6 +308,8 @@ export async function applySessionsPatchToStore(params: {
           model: resolved.ref.model,
           isDefault,
         },
+        profileOverride: patchHasAuthOverride ? next.authProfileOverride : undefined,
+        profileOverrideSource: patchHasAuthOverride ? next.authProfileOverrideSource : undefined,
       });
     }
   }
@@ -357,14 +364,16 @@ export async function applySessionsPatchToStore(params: {
     }
   }
 
-  if ("authProfileOverride" in patch) {
-    const raw = patch.authProfileOverride;
+  if ("authProfileOverride" in patch || "authProfileId" in patch) {
+    const raw = (patch as any).authProfileOverride ?? (patch as any).authProfileId;
     if (raw === null) {
       delete next.authProfileOverride;
     } else if (typeof raw === "string") {
       next.authProfileOverride = raw.trim() || undefined;
       if (!next.authProfileOverride) {
         delete next.authProfileOverride;
+      } else {
+        next.authProfileOverrideSource = next.authProfileOverrideSource ?? "user";
       }
     }
   }

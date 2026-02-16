@@ -327,6 +327,9 @@ describe("outbound", () => {
         expect.anything(),
         "Check this: https://example.com/image.png",
         expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
       );
     });
 
@@ -351,6 +354,9 @@ describe("outbound", () => {
       expect(sendMessageTwitchInternal).toHaveBeenCalledWith(
         expect.anything(),
         "https://example.com/image.png",
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
         expect.anything(),
       );
     });

@@ -230,7 +230,7 @@ describe("buildServiceEnvironment", () => {
     expect(typeof env.VERSO_SERVICE_VERSION).toBe("string");
     expect(env.VERSO_SYSTEMD_UNIT).toBe("verso-gateway.service");
     if (process.platform === "darwin") {
-      expect(env.VERSO_LAUNCHD_LABEL).toBe("bot.molt.gateway");
+      expect(env.VERSO_LAUNCHD_LABEL).toBe("ai.verso.gateway");
     }
   });
 
@@ -241,7 +241,7 @@ describe("buildServiceEnvironment", () => {
     });
     expect(env.VERSO_SYSTEMD_UNIT).toBe("verso-gateway-work.service");
     if (process.platform === "darwin") {
-      expect(env.VERSO_LAUNCHD_LABEL).toBe("bot.molt.work");
+      expect(env.VERSO_LAUNCHD_LABEL).toBe("ai.verso.work");
     }
   });
 });

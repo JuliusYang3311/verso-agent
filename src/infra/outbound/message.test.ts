@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChannelOutboundAdapter, ChannelPlugin } from "../../channels/plugins/types.js";
-import { createIMessageTestPlugin, createTestRegistry } from "../../test-utils/channel-plugins.js";
+import { createOutboundTestPlugin, createTestRegistry } from "../../test-utils/channel-plugins.js";
 const loadMessage = async () => await import("./message.js");
 
 const setRegistry = async (registry: ReturnType<typeof createTestRegistry>) => {
@@ -55,28 +55,45 @@ describe("sendMessage channel normalization", () => {
     expect(result.channel).toBe("msteams");
   });
 
-  it("normalizes iMessage alias", async () => {
+  it("normalizes WhatsApp channel", async () => {
     const { sendMessage } = await loadMessage();
-    const sendIMessage = vi.fn(async () => ({ messageId: "i1" }));
+    const sendWhatsApp = vi.fn(async () => ({ messageId: "w1", toJid: "jid" }));
+    const whatsappOutboundStub: ChannelOutboundAdapter = {
+      deliveryMode: "direct",
+      sendText: async ({ to, text, deps }) => {
+        const send = deps?.sendWhatsApp ?? sendWhatsApp;
+        const result = await send(to, text);
+        return { channel: "whatsapp", ...result };
+      },
+      sendMedia: async ({ to, text, mediaUrl, deps }) => {
+        const send = deps?.sendWhatsApp ?? sendWhatsApp;
+        const result = await send(to, text, { mediaUrl });
+        return { channel: "whatsapp", ...result };
+      },
+    };
     await setRegistry(
       createTestRegistry([
         {
-          pluginId: "imessage",
+          pluginId: "whatsapp",
           source: "test",
-          plugin: createIMessageTestPlugin(),
+          plugin: createOutboundTestPlugin({
+            id: "whatsapp",
+            outbound: whatsappOutboundStub,
+            label: "WhatsApp",
+          }),
         },
       ]),
     );
     const result = await sendMessage({
       cfg: {},
-      to: "someone@example.com",
+      to: "+15551234567",
       content: "hi",
-      channel: "imsg",
-      deps: { sendIMessage },
+      channel: "whatsapp",
+      deps: { sendWhatsApp },
     });
 
-    expect(sendIMessage).toHaveBeenCalledWith("someone@example.com", "hi", expect.any(Object));
-    expect(result.channel).toBe("imessage");
+    expect(sendWhatsApp).toHaveBeenCalled();
+    expect(result.channel).toBe("whatsapp");
   });
 });
 

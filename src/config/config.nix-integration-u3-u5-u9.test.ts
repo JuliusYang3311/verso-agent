@@ -37,7 +37,7 @@ describe("Nix integration (U3, U5, U9)", () => {
   describe("U5: CONFIG_PATH and STATE_DIR env var overrides", () => {
     it("STATE_DIR defaults to ~/.verso when env not set", async () => {
       await withEnvOverride(
-        { VERSO_STATE_DIR: undefined, VERSO_STATE_DIR: undefined },
+        { VERSO_STATE_DIR: undefined, CLAWDBOT_STATE_DIR: undefined },
         async () => {
           const { STATE_DIR } = await import("./config.js");
           expect(STATE_DIR).toMatch(/\.verso$/);
@@ -47,7 +47,7 @@ describe("Nix integration (U3, U5, U9)", () => {
 
     it("STATE_DIR respects VERSO_STATE_DIR override", async () => {
       await withEnvOverride(
-        { VERSO_STATE_DIR: undefined, VERSO_STATE_DIR: "/custom/state/dir" },
+        { VERSO_STATE_DIR: undefined, CLAWDBOT_STATE_DIR: "/custom/state/dir" },
         async () => {
           const { STATE_DIR } = await import("./config.js");
           expect(STATE_DIR).toBe(path.resolve("/custom/state/dir"));
@@ -57,7 +57,7 @@ describe("Nix integration (U3, U5, U9)", () => {
 
     it("STATE_DIR prefers VERSO_STATE_DIR over legacy override", async () => {
       await withEnvOverride(
-        { VERSO_STATE_DIR: "/custom/new", VERSO_STATE_DIR: "/custom/legacy" },
+        { VERSO_STATE_DIR: "/custom/new", CLAWDBOT_STATE_DIR: "/custom/legacy" },
         async () => {
           const { STATE_DIR } = await import("./config.js");
           expect(STATE_DIR).toBe(path.resolve("/custom/new"));
@@ -70,8 +70,8 @@ describe("Nix integration (U3, U5, U9)", () => {
         {
           VERSO_CONFIG_PATH: undefined,
           VERSO_STATE_DIR: undefined,
-          VERSO_CONFIG_PATH: undefined,
-          VERSO_STATE_DIR: undefined,
+          CLAWDBOT_CONFIG_PATH: undefined,
+          CLAWDBOT_STATE_DIR: undefined,
         },
         async () => {
           const { CONFIG_PATH } = await import("./config.js");
@@ -82,7 +82,7 @@ describe("Nix integration (U3, U5, U9)", () => {
 
     it("CONFIG_PATH respects VERSO_CONFIG_PATH override", async () => {
       await withEnvOverride(
-        { VERSO_CONFIG_PATH: undefined, VERSO_CONFIG_PATH: "/nix/store/abc/verso.json" },
+        { VERSO_CONFIG_PATH: undefined, CLAWDBOT_CONFIG_PATH: "/nix/store/abc/verso.json" },
         async () => {
           const { CONFIG_PATH } = await import("./config.js");
           expect(CONFIG_PATH).toBe(path.resolve("/nix/store/abc/verso.json"));
@@ -94,7 +94,7 @@ describe("Nix integration (U3, U5, U9)", () => {
       await withEnvOverride(
         {
           VERSO_CONFIG_PATH: "/nix/store/new/verso.json",
-          VERSO_CONFIG_PATH: "/nix/store/legacy/verso.json",
+          CLAWDBOT_CONFIG_PATH: "/nix/store/legacy/verso.json",
         },
         async () => {
           const { CONFIG_PATH } = await import("./config.js");
@@ -106,7 +106,7 @@ describe("Nix integration (U3, U5, U9)", () => {
     it("CONFIG_PATH expands ~ in VERSO_CONFIG_PATH override", async () => {
       await withTempHome(async (home) => {
         await withEnvOverride(
-          { VERSO_CONFIG_PATH: undefined, VERSO_CONFIG_PATH: "~/.verso/custom.json" },
+          { VERSO_CONFIG_PATH: undefined, CLAWDBOT_CONFIG_PATH: "~/.verso/custom.json" },
           async () => {
             const { CONFIG_PATH } = await import("./config.js");
             expect(CONFIG_PATH).toBe(path.join(home, ".verso", "custom.json"));
@@ -120,8 +120,8 @@ describe("Nix integration (U3, U5, U9)", () => {
         {
           VERSO_CONFIG_PATH: undefined,
           VERSO_STATE_DIR: undefined,
-          VERSO_CONFIG_PATH: undefined,
-          VERSO_STATE_DIR: "/custom/state",
+          CLAWDBOT_CONFIG_PATH: undefined,
+          CLAWDBOT_STATE_DIR: "/custom/state",
         },
         async () => {
           const { CONFIG_PATH } = await import("./config.js");

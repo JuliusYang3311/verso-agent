@@ -5,7 +5,7 @@ import type { VersoConfig } from "../../config/config.js";
 import { log } from "./logger.js";
 
 const OPENROUTER_APP_HEADERS: Record<string, string> = {
-  "HTTP-Referer": "https://openclaw.ai",
+  "HTTP-Referer": "https://verso.ai",
   "X-Title": "Verso",
 };
 

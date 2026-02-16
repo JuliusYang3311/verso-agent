@@ -219,7 +219,7 @@ describe("browser tool snapshot maxChars", () => {
 
     expect(browserClientMocks.browserStatus).toHaveBeenCalledWith(
       "http://127.0.0.1:9999",
-      expect.objectContaining({ profile: undefined }),
+      expect.objectContaining({ profile: "verso" }),
     );
     expect(gatewayMocks.callGatewayTool).not.toHaveBeenCalled();
   });

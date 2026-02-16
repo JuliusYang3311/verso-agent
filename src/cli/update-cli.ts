@@ -1,13 +1,6 @@
 import type { Command } from "commander";
-import { confirm, isCancel, select, spinner } from "@clack/prompts";
-import { spawnSync } from "node:child_process";
-import fs from "node:fs/promises";
-import os from "node:os";
+import { confirm, isCancel, spinner } from "@clack/prompts";
 import path from "node:path";
-import {
-  checkShellCompletionStatus,
-  ensureCompletionCacheExists,
-} from "../commands/doctor-completion.js";
 import { doctorCommand } from "../commands/doctor.js";
 import {
   formatUpdateAvailableHint,
@@ -15,7 +8,8 @@ import {
   resolveUpdateAvailability,
 } from "../commands/status.update.js";
 import { readConfigFileSnapshot, writeConfigFile } from "../config/config.js";
-import { parseSemver } from "../infra/runtime-guard.js";
+import { formatDurationPrecise } from "../infra/format-time/format-duration.js";
+import { trimLogTail } from "../infra/restart-sentinel.js";
 import {
   channelToNpmTag,
   DEFAULT_GIT_CHANNEL,
@@ -27,7 +21,6 @@ import {
 import {
   checkUpdateStatus,
   compareSemverStrings,
-  fetchNpmTagVersion,
   resolveNpmChannelTag,
 } from "../infra/update-check.js";
 import {
@@ -50,14 +43,31 @@ import { syncPluginsForUpdateChannel, updateNpmInstalledPlugins } from "../plugi
 import { runCommandWithTimeout } from "../process/exec.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
-import { stylePromptHint, stylePromptMessage } from "../terminal/prompt-style.js";
+import { stylePromptMessage } from "../terminal/prompt-style.js";
 import { renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { replaceCliName, resolveCliName } from "./cli-name.js";
 import { formatCliCommand } from "./command-format.js";
-import { installCompletion } from "./completion-cli.js";
 import { runDaemonRestart } from "./daemon-cli.js";
 import { formatHelpExamples } from "./help-format.js";
+import { tryWriteCompletionCache, tryInstallShellCompletion } from "./update-completion.js";
+import {
+  DEFAULT_PACKAGE_NAME,
+  isCorePackage,
+  isEmptyDir,
+  isGitCheckout,
+  normalizeTag,
+  pathExists,
+  pickUpdateQuip,
+  readPackageName,
+  readPackageVersion,
+  resolveGitInstallDir,
+  resolveNodeRunner,
+  resolveTargetVersion,
+} from "./update-helpers.js";
+import { updateWizardCommand } from "./update-wizard.js";
+
+export { updateWizardCommand };
 
 export type UpdateCommandOptions = {
   json?: boolean;
@@ -94,227 +104,9 @@ const STEP_LABELS: Record<string, string> = {
   "global install": "Installing global package",
 };
 
-const UPDATE_QUIPS = [
-  "Leveled up! New skills unlocked. You're welcome.",
-  "Fresh code, same lobster. Miss me?",
-  "Back and better. Did you even notice I was gone?",
-  "Update complete. I learned some new tricks while I was out.",
-  "Upgraded! Now with 23% more sass.",
-  "I've evolved. Try to keep up.",
-  "New version, who dis? Oh right, still me but shinier.",
-  "Patched, polished, and ready to pinch. Let's go.",
-  "The lobster has molted. Harder shell, sharper claws.",
-  "Update done! Check the changelog or just trust me, it's good.",
-  "Reborn from the boiling waters of npm. Stronger now.",
-  "I went away and came back smarter. You should try it sometime.",
-  "Update complete. The bugs feared me, so they left.",
-  "New version installed. Old version sends its regards.",
-  "Firmware fresh. Brain wrinkles: increased.",
-  "I've seen things you wouldn't believe. Anyway, I'm updated.",
-  "Back online. The changelog is long but our friendship is longer.",
-  "Upgraded! Peter fixed stuff. Blame him if it breaks.",
-  "Molting complete. Please don't look at my soft shell phase.",
-  "Version bump! Same chaos energy, fewer crashes (probably).",
-];
-
 const MAX_LOG_CHARS = 8000;
-const DEFAULT_PACKAGE_NAME = "verso";
-const CORE_PACKAGE_NAMES = new Set([DEFAULT_PACKAGE_NAME, "verso"]);
 const CLI_NAME = resolveCliName();
 const VERSO_REPO_URL = "https://github.com/verso/verso.git";
-const DEFAULT_GIT_DIR = path.join(os.homedir(), "verso");
-
-function normalizeTag(value?: string | null): string | null {
-  if (!value) {
-    return null;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
-  }
-  if (trimmed.startsWith("verso@")) {
-    return trimmed.slice("verso@".length);
-  }
-  if (trimmed.startsWith(`${DEFAULT_PACKAGE_NAME}@`)) {
-    return trimmed.slice(`${DEFAULT_PACKAGE_NAME}@`.length);
-  }
-  return trimmed;
-}
-
-function pickUpdateQuip(): string {
-  return UPDATE_QUIPS[Math.floor(Math.random() * UPDATE_QUIPS.length)] ?? "Update complete.";
-}
-
-function normalizeVersionTag(tag: string): string | null {
-  const trimmed = tag.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const cleaned = trimmed.startsWith("v") ? trimmed.slice(1) : trimmed;
-  return parseSemver(cleaned) ? cleaned : null;
-}
-
-async function readPackageVersion(root: string): Promise<string | null> {
-  try {
-    const raw = await fs.readFile(path.join(root, "package.json"), "utf-8");
-    const parsed = JSON.parse(raw) as { version?: string };
-    return typeof parsed.version === "string" ? parsed.version : null;
-  } catch {
-    return null;
-  }
-}
-
-async function resolveTargetVersion(tag: string, timeoutMs?: number): Promise<string | null> {
-  const direct = normalizeVersionTag(tag);
-  if (direct) {
-    return direct;
-  }
-  const res = await fetchNpmTagVersion({ tag, timeoutMs });
-  return res.version ?? null;
-}
-
-async function isGitCheckout(root: string): Promise<boolean> {
-  try {
-    await fs.stat(path.join(root, ".git"));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function readPackageName(root: string): Promise<string | null> {
-  try {
-    const raw = await fs.readFile(path.join(root, "package.json"), "utf-8");
-    const parsed = JSON.parse(raw) as { name?: string };
-    const name = parsed?.name?.trim();
-    return name ? name : null;
-  } catch {
-    return null;
-  }
-}
-
-async function isCorePackage(root: string): Promise<boolean> {
-  const name = await readPackageName(root);
-  return Boolean(name && CORE_PACKAGE_NAMES.has(name));
-}
-
-async function pathExists(targetPath: string): Promise<boolean> {
-  try {
-    await fs.stat(targetPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function tryWriteCompletionCache(root: string, jsonMode: boolean): Promise<void> {
-  const binPath = path.join(root, "openclaw.mjs");
-  if (!(await pathExists(binPath))) {
-    return;
-  }
-  const result = spawnSync(resolveNodeRunner(), [binPath, "completion", "--write-state"], {
-    cwd: root,
-    env: process.env,
-    encoding: "utf-8",
-  });
-  if (result.error) {
-    if (!jsonMode) {
-      defaultRuntime.log(theme.warn(`Completion cache update failed: ${String(result.error)}`));
-    }
-    return;
-  }
-  if (result.status !== 0 && !jsonMode) {
-    const stderr = (result.stderr ?? "").toString().trim();
-    const detail = stderr ? ` (${stderr})` : "";
-    defaultRuntime.log(theme.warn(`Completion cache update failed${detail}.`));
-  }
-}
-
-/** Check if shell completion is installed and prompt user to install if not. */
-async function tryInstallShellCompletion(opts: {
-  jsonMode: boolean;
-  skipPrompt: boolean;
-}): Promise<void> {
-  if (opts.jsonMode || !process.stdin.isTTY) {
-    return;
-  }
-
-  const status = await checkShellCompletionStatus(CLI_NAME);
-
-  // Profile uses slow dynamic pattern - upgrade to cached version
-  if (status.usesSlowPattern) {
-    defaultRuntime.log(theme.muted("Upgrading shell completion to cached version..."));
-    // Ensure cache exists first
-    const cacheGenerated = await ensureCompletionCacheExists(CLI_NAME);
-    if (cacheGenerated) {
-      await installCompletion(status.shell, true, CLI_NAME);
-    }
-    return;
-  }
-
-  // Profile has completion but no cache - auto-fix silently
-  if (status.profileInstalled && !status.cacheExists) {
-    defaultRuntime.log(theme.muted("Regenerating shell completion cache..."));
-    await ensureCompletionCacheExists(CLI_NAME);
-    return;
-  }
-
-  // No completion at all - prompt to install
-  if (!status.profileInstalled) {
-    defaultRuntime.log("");
-    defaultRuntime.log(theme.heading("Shell completion"));
-
-    const shouldInstall = await confirm({
-      message: stylePromptMessage(`Enable ${status.shell} shell completion for ${CLI_NAME}?`),
-      initialValue: true,
-    });
-
-    if (isCancel(shouldInstall) || !shouldInstall) {
-      if (!opts.skipPrompt) {
-        defaultRuntime.log(
-          theme.muted(
-            `Skipped. Run \`${replaceCliName(formatCliCommand("openclaw completion --install"), CLI_NAME)}\` later to enable.`,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Generate cache first (required for fast shell startup)
-    const cacheGenerated = await ensureCompletionCacheExists(CLI_NAME);
-    if (!cacheGenerated) {
-      defaultRuntime.log(theme.warn("Failed to generate completion cache."));
-      return;
-    }
-
-    await installCompletion(status.shell, opts.skipPrompt, CLI_NAME);
-  }
-}
-
-async function isEmptyDir(targetPath: string): Promise<boolean> {
-  try {
-    const entries = await fs.readdir(targetPath);
-    return entries.length === 0;
-  } catch {
-    return false;
-  }
-}
-
-function resolveGitInstallDir(): string {
-  const override = process.env.VERSO_GIT_DIR?.trim();
-  if (override) {
-    return path.resolve(override);
-  }
-  return DEFAULT_GIT_DIR;
-}
-
-function resolveNodeRunner(): string {
-  const base = path.basename(process.execPath).toLowerCase();
-  if (base === "node" || base === "node.exe") {
-    return process.execPath;
-  }
-  return "node";
-}
 
 async function runUpdateStep(params: {
   name: string;
@@ -604,15 +396,6 @@ function formatStepStatus(exitCode: number | null): string {
   }
   return theme.error("\u2717");
 }
-
-const selectStyled = <T>(params: Parameters<typeof select<T>>[0]) =>
-  select({
-    ...params,
-    message: stylePromptMessage(params.message),
-    options: params.options.map((opt) =>
-      opt.hint === undefined ? opt : { ...opt, hint: stylePromptHint(opt.hint) },
-    ),
-  });
 
 type PrintResultOptions = UpdateCommandOptions & {
   hideSteps?: boolean;
@@ -1101,142 +884,6 @@ export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
   }
 }
 
-export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promise<void> {
-  if (!process.stdin.isTTY) {
-    defaultRuntime.error(
-      "Update wizard requires a TTY. Use `verso update --channel <stable|beta|dev>` instead.",
-    );
-    defaultRuntime.exit(1);
-    return;
-  }
-
-  const timeoutMs = opts.timeout ? Number.parseInt(opts.timeout, 10) * 1000 : undefined;
-  if (timeoutMs !== undefined && (Number.isNaN(timeoutMs) || timeoutMs <= 0)) {
-    defaultRuntime.error("--timeout must be a positive integer (seconds)");
-    defaultRuntime.exit(1);
-    return;
-  }
-
-  const root =
-    (await resolveVersoPackageRoot({
-      moduleUrl: import.meta.url,
-      argv1: process.argv[1],
-      cwd: process.cwd(),
-    })) ?? process.cwd();
-
-  const [updateStatus, configSnapshot] = await Promise.all([
-    checkUpdateStatus({
-      root,
-      timeoutMs: timeoutMs ?? 3500,
-      fetchGit: false,
-      includeRegistry: false,
-    }),
-    readConfigFileSnapshot(),
-  ]);
-
-  const configChannel = configSnapshot.valid
-    ? normalizeUpdateChannel(configSnapshot.config.update?.channel)
-    : null;
-  const channelInfo = resolveEffectiveUpdateChannel({
-    configChannel,
-    installKind: updateStatus.installKind,
-    git: updateStatus.git
-      ? { tag: updateStatus.git.tag, branch: updateStatus.git.branch }
-      : undefined,
-  });
-  const channelLabel = formatUpdateChannelLabel({
-    channel: channelInfo.channel,
-    source: channelInfo.source,
-    gitTag: updateStatus.git?.tag ?? null,
-    gitBranch: updateStatus.git?.branch ?? null,
-  });
-
-  const pickedChannel = await selectStyled({
-    message: "Update channel",
-    options: [
-      {
-        value: "keep",
-        label: `Keep current (${channelInfo.channel})`,
-        hint: channelLabel,
-      },
-      {
-        value: "stable",
-        label: "Stable",
-        hint: "Tagged releases (npm latest)",
-      },
-      {
-        value: "beta",
-        label: "Beta",
-        hint: "Prereleases (npm beta)",
-      },
-      {
-        value: "dev",
-        label: "Dev",
-        hint: "Git main",
-      },
-    ],
-    initialValue: "keep",
-  });
-
-  if (isCancel(pickedChannel)) {
-    defaultRuntime.log(theme.muted("Update cancelled."));
-    defaultRuntime.exit(0);
-    return;
-  }
-
-  const requestedChannel = pickedChannel === "keep" ? null : pickedChannel;
-
-  if (requestedChannel === "dev" && updateStatus.installKind !== "git") {
-    const gitDir = resolveGitInstallDir();
-    const hasGit = await isGitCheckout(gitDir);
-    if (!hasGit) {
-      const dirExists = await pathExists(gitDir);
-      if (dirExists) {
-        const empty = await isEmptyDir(gitDir);
-        if (!empty) {
-          defaultRuntime.error(
-            `VERSO_GIT_DIR points at a non-git directory: ${gitDir}. Set VERSO_GIT_DIR to an empty folder or a verso checkout.`,
-          );
-          defaultRuntime.exit(1);
-          return;
-        }
-      }
-      const ok = await confirm({
-        message: stylePromptMessage(
-          `Create a git checkout at ${gitDir}? (override via VERSO_GIT_DIR)`,
-        ),
-        initialValue: true,
-      });
-      if (isCancel(ok) || !ok) {
-        defaultRuntime.log(theme.muted("Update cancelled."));
-        defaultRuntime.exit(0);
-        return;
-      }
-    }
-  }
-
-  const restart = await confirm({
-    message: stylePromptMessage("Restart the gateway service after update?"),
-    initialValue: true,
-  });
-  if (isCancel(restart)) {
-    defaultRuntime.log(theme.muted("Update cancelled."));
-    defaultRuntime.exit(0);
-    return;
-  }
-
-  try {
-    await updateCommand({
-      channel: requestedChannel ?? undefined,
-      restart: Boolean(restart),
-      timeout: opts.timeout,
-    });
-  } catch (err) {
-    defaultRuntime.error(String(err));
-    defaultRuntime.exit(1);
-  }
-}
-
 export function registerUpdateCli(program: Command) {
   const update = program
     .command("update")
@@ -1285,7 +932,7 @@ ${theme.heading("Notes:")}
   - Downgrades require confirmation (can break configuration)
   - Skips update if the working directory has uncommitted changes
 
-${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.openclaw.ai/cli/update")}`;
+${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.verso.ai/cli/update")}`;
     })
     .action(async (opts) => {
       try {
@@ -1309,7 +956,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.openclaw.ai/cli/up
     .option("--timeout <seconds>", "Timeout for each update step in seconds (default: 1200)")
     .addHelpText(
       "after",
-      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.openclaw.ai/cli/update")}\n`,
+      `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.verso.ai/cli/update")}\n`,
     )
     .action(async (opts) => {
       try {
@@ -1338,7 +985,7 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/update", "docs.openclaw.ai/cli/up
           "- Shows current update channel (stable/beta/dev) and source",
         )}\n${theme.muted("- Includes git tag/branch/SHA for source checkouts")}\n\n${theme.muted(
           "Docs:",
-        )} ${formatDocsLink("/cli/update", "docs.openclaw.ai/cli/update")}`,
+        )} ${formatDocsLink("/cli/update", "docs.verso.ai/cli/update")}`,
     )
     .action(async (opts) => {
       try {

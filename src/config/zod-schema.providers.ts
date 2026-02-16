@@ -5,9 +5,7 @@ import {
   BlueBubblesConfigSchema,
   DiscordConfigSchema,
   GoogleChatConfigSchema,
-  IMessageConfigSchema,
   MSTeamsConfigSchema,
-  SignalConfigSchema,
   SlackConfigSchema,
   TelegramConfigSchema,
 } from "./zod-schema.providers-core.js";
@@ -31,8 +29,6 @@ export const ChannelsSchema = z
     discord: DiscordConfigSchema.optional(),
     googlechat: GoogleChatConfigSchema.optional(),
     slack: SlackConfigSchema.optional(),
-    signal: SignalConfigSchema.optional(),
-    imessage: IMessageConfigSchema.optional(),
     bluebubbles: BlueBubblesConfigSchema.optional(),
     msteams: MSTeamsConfigSchema.optional(),
   })

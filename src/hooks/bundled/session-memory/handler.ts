@@ -7,6 +7,7 @@
 
 import fs from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { VersoConfig } from "../../../config/config.js";
 import { resolveAgentWorkspaceDir } from "../../../agents/agent-scope.js";
@@ -112,6 +113,10 @@ const saveSessionToMemory: HookHandler = async (event) => {
 
     let slug: string | null = null;
     let sessionContent: string | null = null;
+
+    if (sessionFile) {
+      sessionContent = await getRecentSessionContent(sessionFile, messageCount);
+    }
 
     if (sessionContent && cfg) {
       log.debug("Calling generateSlugViaLLM...");

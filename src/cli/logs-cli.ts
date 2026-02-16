@@ -194,8 +194,7 @@ export function registerLogsCli(program: Command) {
     .option("--no-color", "Disable ANSI colors")
     .addHelpText(
       "after",
-      () =>
-        `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/logs", "docs.openclaw.ai/cli/logs")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/logs", "docs.verso.ai/cli/logs")}\n`,
     );
 
   addGatewayClientOptions(logs);

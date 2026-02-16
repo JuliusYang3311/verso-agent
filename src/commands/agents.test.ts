@@ -18,7 +18,7 @@ describe("agents helpers", () => {
           model: { primary: "anthropic/claude" },
         },
         list: [
-          { id: "main" },
+          { id: "main", workspace: "/main-ws" },
           {
             id: "work",
             default: true,
@@ -43,7 +43,7 @@ describe("agents helpers", () => {
     const work = summaries.find((summary) => summary.id === "work");
 
     expect(main).toBeTruthy();
-    expect(main?.workspace).toBe(path.join(os.homedir(), "verso-main"));
+    expect(main?.workspace).toBe(path.resolve("/main-ws"));
     expect(main?.bindings).toBe(1);
     expect(main?.model).toBe("anthropic/claude");
     expect(main?.agentDir.endsWith(path.join("agents", "main", "agent"))).toBe(true);

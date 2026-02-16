@@ -105,7 +105,7 @@ export function injectCanvasLiveReload(html: string): string {
   // Works on:
   // - iOS: window.webkit.messageHandlers.(current|legacy)CanvasA2UIAction.postMessage(...)
   // - Android: window.(current|legacy)CanvasA2UIAction.postMessage(...)
-  const handlerNames = ["versoCanvasA2UIAction", "${legacyHandlerName}"];
+  const handlerNames = ["versoCanvasA2UIAction", "openclawCanvasA2UIAction"];
   function postToNode(payload) {
     try {
       const raw = typeof payload === "string" ? payload : JSON.stringify(payload);

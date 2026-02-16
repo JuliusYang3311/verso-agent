@@ -196,44 +196,8 @@ describe("agentCommand", () => {
     });
   });
 
-  it("keeps explicit sessionKey even when sessionId exists elsewhere", async () => {
-    await withTempHome(async (home) => {
-      const store = path.join(home, "sessions.json");
-      fs.mkdirSync(path.dirname(store), { recursive: true });
-      fs.writeFileSync(
-        store,
-        JSON.stringify(
-          {
-            "agent:main:main": {
-              sessionId: "sess-main",
-              updatedAt: Date.now(),
-            },
-          },
-          null,
-          2,
-        ),
-      );
-      mockConfig(home, store);
-
-      await agentCommand(
-        {
-          message: "hi",
-          sessionId: "sess-main",
-          sessionKey: "agent:main:subagent:abc",
-        },
-        runtime,
-      );
-
-      const callArgs = vi.mocked(runEmbeddedPiAgent).mock.calls.at(-1)?.[0];
-      expect(callArgs?.sessionKey).toBe("agent:main:subagent:abc");
-
-      const saved = JSON.parse(fs.readFileSync(store, "utf-8")) as Record<
-        string,
-        { sessionId?: string }
-      >;
-      expect(saved["agent:main:subagent:abc"]?.sessionId).toBe("sess-main");
-    });
-  });
+  // Removed: "keeps explicit sessionKey even when sessionId exists elsewhere"
+  // This test was for subagent session key persistence, which is being removed (Phase 3).
 
   it("derives session key from --agent when no routing target is provided", async () => {
     await withTempHome(async (home) => {

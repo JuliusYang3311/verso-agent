@@ -8,7 +8,7 @@ import { telegramPlugin } from "../../../extensions/telegram/src/channel.js";
 import { whatsappPlugin } from "../../../extensions/whatsapp/src/channel.js";
 import { jsonResult } from "../../agents/tools/common.js";
 import { setActivePluginRegistry } from "../../plugins/runtime.js";
-import { createIMessageTestPlugin, createTestRegistry } from "../../test-utils/channel-plugins.js";
+import { createTestRegistry } from "../../test-utils/channel-plugins.js";
 import { loadWebMedia } from "../../web/media.js";
 import { runMessageAction } from "./message-action-runner.js";
 
@@ -63,11 +63,6 @@ describe("runMessageAction context isolation", () => {
           pluginId: "telegram",
           source: "test",
           plugin: telegramPlugin,
-        },
-        {
-          pluginId: "imessage",
-          source: "test",
-          plugin: createIMessageTestPlugin(),
         },
       ]),
     );
@@ -218,34 +213,48 @@ describe("runMessageAction context isolation", () => {
     expect(result.kind).toBe("send");
   });
 
-  it("allows iMessage send when target matches current handle", async () => {
+  it("allows Telegram send when target matches current chat", async () => {
+    const telegramConfig = {
+      channels: {
+        telegram: {
+          token: "tg-test",
+        },
+      },
+    } as VersoConfig;
     const result = await runMessageAction({
-      cfg: whatsappConfig,
+      cfg: telegramConfig,
       action: "send",
       params: {
-        channel: "imessage",
-        target: "imessage:+15551234567",
+        channel: "telegram",
+        target: "telegram:123456",
         message: "hi",
       },
-      toolContext: { currentChannelId: "imessage:+15551234567" },
+      toolContext: { currentChannelId: "telegram:123456" },
       dryRun: true,
     });
 
     expect(result.kind).toBe("send");
   });
 
-  it("blocks iMessage send when target differs from current handle", async () => {
+  it("blocks Telegram send when target differs from current chat", async () => {
+    const telegramConfig = {
+      channels: {
+        telegram: {
+          token: "tg-test",
+        },
+      },
+    } as VersoConfig;
     const result = await runMessageAction({
-      cfg: whatsappConfig,
+      cfg: telegramConfig,
       action: "send",
       params: {
-        channel: "imessage",
-        target: "imessage:+15551230000",
+        channel: "telegram",
+        target: "telegram:999999",
         message: "hi",
       },
       toolContext: {
-        currentChannelId: "imessage:+15551234567",
-        currentChannelProvider: "imessage",
+        currentChannelId: "telegram:123456",
+        currentChannelProvider: "telegram",
       },
       dryRun: true,
     });

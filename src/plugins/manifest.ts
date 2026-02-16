@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { PluginConfigUiHint, PluginKind } from "./types.js";
-import { MANIFEST_KEY } from "../compat/legacy-names.js";
+import { MANIFEST_KEY, LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
 
 export const PLUGIN_MANIFEST_FILENAME = "verso.plugin.json";
 export const PLUGIN_MANIFEST_FILENAMES = [PLUGIN_MANIFEST_FILENAME] as const;
@@ -137,12 +137,13 @@ export type VersoPackageManifest = {
 };
 
 export type ManifestKey = typeof MANIFEST_KEY;
+export type LegacyManifestKey = typeof LEGACY_MANIFEST_KEY;
 
 export type PackageManifest = {
   name?: string;
   version?: string;
   description?: string;
-} & Partial<Record<ManifestKey, VersoPackageManifest>>;
+} & Partial<Record<ManifestKey | LegacyManifestKey, VersoPackageManifest>>;
 
 export function getPackageManifestMetadata(
   manifest: PackageManifest | undefined,
@@ -150,5 +151,5 @@ export function getPackageManifestMetadata(
   if (!manifest) {
     return undefined;
   }
-  return manifest[MANIFEST_KEY];
+  return manifest[MANIFEST_KEY] ?? manifest[LEGACY_MANIFEST_KEY];
 }

@@ -419,7 +419,14 @@ describe("readSessionPreviewItemsFromTranscript", () => {
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
-    const result = readSessionPreviewItemsFromTranscript(sessionId, storePath, undefined, 3, 120);
+    const result = readSessionPreviewItemsFromTranscript(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      3,
+      120,
+    );
 
     expect(result.map((item) => item.role)).toEqual(["assistant", "tool", "assistant"]);
     expect(result[1]?.text).toContain("call weather");
@@ -445,7 +452,14 @@ describe("readSessionPreviewItemsFromTranscript", () => {
     ];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
-    const result = readSessionPreviewItemsFromTranscript(sessionId, storePath, undefined, 3, 120);
+    const result = readSessionPreviewItemsFromTranscript(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      3,
+      120,
+    );
 
     expect(result.map((item) => item.role)).toEqual(["assistant", "tool", "assistant"]);
     expect(result[1]?.text).toContain("call");
@@ -462,7 +476,14 @@ describe("readSessionPreviewItemsFromTranscript", () => {
     const lines = [JSON.stringify({ message: { role: "assistant", content: longText } })];
     fs.writeFileSync(transcriptPath, lines.join("\n"), "utf-8");
 
-    const result = readSessionPreviewItemsFromTranscript(sessionId, storePath, undefined, 1, 24);
+    const result = readSessionPreviewItemsFromTranscript(
+      sessionId,
+      storePath,
+      undefined,
+      undefined,
+      1,
+      24,
+    );
 
     expect(result).toHaveLength(1);
     expect(result[0]?.text.length).toBe(24);

@@ -37,7 +37,7 @@ describe("msteams polls", () => {
   it("extracts poll votes from activity values", () => {
     const vote = extractMSTeamsPollVote({
       value: {
-        versoPollId: "poll-1",
+        openclawPollId: "poll-1",
         choices: "0,1",
       },
     });

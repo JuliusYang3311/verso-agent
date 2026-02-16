@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "./test-helpers/fast-coding-tools.js";
 import type { VersoConfig } from "../config/config.js";
 import type { SandboxDockerConfig } from "./sandbox.js";
@@ -457,6 +457,16 @@ describe("Agent-specific tool filtering", () => {
       },
     };
 
+    const mockBridge = {
+      resolvePath: vi.fn(),
+      readFile: vi.fn().mockResolvedValue(Buffer.from("")),
+      writeFile: vi.fn(),
+      mkdirp: vi.fn(),
+      remove: vi.fn(),
+      stat: vi.fn(),
+      listDir: vi.fn(),
+    };
+
     const tools = createVersoCodingTools({
       config: cfg,
       sessionKey: "agent:restricted:main",
@@ -484,6 +494,7 @@ describe("Agent-specific tool filtering", () => {
           deny: [],
         },
         browserAllowHostControl: false,
+        fsBridge: mockBridge,
       },
     });
 

@@ -21,7 +21,7 @@ export default defineConfig({
     hookTimeout: isWindows ? 180_000 : 120_000,
     pool: "forks",
     maxWorkers: isCI ? ciWorkers : localWorkers,
-    include: ["src/**/*.test.ts", "extensions/**/*.test.ts", "test/format-error.test.ts"],
+    include: ["src/**/*.test.ts", "extensions/**/*.test.ts", "test/**/*.test.ts"],
     setupFiles: ["test/setup.ts"],
     exclude: [
       "dist/**",
@@ -85,8 +85,6 @@ export default defineConfig({
         "src/wizard/**",
         // Channel surfaces are largely integration-tested (or manually validated).
         "src/discord/**",
-        "src/imessage/**",
-        "src/signal/**",
         "src/slack/**",
         "src/browser/**",
         "src/channels/web/**",

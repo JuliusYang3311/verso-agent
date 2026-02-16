@@ -13,6 +13,7 @@ import { applyAuthChoiceMiniMax } from "./auth-choice.apply.minimax.js";
 import { applyAuthChoiceOAuth } from "./auth-choice.apply.oauth.js";
 import { applyAuthChoiceOpenAI } from "./auth-choice.apply.openai.js";
 import { applyAuthChoiceQwenPortal } from "./auth-choice.apply.qwen-portal.js";
+import { applyAuthChoiceXAI } from "./auth-choice.apply.xai.js";
 import { resolvePreferredProviderForAuthChoice } from "./auth-choice.preferred-provider.js";
 import { applyEmbeddingModel } from "./model-picker.js";
 
@@ -47,6 +48,7 @@ export async function applyAuthChoice(
     applyAuthChoiceOpenAI,
     applyAuthChoiceOAuth,
     applyAuthChoiceApiProviders,
+    applyAuthChoiceXAI,
     applyAuthChoiceMiniMax,
     applyAuthChoiceGitHubCopilot,
     applyAuthChoiceGoogleAntigravity,

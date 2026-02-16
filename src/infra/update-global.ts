@@ -10,7 +10,7 @@ export type CommandRunner = (
 ) => Promise<{ stdout: string; stderr: string; code: number | null }>;
 
 const PRIMARY_PACKAGE_NAME = "openclaw";
-const ALL_PACKAGE_NAMES = [PRIMARY_PACKAGE_NAME] as const;
+const ALL_PACKAGE_NAMES = [PRIMARY_PACKAGE_NAME, "verso"] as const;
 const GLOBAL_RENAME_PREFIX = ".";
 
 async function pathExists(targetPath: string): Promise<boolean> {

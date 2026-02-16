@@ -6,6 +6,7 @@ import {
   resolveAuthProfileOrder,
 } from "../../agents/auth-profiles.js";
 import { resolveEnvApiKey } from "../../agents/model-auth.js";
+import { normalizeOptionalSecretInput } from "../../utils/normalize-secret-input.js";
 
 export type NonInteractiveApiKeySource = "flag" | "env" | "profile";
 

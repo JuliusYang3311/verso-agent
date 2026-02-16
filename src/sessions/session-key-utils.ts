@@ -26,15 +26,9 @@ export function parseAgentSessionKey(
 }
 
 export function isSubagentSessionKey(sessionKey: string | undefined | null): boolean {
-  const raw = (sessionKey ?? "").trim();
-  if (!raw) {
-    return false;
-  }
-  if (raw.toLowerCase().startsWith("subagent:")) {
-    return true;
-  }
-  const parsed = parseAgentSessionKey(raw);
-  return Boolean((parsed?.rest ?? "").toLowerCase().startsWith("subagent:"));
+  // Subagent functionality has been removed. This function is kept for backward compatibility
+  // and always returns false.
+  return false;
 }
 
 export function isAcpSessionKey(sessionKey: string | undefined | null): boolean {

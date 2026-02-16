@@ -3,27 +3,19 @@ import type { ChannelOutboundAdapter, ChannelPlugin } from "../../channels/plugi
 import type { VersoConfig } from "../../config/config.js";
 import type { PluginRegistry } from "../../plugins/registry.js";
 import { discordOutbound } from "../../channels/plugins/outbound/discord.js";
-import { imessageOutbound } from "../../channels/plugins/outbound/imessage.js";
-import { signalOutbound } from "../../channels/plugins/outbound/signal.js";
 import { slackOutbound } from "../../channels/plugins/outbound/slack.js";
 import { telegramOutbound } from "../../channels/plugins/outbound/telegram.js";
 import { whatsappOutbound } from "../../channels/plugins/outbound/whatsapp.js";
 import { setActivePluginRegistry } from "../../plugins/runtime.js";
-import {
-  createIMessageTestPlugin,
-  createOutboundTestPlugin,
-  createTestRegistry,
-} from "../../test-utils/channel-plugins.js";
+import { createOutboundTestPlugin, createTestRegistry } from "../../test-utils/channel-plugins.js";
 import { SILENT_REPLY_TOKEN } from "../tokens.js";
 
 const mocks = vi.hoisted(() => ({
   sendMessageDiscord: vi.fn(async () => ({ messageId: "m1", channelId: "c1" })),
-  sendMessageIMessage: vi.fn(async () => ({ messageId: "ok" })),
   sendMessageMSTeams: vi.fn(async () => ({
     messageId: "m1",
     conversationId: "c1",
   })),
-  sendMessageSignal: vi.fn(async () => ({ messageId: "t1" })),
   sendMessageSlack: vi.fn(async () => ({ messageId: "m1", channelId: "c1" })),
   sendMessageTelegram: vi.fn(async () => ({ messageId: "m1", chatId: "c1" })),
   sendMessageWhatsApp: vi.fn(async () => ({ messageId: "m1", toJid: "jid" })),
@@ -32,12 +24,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../discord/send.js", () => ({
   sendMessageDiscord: mocks.sendMessageDiscord,
-}));
-vi.mock("../../imessage/send.js", () => ({
-  sendMessageIMessage: mocks.sendMessageIMessage,
-}));
-vi.mock("../../signal/send.js", () => ({
-  sendMessageSignal: mocks.sendMessageSignal,
 }));
 vi.mock("../../slack/send.js", () => ({
   sendMessageSlack: mocks.sendMessageSlack,
@@ -430,16 +416,6 @@ const defaultRegistry = createTestRegistry([
       outbound: whatsappOutbound,
       label: "WhatsApp",
     }),
-    source: "test",
-  },
-  {
-    pluginId: "signal",
-    plugin: createOutboundTestPlugin({ id: "signal", outbound: signalOutbound, label: "Signal" }),
-    source: "test",
-  },
-  {
-    pluginId: "imessage",
-    plugin: createIMessageTestPlugin({ outbound: imessageOutbound }),
     source: "test",
   },
   {

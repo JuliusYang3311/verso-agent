@@ -18,6 +18,7 @@ describe("agent-events sequencing", () => {
   });
 
   test("maintains monotonic seq per runId", async () => {
+    resetAgentRunContextForTest();
     const seen: Record<string, number[]> = {};
     const stop = onAgentEvent((evt) => {
       const list = seen[evt.runId] ?? [];
@@ -27,6 +28,7 @@ describe("agent-events sequencing", () => {
 
     emitAgentEvent({ runId: "run-1", stream: "lifecycle", data: {} });
     emitAgentEvent({ runId: "run-2", stream: "lifecycle", data: {} });
+    emitAgentEvent({ runId: "run-1", stream: "lifecycle", data: {} });
     emitAgentEvent({ runId: "run-1", stream: "lifecycle", data: {} });
 
     stop();

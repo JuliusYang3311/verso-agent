@@ -30,6 +30,7 @@ const requireAgentDir = () => {
 describe("applyAuthChoice", () => {
   const previousStateDir = process.env.VERSO_STATE_DIR;
   const previousAgentDir = process.env.VERSO_AGENT_DIR;
+  const previousOpenclawAgentDir = process.env.OPENCLAW_AGENT_DIR;
   const previousPiAgentDir = process.env.PI_CODING_AGENT_DIR;
   const previousOpenrouterKey = process.env.OPENROUTER_API_KEY;
   const previousAiGatewayKey = process.env.AI_GATEWAY_API_KEY;
@@ -54,6 +55,11 @@ describe("applyAuthChoice", () => {
       delete process.env.VERSO_AGENT_DIR;
     } else {
       process.env.VERSO_AGENT_DIR = previousAgentDir;
+    }
+    if (previousOpenclawAgentDir === undefined) {
+      delete process.env.OPENCLAW_AGENT_DIR;
+    } else {
+      process.env.OPENCLAW_AGENT_DIR = previousOpenclawAgentDir;
     }
     if (previousPiAgentDir === undefined) {
       delete process.env.PI_CODING_AGENT_DIR;
@@ -194,10 +200,11 @@ describe("applyAuthChoice", () => {
   });
 
   it("does not override the global default model when selecting xai-api-key without setDefaultModel", async () => {
-    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
-    process.env.OPENCLAW_STATE_DIR = tempStateDir;
-    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
-    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-auth-"));
+    process.env.VERSO_STATE_DIR = tempStateDir;
+    process.env.VERSO_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.OPENCLAW_AGENT_DIR = process.env.VERSO_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = process.env.VERSO_AGENT_DIR;
 
     const text = vi.fn().mockResolvedValue("sk-xai-test");
     const select: WizardPrompter["select"] = vi.fn(
@@ -466,10 +473,11 @@ describe("applyAuthChoice", () => {
   });
 
   it("uses existing CLOUDFLARE_AI_GATEWAY_API_KEY when selecting cloudflare-ai-gateway-api-key", async () => {
-    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
-    process.env.OPENCLAW_STATE_DIR = tempStateDir;
-    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
-    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-auth-"));
+    process.env.VERSO_STATE_DIR = tempStateDir;
+    process.env.VERSO_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.OPENCLAW_AGENT_DIR = process.env.VERSO_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = process.env.VERSO_AGENT_DIR;
     process.env.CLOUDFLARE_AI_GATEWAY_API_KEY = "cf-gateway-test-key";
 
     const text = vi
@@ -718,10 +726,11 @@ describe("applyAuthChoice", () => {
   });
 
   it("writes MiniMax credentials when selecting minimax-portal", async () => {
-    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-auth-"));
-    process.env.OPENCLAW_STATE_DIR = tempStateDir;
-    process.env.OPENCLAW_AGENT_DIR = path.join(tempStateDir, "agent");
-    process.env.PI_CODING_AGENT_DIR = process.env.OPENCLAW_AGENT_DIR;
+    tempStateDir = await fs.mkdtemp(path.join(os.tmpdir(), "verso-auth-"));
+    process.env.VERSO_STATE_DIR = tempStateDir;
+    process.env.VERSO_AGENT_DIR = path.join(tempStateDir, "agent");
+    process.env.OPENCLAW_AGENT_DIR = process.env.VERSO_AGENT_DIR;
+    process.env.PI_CODING_AGENT_DIR = process.env.VERSO_AGENT_DIR;
 
     resolvePluginProviders.mockReturnValue([
       {

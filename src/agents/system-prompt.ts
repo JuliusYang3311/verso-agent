@@ -48,21 +48,11 @@ function buildMemorySection(params: {
   if (!params.availableTools.has("memory_search") && !params.availableTools.has("memory_get")) {
     return [];
   }
-  const lines = [
-    "## Memory Recall",
-    "Before answering anything about prior work, decisions, dates, people, preferences, or todos: run memory_search on MEMORY.md + memory/*.md; then use memory_get to pull only the needed lines. If low confidence after search, say you checked.",
-  ];
-  if (params.citationsMode === "off") {
-    lines.push(
-      "Citations are disabled: do not mention file paths or line numbers in replies unless the user explicitly asks.",
-    );
-  } else {
-    lines.push(
-      "Citations: include Source: <path#line> when it helps the user verify memory snippets.",
-    );
-  }
-  lines.push("");
-  return lines;
+  // Memory search instructions are no longer injected into the system prompt.
+  // Messages are now vectorized in real-time into sqlite-vec and retrieved
+  // dynamically via the context retrieval system. The memory_search / memory_get
+  // tools remain available for explicit user-initiated memory operations.
+  return [];
 }
 
 function buildUserIdentitySection(ownerLine: string | undefined, isMinimal: boolean) {

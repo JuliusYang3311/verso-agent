@@ -105,7 +105,7 @@ describe("launchd runtime parsing", () => {
 
 describe("launchctl list detection", () => {
   it("detects the resolved label in launchctl list", async () => {
-    await withLaunchctlStub({ listOutput: "123 0 ai.openclaw.gateway\n" }, async ({ env }) => {
+    await withLaunchctlStub({ listOutput: "123 0 ai.verso.gateway\n" }, async ({ env }) => {
       const listed = await isLaunchAgentListed({ env });
       expect(listed).toBe(true);
     });
@@ -131,7 +131,7 @@ describe("launchd bootstrap repair", () => {
         .map((line) => JSON.parse(line) as string[]);
 
       const domain = typeof process.getuid === "function" ? `gui/${process.getuid()}` : "gui/501";
-      const label = "ai.openclaw.gateway";
+      const label = "ai.verso.gateway";
       const plistPath = resolveLaunchAgentPlistPath(env);
 
       expect(calls).toContainEqual(["bootstrap", domain, plistPath]);
@@ -199,7 +199,7 @@ describe("launchd install", () => {
         .map((line) => JSON.parse(line) as string[]);
 
       const domain = typeof process.getuid === "function" ? `gui/${process.getuid()}` : "gui/501";
-      const label = "ai.openclaw.gateway";
+      const label = "ai.verso.gateway";
       const plistPath = resolveLaunchAgentPlistPath(env);
       const serviceId = `${domain}/${label}`;
 
@@ -229,21 +229,21 @@ describe("resolveLaunchAgentPlistPath", () => {
   it("uses default label when VERSO_PROFILE is default", () => {
     const env = { HOME: "/Users/test", VERSO_PROFILE: "default" };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.gateway.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.gateway.plist",
     );
   });
 
   it("uses default label when VERSO_PROFILE is unset", () => {
     const env = { HOME: "/Users/test" };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.gateway.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.gateway.plist",
     );
   });
 
   it("uses profile-specific label when VERSO_PROFILE is set to a custom value", () => {
     const env = { HOME: "/Users/test", VERSO_PROFILE: "jbphoenix" };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.jbphoenix.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.jbphoenix.plist",
     );
   });
 
@@ -275,28 +275,28 @@ describe("resolveLaunchAgentPlistPath", () => {
       VERSO_LAUNCHD_LABEL: "   ",
     };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.myprofile.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.myprofile.plist",
     );
   });
 
   it("handles case-insensitive 'Default' profile", () => {
     const env = { HOME: "/Users/test", VERSO_PROFILE: "Default" };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.gateway.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.gateway.plist",
     );
   });
 
   it("handles case-insensitive 'DEFAULT' profile", () => {
     const env = { HOME: "/Users/test", VERSO_PROFILE: "DEFAULT" };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.gateway.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.gateway.plist",
     );
   });
 
   it("trims whitespace from VERSO_PROFILE", () => {
     const env = { HOME: "/Users/test", VERSO_PROFILE: "  myprofile  " };
     expect(resolveLaunchAgentPlistPath(env)).toBe(
-      "/Users/test/Library/LaunchAgents/ai.openclaw.myprofile.plist",
+      "/Users/test/Library/LaunchAgents/ai.verso.myprofile.plist",
     );
   });
 });

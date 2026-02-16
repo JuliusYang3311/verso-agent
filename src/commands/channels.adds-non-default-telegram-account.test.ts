@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RuntimeEnv } from "../runtime.js";
 import { discordPlugin } from "../../extensions/discord/src/channel.js";
-import { imessagePlugin } from "../../extensions/imessage/src/channel.js";
-import { signalPlugin } from "../../extensions/signal/src/channel.js";
 import { slackPlugin } from "../../extensions/slack/src/channel.js";
 import { telegramPlugin } from "../../extensions/telegram/src/channel.js";
 import { whatsappPlugin } from "../../extensions/whatsapp/src/channel.js";
@@ -77,8 +75,6 @@ describe("channels command", () => {
         { pluginId: "slack", plugin: slackPlugin, source: "test" },
         { pluginId: "telegram", plugin: telegramPlugin, source: "test" },
         { pluginId: "whatsapp", plugin: whatsappPlugin, source: "test" },
-        { pluginId: "signal", plugin: signalPlugin, source: "test" },
-        { pluginId: "imessage", plugin: imessagePlugin, source: "test" },
       ]),
     );
   });
@@ -173,14 +169,14 @@ describe("channels command", () => {
     expect(next.channels?.whatsapp?.accounts?.family?.name).toBe("Family Phone");
   });
 
-  it("adds a second signal account with a distinct name", async () => {
+  it("adds a second discord account with a distinct name", async () => {
     configMocks.readConfigFileSnapshot.mockResolvedValue({
       ...baseSnapshot,
       config: {
         channels: {
-          signal: {
+          discord: {
             accounts: {
-              default: { account: "+15555550111", name: "Primary" },
+              default: { token: "d0", name: "Primary" },
             },
           },
         },
@@ -189,10 +185,10 @@ describe("channels command", () => {
 
     await channelsAddCommand(
       {
-        channel: "signal",
+        channel: "discord",
         account: "lab",
         name: "Lab",
-        signalNumber: "+15555550123",
+        token: "d1",
       },
       runtime,
       { hasFlags: true },
@@ -200,14 +196,14 @@ describe("channels command", () => {
 
     const next = configMocks.writeConfigFile.mock.calls[0]?.[0] as {
       channels?: {
-        signal?: {
-          accounts?: Record<string, { account?: string; name?: string }>;
+        discord?: {
+          accounts?: Record<string, { token?: string; name?: string }>;
         };
       };
     };
-    expect(next.channels?.signal?.accounts?.lab?.account).toBe("+15555550123");
-    expect(next.channels?.signal?.accounts?.lab?.name).toBe("Lab");
-    expect(next.channels?.signal?.accounts?.default?.name).toBe("Primary");
+    expect(next.channels?.discord?.accounts?.lab?.token).toBe("d1");
+    expect(next.channels?.discord?.accounts?.lab?.name).toBe("Lab");
+    expect(next.channels?.discord?.accounts?.default?.name).toBe("Primary");
   });
 
   it("disables a default provider account when remove has no delete flag", async () => {

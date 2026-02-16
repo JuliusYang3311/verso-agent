@@ -557,6 +557,7 @@ const ERROR_PATTERNS = {
     "credit balance",
     "plans & billing",
     "insufficient balance",
+    /\bbilling\b/,
   ],
   auth: [
     /invalid[_ ]?api[_ ]?key/,
@@ -570,6 +571,7 @@ const ERROR_PATTERNS = {
     "access denied",
     "expired",
     "no api key found",
+    "no credentials found",
     "cloud code assist api error",
     /\b401\b/,
     /\b403\b/,

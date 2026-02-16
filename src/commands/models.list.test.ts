@@ -48,14 +48,15 @@ vi.mock("../agents/model-auth.js", () => ({
 
 vi.mock("@mariozechner/pi-coding-agent", () => ({
   AuthStorage: class {},
-  ModelRegistry: class {
+  discoverAuthStorage: () => ({}),
+  discoverModels: () => ({
     getAll() {
       return modelRegistryState.models;
-    }
+    },
     getAvailable() {
       return modelRegistryState.available;
-    }
-  },
+    },
+  }),
 }));
 
 function makeRuntime() {

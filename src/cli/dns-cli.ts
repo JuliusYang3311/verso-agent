@@ -105,12 +105,16 @@ export function registerDnsCli(program: Command) {
     .description("DNS helpers for wide-area discovery (Tailscale + CoreDNS)")
     .addHelpText(
       "after",
-      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "docs.openclaw.ai/cli/dns")}\n`,
+      () => `\n${theme.muted("Docs:")} ${formatDocsLink("/cli/dns", "docs.verso.ai/cli/dns")}\n`,
     );
 
   dns
     .command("setup")
     .description("Set up CoreDNS to serve verso.internal for unicast DNS-SD (Wide-Area Bonjour)")
+    .option(
+      "--domain <domain>",
+      "Wide-area discovery domain (default: from config or verso.internal)",
+    )
     .option(
       "--apply",
       "Install/update CoreDNS config and (re)start the service (requires sudo)",

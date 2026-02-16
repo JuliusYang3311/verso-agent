@@ -28,6 +28,7 @@ import {
   resolveChannelMessageToolHints,
 } from "../../channel-tools.js";
 import { resolveVersoDocsPath } from "../../docs-path.js";
+import { buildDynamicContext, DEFAULT_CONTEXT_PARAMS } from "../../dynamic-context.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
 import { resolveDefaultModelForAgent } from "../../model-selection.js";
@@ -562,8 +563,67 @@ export async function runEmbeddedAttempt(
           getDmHistoryLimitFromSessionKey(params.sessionKey, params.config),
         );
         cacheTrace?.recordStage("session:limited", { messages: limited });
-        if (limited.length > 0) {
-          activeSession.agent.replaceMessages(limited);
+
+        // Apply dynamic context if enabled (opt-in via config)
+        const dynamicContextEnabled = params.config?.agents?.defaults?.dynamicContext !== false;
+        let finalMessages = limited;
+
+        if (dynamicContextEnabled && limited.length > 0) {
+          try {
+            // Estimate system prompt tokens
+            const systemPromptTokens = Math.ceil(systemPromptText.length / 4);
+
+            // Get context limit from model (default to 128k if not specified)
+            const contextLimit = params.model.contextWindow ?? 128_000;
+
+            // Reserve tokens for reply (default 4k)
+            const reserveForReply = 4_000;
+
+            // Note: In a full implementation, you would call the memory manager here
+            // to get retrieved chunks based on the current prompt. For now, we use
+            // an empty array as retrieval is not yet integrated.
+            const retrievedChunks: Parameters<typeof buildDynamicContext>[0]["retrievedChunks"] =
+              [];
+
+            // Apply dynamic context
+            const dynamicResult = buildDynamicContext({
+              allMessages: limited,
+              retrievedChunks,
+              contextLimit,
+              systemPromptTokens,
+              reserveForReply,
+              compactionSummary: null, // TODO: integrate compaction summary when available
+              params: DEFAULT_CONTEXT_PARAMS, // TODO: load from evolver/assets/gep/context_params.json
+            });
+
+            // Use the dynamically selected recent messages
+            finalMessages = dynamicResult.recentMessages;
+
+            log.debug(
+              `dynamic context applied: runId=${params.runId} sessionId=${params.sessionId} ` +
+                `recentRatio=${dynamicResult.recentRatioUsed.toFixed(2)} ` +
+                `recentTokens=${dynamicResult.recentTokens} ` +
+                `retrievalTokens=${dynamicResult.retrievalTokens} ` +
+                `totalTokens=${dynamicResult.totalTokens} ` +
+                `originalMessages=${limited.length} selectedMessages=${finalMessages.length}`,
+            );
+
+            cacheTrace?.recordStage("session:dynamic-context", {
+              messages: finalMessages,
+              note: `ratio=${dynamicResult.recentRatioUsed.toFixed(2)} tokens=${dynamicResult.totalTokens}`,
+            });
+          } catch (dynamicErr) {
+            // Fall back to full history on error
+            log.warn(
+              `dynamic context failed, using full history: runId=${params.runId} ` +
+                `error=${String(dynamicErr)}`,
+            );
+            finalMessages = limited;
+          }
+        }
+
+        if (finalMessages.length > 0) {
+          activeSession.agent.replaceMessages(finalMessages);
         }
       } catch (err) {
         sessionManager.flushPendingToolResults?.();

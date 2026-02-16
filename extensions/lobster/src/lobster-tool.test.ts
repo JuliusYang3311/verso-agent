@@ -31,7 +31,7 @@ async function writeFakeLobster(params: { payload: unknown }) {
   return await writeFakeLobsterScript(scriptBody);
 }
 
-function fakeApi(): VersoPluginApi {
+function fakeApi(overrides: Partial<VersoPluginApi> = {}): VersoPluginApi {
   return {
     id: "lobster",
     name: "lobster",
@@ -193,8 +193,9 @@ describe("lobster plugin tool", () => {
 
     // Ensure `lobster` is NOT discoverable via PATH, while still allowing our
     // fake lobster (a Node script with `#!/usr/bin/env node`) to run.
+    // We need /usr/bin on PATH so `env` can locate node via the shebang.
     const originalPath = process.env.PATH;
-    process.env.PATH = path.dirname(process.execPath);
+    process.env.PATH = [path.dirname(process.execPath), "/usr/bin"].join(path.delimiter);
 
     try {
       const tool = createLobsterTool(fakeApi({ pluginConfig: { lobsterPath: fake.binPath } }));

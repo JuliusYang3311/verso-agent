@@ -10,12 +10,7 @@ import { formatTokenCount, formatUsd } from "../../utils/usage-format.js";
 import { parseActivationCommand } from "../group-activation.js";
 import { parseSendPolicyCommand } from "../send-policy.js";
 import { normalizeUsageDisplay, resolveResponseUsageMode } from "../thinking.js";
-import {
-  formatAbortReplyText,
-  isAbortTrigger,
-  setAbortMemory,
-  stopSubagentsForRequester,
-} from "./abort.js";
+import { formatAbortReplyText, isAbortTrigger, setAbortMemory } from "./abort.js";
 import { clearSessionQueues } from "./queue.js";
 
 function resolveSessionEntryForKey(
@@ -339,12 +334,7 @@ export const handleStopCommand: CommandHandler = async (params, allowTextCommand
   );
   await triggerInternalHook(hookEvent);
 
-  const { stopped } = stopSubagentsForRequester({
-    cfg: params.cfg,
-    requesterSessionKey: abortTarget.key ?? params.sessionKey,
-  });
-
-  return { shouldContinue: false, reply: { text: formatAbortReplyText(stopped) } };
+  return { shouldContinue: false, reply: { text: formatAbortReplyText() } };
 };
 
 export const handleAbortTrigger: CommandHandler = async (params, allowTextCommands) => {

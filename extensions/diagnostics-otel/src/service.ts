@@ -1,6 +1,5 @@
 import type { SeverityNumber } from "@opentelemetry/api-logs";
 import type { DiagnosticEventPayload, VersoPluginService } from "verso/plugin-sdk";
-import type { VersoPluginService, DiagnosticEventPayload } from "verso/plugin-sdk";
 import { metrics, trace, SpanStatusCode } from "@opentelemetry/api";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
@@ -217,6 +216,8 @@ export function createDiagnosticsOtelService(): VersoPluginService {
             ? { scheduledDelayMillis: Math.max(1000, otel.flushIntervalMs) }
             : {},
         );
+        logProvider = new LoggerProvider();
+        logProvider.addLogRecordProcessor(processor);
         const otelLogger = logProvider.getLogger("verso");
 
         stopLogTransport = registerLogTransport((logObj) => {
