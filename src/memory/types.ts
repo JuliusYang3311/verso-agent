@@ -8,6 +8,8 @@ export type MemorySearchResult = {
   snippet: string;
   source: MemorySource;
   citation?: string;
+  /** Epoch ms when this chunk was last indexed. Used for time decay in dynamic context. */
+  timestamp?: number;
 };
 
 export type MemoryEmbeddingProbeResult = {

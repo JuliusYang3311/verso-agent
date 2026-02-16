@@ -8,6 +8,7 @@ export type HybridVectorResult = {
   source: HybridSource;
   snippet: string;
   vectorScore: number;
+  timestamp?: number;
 };
 
 export type HybridKeywordResult = {
@@ -50,6 +51,7 @@ export function mergeHybridResults(params: {
   score: number;
   snippet: string;
   source: HybridSource;
+  timestamp?: number;
 }> {
   const byId = new Map<
     string,
@@ -62,6 +64,7 @@ export function mergeHybridResults(params: {
       snippet: string;
       vectorScore: number;
       textScore: number;
+      timestamp?: number;
     }
   >();
 
@@ -75,6 +78,7 @@ export function mergeHybridResults(params: {
       snippet: r.snippet,
       vectorScore: r.vectorScore,
       textScore: 0,
+      timestamp: r.timestamp,
     });
   }
 
@@ -108,6 +112,7 @@ export function mergeHybridResults(params: {
       score,
       snippet: entry.snippet,
       source: entry.source,
+      timestamp: entry.timestamp,
     };
   });
 

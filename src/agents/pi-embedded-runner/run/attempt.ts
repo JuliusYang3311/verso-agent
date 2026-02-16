@@ -9,6 +9,7 @@ import { resolveHeartbeatPrompt } from "../../../auto-reply/heartbeat.js";
 import { resolveChannelCapabilities } from "../../../config/channel-capabilities.js";
 import { getMachineDisplayName } from "../../../infra/machine-name.js";
 import { MAX_IMAGE_BYTES } from "../../../media/constants.js";
+import { getMemorySearchManager } from "../../../memory/search-manager.js";
 import { getGlobalHookRunner } from "../../../plugins/hook-runner-global.js";
 import { isSubagentSessionKey, normalizeAgentId } from "../../../routing/session-key.js";
 import { resolveSignalReactionLevel } from "../../../signal/reaction-level.js";
@@ -28,7 +29,7 @@ import {
   resolveChannelMessageToolHints,
 } from "../../channel-tools.js";
 import { resolveVersoDocsPath } from "../../docs-path.js";
-import { buildDynamicContext, DEFAULT_CONTEXT_PARAMS } from "../../dynamic-context.js";
+import { buildDynamicContext, loadContextParams } from "../../dynamic-context.js";
 import { isTimeoutError } from "../../failover-error.js";
 import { resolveModelAuthMode } from "../../model-auth.js";
 import { resolveDefaultModelForAgent } from "../../model-selection.js";
@@ -579,11 +580,45 @@ export async function runEmbeddedAttempt(
             // Reserve tokens for reply (default 4k)
             const reserveForReply = 4_000;
 
-            // Note: In a full implementation, you would call the memory manager here
-            // to get retrieved chunks based on the current prompt. For now, we use
-            // an empty array as retrieval is not yet integrated.
-            const retrievedChunks: Parameters<typeof buildDynamicContext>[0]["retrievedChunks"] =
-              [];
+            // Extract search query from the last user message
+            const lastUserMsg = limited
+              .toReversed()
+              .find((m) => m.role === "user" && "content" in m && typeof m.content === "string");
+            const searchQuery =
+              lastUserMsg && "content" in lastUserMsg && typeof lastUserMsg.content === "string"
+                ? lastUserMsg.content.slice(0, 500)
+                : "";
+
+            // Retrieve chunks from memory manager (graceful fallback to empty on error)
+            let retrievedChunks: Parameters<typeof buildDynamicContext>[0]["retrievedChunks"] = [];
+            if (searchQuery) {
+              try {
+                const { manager } = await getMemorySearchManager({
+                  cfg: params.config ?? {},
+                  agentId: sessionAgentId,
+                });
+                if (manager) {
+                  const searchResults = await manager.search(searchQuery, {
+                    maxResults: 20,
+                    sessionKey: params.sessionKey,
+                  });
+                  retrievedChunks = searchResults.map((r) => ({
+                    snippet: r.snippet,
+                    score: r.score,
+                    path: r.path,
+                    source: r.source,
+                    startLine: r.startLine,
+                    endLine: r.endLine,
+                    timestamp: r.timestamp,
+                  }));
+                }
+              } catch (retrievalErr) {
+                log.debug(`memory retrieval failed (non-fatal): ${String(retrievalErr)}`);
+              }
+            }
+
+            // Load tunable context params (evolver-managed via context_params.json)
+            const contextParams = await loadContextParams();
 
             // Apply dynamic context
             const dynamicResult = buildDynamicContext({
@@ -592,8 +627,8 @@ export async function runEmbeddedAttempt(
               contextLimit,
               systemPromptTokens,
               reserveForReply,
-              compactionSummary: null, // TODO: integrate compaction summary when available
-              params: DEFAULT_CONTEXT_PARAMS, // TODO: load from evolver/assets/gep/context_params.json
+              compactionSummary: null,
+              params: contextParams,
             });
 
             // Use the dynamically selected recent messages

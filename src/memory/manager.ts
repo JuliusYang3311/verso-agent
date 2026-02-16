@@ -364,6 +364,7 @@ export class MemoryIndexManager implements MemorySearchManager {
         source: r.source,
         snippet: r.snippet,
         vectorScore: r.score,
+        timestamp: r.timestamp,
       })),
       keyword: params.keyword.map((r) => ({
         id: r.id,
