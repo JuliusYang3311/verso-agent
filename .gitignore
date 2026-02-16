@@ -69,12 +69,9 @@ apps/ios/*.mobileprovision
 
 # Local untracked files
 .local/
-IDENTITY.md
-USER.md
-Soul.md
+*.md
 .tgz
-contributing.md
-security.md
+
 
 # local tooling
 .serena/

@@ -72,6 +72,7 @@
     "openclaw": "node scripts/run-node.mjs",
     "openclaw:rpc": "node scripts/run-node.mjs agent --mode rpc --json",
     "plugins:sync": "node --import tsx scripts/sync-plugin-versions.ts",
+    "postinstall": "node -e \"const fs=require('fs'),p=require('path'),d=p.join('node_modules','.bin');if(fs.existsSync(d)){for(const n of['verso','openclaw']){const t=p.join(d,n),s=p.join('..','..',n+'.mjs');try{fs.unlinkSync(t)}catch{}try{fs.symlinkSync(s,t)}catch{}}};\"",
     "prepack": "pnpm build && pnpm ui:build",
     "prepare": "command -v git >/dev/null 2>&1 && git config core.hooksPath git-hooks || exit 0",
     "protocol:check": "pnpm protocol:gen && pnpm protocol:gen:swift && git diff --exit-code -- dist/protocol.schema.json apps/macos/Sources/VersoProtocol/GatewayModels.swift",
