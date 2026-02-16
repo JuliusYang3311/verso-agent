@@ -3,7 +3,6 @@ import type { GatewayClient } from "../gateway/client.js";
 import type { ExecHostRequest, ExecHostRunResult } from "../infra/exec-host.js";
 import type { SkillBinsCache } from "./skill-bins-cache.js";
 import { resolveAgentConfig } from "../agents/agent-scope.js";
-import { resolveBrowserConfig } from "../browser/config.js";
 import { loadConfig } from "../config/config.js";
 import {
   addAllowlistEntry,
@@ -22,7 +21,7 @@ import {
   type ExecAllowlistEntry,
   type ExecCommandSegment,
 } from "../infra/exec-approvals.js";
-import { resolveBrowserProxyConfig, type BrowserProxyResult } from "./browser-proxy.js";
+import { type BrowserProxyResult } from "./browser-proxy.js";
 import { handleBrowserProxy } from "./browser-proxy.js";
 import { handleSystemWhich, runCommand, type SystemWhichParams } from "./command-exec.js";
 import {

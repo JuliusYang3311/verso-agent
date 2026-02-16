@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetInboundDedupe } from "../auto-reply/reply/inbound-dedupe.js";
-import { createBotTestSpies, makeGetOnHandler } from "./bot-test-helpers.js";
+import { createBotTestSpies } from "./bot-test-helpers.js";
 import { createTelegramBot } from "./bot.js";
 
 const spies = createBotTestSpies();

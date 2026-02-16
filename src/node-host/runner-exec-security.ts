@@ -1,11 +1,9 @@
 import path from "node:path";
 import {
-  normalizeExecApprovals,
   resolveExecApprovals,
   type ExecAsk,
   type ExecSecurity,
   type ExecApprovalsFile,
-  type ExecAllowlistEntry,
 } from "../infra/exec-approvals.js";
 import {
   requestExecHostViaSocket,

@@ -25,7 +25,7 @@ import {
   runOpenAiEmbeddingBatches,
 } from "./batch-openai.js";
 import { type VoyageBatchRequest, runVoyageEmbeddingBatches } from "./batch-voyage.js";
-import { hashText, parseEmbedding } from "./internal.js";
+import { hashText } from "./internal.js";
 import {
   loadEmbeddingCache,
   upsertEmbeddingCache,
