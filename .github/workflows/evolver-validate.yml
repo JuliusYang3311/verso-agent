@@ -34,22 +34,21 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Validate Evolver GEP modules
+      - name: Validate Evolver daemon entry
         run: |
           node -e "
             const fs = require('fs');
-            const modules = [
-              'dist/evolver/gep/solidify.js',
-              'dist/evolver/gep/signals.js',
-              'dist/evolver/gep/sandbox-runner.js',
-              'dist/evolver/gep/src-optimizer.js',
-              'dist/evolver/gep/feedback-collector.js',
-            ];
-            for (const mod of modules) {
-              if (!fs.existsSync(mod)) {
-                console.error('Missing compiled module: ' + mod);
-                process.exit(1);
-              }
+            const entry = 'dist/evolver/daemon-entry.js';
+            if (!fs.existsSync(entry)) {
+              console.error('Missing evolver daemon entry: ' + entry);
+              process.exit(1);
             }
-            console.log('All GEP modules compiled successfully');
+            // Verify the bundled evolve chunk exists (code-split from daemon-entry)
+            const files = fs.readdirSync('dist/evolver');
+            const hasEvolveChunk = files.some(f => f.startsWith('evolve-') && f.endsWith('.js'));
+            if (!hasEvolveChunk) {
+              console.error('Missing bundled evolve chunk in dist/evolver/');
+              process.exit(1);
+            }
+            console.log('Evolver daemon entry and evolve chunk compiled successfully');
           "

@@ -42,4 +42,11 @@ export default defineConfig([
     fixedExtension: false,
     platform: "node",
   },
+  {
+    entry: "src/evolver/daemon-entry.ts",
+    outDir: "dist/evolver",
+    env,
+    fixedExtension: false,
+    platform: "node",
+  },
 ]);
