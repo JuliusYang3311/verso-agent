@@ -162,7 +162,7 @@ describe("web auto-reply", () => {
 
     for (const fmt of formats) {
       // Force a small cap to ensure compression is exercised for every format.
-      setLoadConfigMock(() => ({ agents: { defaults: { mediaMaxMb: 1 } } }));
+      setLoadConfigMock(() => ({ agents: { defaults: { mediaMaxMb: 1, asyncDispatch: false } } }));
       const sendMedia = vi.fn();
       const reply = vi.fn().mockResolvedValue(undefined);
       const sendComposing = vi.fn();
@@ -223,7 +223,7 @@ describe("web auto-reply", () => {
   });
 
   it("honors mediaMaxMb from config", async () => {
-    setLoadConfigMock(() => ({ agents: { defaults: { mediaMaxMb: 1 } } }));
+    setLoadConfigMock(() => ({ agents: { defaults: { mediaMaxMb: 1, asyncDispatch: false } } }));
     const sendMedia = vi.fn();
     const reply = vi.fn().mockResolvedValue(undefined);
     const sendComposing = vi.fn();

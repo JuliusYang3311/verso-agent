@@ -77,7 +77,7 @@ describe("dispatchReplyFromConfig", () => {
       aborted: false,
     });
     mocks.routeReply.mockClear();
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "slack",
@@ -103,7 +103,7 @@ describe("dispatchReplyFromConfig", () => {
       aborted: false,
     });
     mocks.routeReply.mockClear();
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "slack",
@@ -137,7 +137,7 @@ describe("dispatchReplyFromConfig", () => {
       aborted: false,
     });
     mocks.routeReply.mockClear();
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "telegram",
@@ -163,7 +163,7 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "telegram",
@@ -188,7 +188,7 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "telegram",
@@ -217,7 +217,7 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "telegram",
@@ -243,7 +243,7 @@ describe("dispatchReplyFromConfig", () => {
       handled: true,
       aborted: true,
     });
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "telegram",
@@ -264,7 +264,7 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const ctx = buildTestCtx({
       Provider: "whatsapp",
       OriginatingChannel: "whatsapp",
@@ -295,7 +295,7 @@ describe("dispatchReplyFromConfig", () => {
       aborted: false,
     });
     hookMocks.runner.hasHooks.mockReturnValue(true);
-    const cfg = {} as VersoConfig;
+    const cfg = { agents: { defaults: { asyncDispatch: false } } } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "slack",
@@ -345,7 +345,10 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = { diagnostics: { enabled: true } } as VersoConfig;
+    const cfg = {
+      diagnostics: { enabled: true },
+      agents: { defaults: { asyncDispatch: false } },
+    } as VersoConfig;
     const dispatcher = createDispatcher();
     const ctx = buildTestCtx({
       Provider: "slack",
@@ -378,7 +381,10 @@ describe("dispatchReplyFromConfig", () => {
       handled: false,
       aborted: false,
     });
-    const cfg = { diagnostics: { enabled: true } } as VersoConfig;
+    const cfg = {
+      diagnostics: { enabled: true },
+      agents: { defaults: { asyncDispatch: false } },
+    } as VersoConfig;
     const ctx = buildTestCtx({
       Provider: "whatsapp",
       OriginatingChannel: "whatsapp",

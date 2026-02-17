@@ -250,6 +250,12 @@ export async function runEmbeddedAttempt(
     const tools = sanitizeToolsForGoogle({ tools: toolsRaw, provider: params.provider });
     logToolSchemasForGoogle({ tools, provider: params.provider });
 
+    // Diagnostic: log registered tool names so we can verify tool availability at runtime.
+    log.info(
+      `agent turn tool registration: provider=${params.provider} model=${params.modelId} ` +
+        `toolCount=${tools.length} tools=[${tools.map((t) => t.name).join(",")}]`,
+    );
+
     const machineName = await getMachineDisplayName();
     const runtimeChannel = normalizeMessageChannel(params.messageChannel ?? params.messageProvider);
     let runtimeCapabilities = runtimeChannel
@@ -460,6 +466,11 @@ export async function runEmbeddedAttempt(
         tools,
         sandboxEnabled: !!sandbox?.enabled,
       });
+
+      log.info(
+        `agent session tools: builtIn=${builtInTools.length} custom=${customTools.length} ` +
+          `customNames=[${customTools.map((t) => t.name).join(",")}]`,
+      );
 
       // Add client tools (OpenResponses hosted tools) to customTools
       let clientToolCallDetected: { name: string; params: Record<string, unknown> } | null = null;
@@ -922,8 +933,29 @@ export async function runEmbeddedAttempt(
         } catch (err) {
           promptError = err;
         } finally {
-          log.debug(
-            `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} durationMs=${Date.now() - promptStartedAt}`,
+          const lastMsg = activeSession.messages[activeSession.messages.length - 1];
+          const lastRole =
+            lastMsg && typeof lastMsg === "object" && "role" in lastMsg
+              ? String((lastMsg as { role: unknown }).role)
+              : "unknown";
+          const lastContentTypes =
+            lastMsg &&
+            typeof lastMsg === "object" &&
+            "content" in lastMsg &&
+            Array.isArray((lastMsg as { content: unknown }).content)
+              ? (lastMsg as { content: unknown[] }).content
+                  .map((b) =>
+                    b && typeof b === "object" && "type" in b
+                      ? String((b as { type: unknown }).type)
+                      : "?",
+                  )
+                  .join(",")
+              : "text";
+          log.info(
+            `embedded run prompt end: runId=${params.runId} sessionId=${params.sessionId} ` +
+              `durationMs=${Date.now() - promptStartedAt} ` +
+              `lastRole=${lastRole} lastContentTypes=${lastContentTypes} ` +
+              `messageCount=${activeSession.messages.length}`,
           );
         }
 

@@ -12,11 +12,28 @@ type EmbeddedPiQueueHandle = {
 };
 
 const ACTIVE_EMBEDDED_RUNS = new Map<string, EmbeddedPiQueueHandle>();
+const ACTIVE_RUN_TIMESTAMPS = new Map<string, number>();
+const MAX_ACTIVE_RUNS = 100;
+const MAX_RUN_STALE_MS = 30 * 60 * 1000; // 30 minutes
 type EmbeddedRunWaiter = {
   resolve: (ended: boolean) => void;
   timer: NodeJS.Timeout;
 };
 const EMBEDDED_RUN_WAITERS = new Map<string, Set<EmbeddedRunWaiter>>();
+
+// Reap stale entries that were never cleared (e.g. exception in run).
+const runsReapTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [sessionId, ts] of ACTIVE_RUN_TIMESTAMPS) {
+    if (now - ts > MAX_RUN_STALE_MS) {
+      diag.warn(`reaping stale run: sessionId=${sessionId} ageMs=${now - ts}`);
+      ACTIVE_EMBEDDED_RUNS.delete(sessionId);
+      ACTIVE_RUN_TIMESTAMPS.delete(sessionId);
+      notifyEmbeddedRunEnded(sessionId);
+    }
+  }
+}, 60_000);
+runsReapTimer.unref?.();
 
 export function queueEmbeddedPiMessage(sessionId: string, text: string): boolean {
   const handle = ACTIVE_EMBEDDED_RUNS.get(sessionId);
@@ -112,8 +129,28 @@ function notifyEmbeddedRunEnded(sessionId: string) {
 }
 
 export function setActiveEmbeddedRun(sessionId: string, handle: EmbeddedPiQueueHandle) {
+  // Enforce max active runs limit
+  if (!ACTIVE_EMBEDDED_RUNS.has(sessionId) && ACTIVE_EMBEDDED_RUNS.size >= MAX_ACTIVE_RUNS) {
+    // Evict oldest by timestamp
+    let oldestId: string | undefined;
+    let oldestTs = Infinity;
+    for (const [id, ts] of ACTIVE_RUN_TIMESTAMPS) {
+      if (ts < oldestTs) {
+        oldestTs = ts;
+        oldestId = id;
+      }
+    }
+    if (oldestId) {
+      diag.warn(`run limit reached (${MAX_ACTIVE_RUNS}), evicting oldest: sessionId=${oldestId}`);
+      ACTIVE_EMBEDDED_RUNS.delete(oldestId);
+      ACTIVE_RUN_TIMESTAMPS.delete(oldestId);
+      notifyEmbeddedRunEnded(oldestId);
+    }
+  }
+
   const wasActive = ACTIVE_EMBEDDED_RUNS.has(sessionId);
   ACTIVE_EMBEDDED_RUNS.set(sessionId, handle);
+  ACTIVE_RUN_TIMESTAMPS.set(sessionId, Date.now());
   logSessionStateChange({
     sessionId,
     state: "processing",
@@ -127,6 +164,7 @@ export function setActiveEmbeddedRun(sessionId: string, handle: EmbeddedPiQueueH
 export function clearActiveEmbeddedRun(sessionId: string, handle: EmbeddedPiQueueHandle) {
   if (ACTIVE_EMBEDDED_RUNS.get(sessionId) === handle) {
     ACTIVE_EMBEDDED_RUNS.delete(sessionId);
+    ACTIVE_RUN_TIMESTAMPS.delete(sessionId);
     logSessionStateChange({ sessionId, state: "idle", reason: "run_completed" });
     if (!sessionId.startsWith("probe-")) {
       diag.debug(`run cleared: sessionId=${sessionId} totalActive=${ACTIVE_EMBEDDED_RUNS.size}`);

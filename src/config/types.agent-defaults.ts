@@ -215,7 +215,7 @@ export type AgentDefaultsConfig = {
    * When enabled, incoming messages are dispatched asynchronously (non-blocking).
    * - If an active run exists, the message is steered into the active run
    * - If no active run, a new agent turn is started in the background
-   * Default: false (blocking await for backward compatibility).
+   * Default: true (async non-blocking). Set to false for blocking await.
    */
   asyncDispatch?: boolean;
   /** Sub-agent defaults (spawned via sessions_spawn). */

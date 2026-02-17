@@ -116,6 +116,7 @@ const VECTOR_LOAD_TIMEOUT_MS = 30_000;
 const log = createSubsystemLogger("memory");
 
 const INDEX_CACHE = new Map<string, MemoryIndexManager>();
+const INDEX_CACHE_MAX = 20;
 
 export class MemoryIndexManager implements MemorySearchManager {
   private readonly cacheKey: string;
@@ -199,6 +200,19 @@ export class MemoryIndexManager implements MemorySearchManager {
       settings,
       providerResult,
     });
+    // Evict oldest cached manager if at limit
+    if (INDEX_CACHE.size >= INDEX_CACHE_MAX) {
+      const oldestKey = INDEX_CACHE.keys().next().value as string;
+      const oldest = INDEX_CACHE.get(oldestKey);
+      if (oldest) {
+        log.warn("memory: INDEX_CACHE at limit, evicting oldest", { key: oldestKey });
+        try {
+          void oldest.close();
+        } catch {
+          // close may throw if already closed; safe to ignore
+        }
+      }
+    }
     INDEX_CACHE.set(key, manager);
     return manager;
   }

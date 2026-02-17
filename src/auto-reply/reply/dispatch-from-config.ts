@@ -299,7 +299,7 @@ export async function dispatchReplyFromConfig(params: {
 
     // Check if async dispatch is enabled for this agent.
     const agentId = resolveSessionAgentId({ sessionKey: ctx.SessionKey, config: cfg });
-    const asyncDispatchEnabled = cfg.agents?.defaults?.asyncDispatch === true;
+    const asyncDispatchEnabled = cfg.agents?.defaults?.asyncDispatch !== false;
     const sessionIdForRuns = ctx.SessionKey ?? agentId;
 
     // Async dispatch mode: check if there's an active run and steer or fire-and-forget.
@@ -361,7 +361,7 @@ export async function dispatchReplyFromConfig(params: {
               logVerbose("dispatch-from-config: queued turn - wait timeout, running anyway");
             }
             // Now dispatch the full turn with tools.
-            await (params.replyResolver ?? getReplyFromConfig)(
+            const queuedReplyResult = await (params.replyResolver ?? getReplyFromConfig)(
               ctx,
               {
                 ...params.replyOptions,
@@ -406,6 +406,36 @@ export async function dispatchReplyFromConfig(params: {
               },
               cfg,
             );
+
+            // Deliver the final reply from the queued turn to the user.
+            const queuedReplies = queuedReplyResult
+              ? Array.isArray(queuedReplyResult)
+                ? queuedReplyResult
+                : [queuedReplyResult]
+              : [];
+            for (const reply of queuedReplies) {
+              const ttsReply = await maybeApplyTtsToPayload({
+                payload: reply,
+                cfg,
+                channel: ttsChannel,
+                kind: "final",
+                inboundAudio,
+                ttsAuto: sessionTtsAuto,
+              });
+              if (shouldRouteToOriginating && originatingChannel && originatingTo) {
+                await routeReply({
+                  payload: ttsReply,
+                  channel: originatingChannel,
+                  to: originatingTo,
+                  sessionKey: ctx.SessionKey,
+                  accountId: ctx.AccountId,
+                  threadId: ctx.MessageThreadId,
+                  cfg,
+                });
+              } else {
+                dispatcher.sendFinalReply(ttsReply);
+              }
+            }
           })();
           queuedTurnTask.catch((err) => {
             logVerbose(
@@ -443,7 +473,7 @@ export async function dispatchReplyFromConfig(params: {
 
       const fireAndForgetTask = (async () => {
         try {
-          await (params.replyResolver ?? getReplyFromConfig)(
+          const asyncReplyResult = await (params.replyResolver ?? getReplyFromConfig)(
             ctx,
             {
               ...params.replyOptions,
@@ -488,6 +518,36 @@ export async function dispatchReplyFromConfig(params: {
             },
             cfg,
           );
+
+          // Deliver the final reply from the async turn to the user.
+          const asyncReplies = asyncReplyResult
+            ? Array.isArray(asyncReplyResult)
+              ? asyncReplyResult
+              : [asyncReplyResult]
+            : [];
+          for (const reply of asyncReplies) {
+            const ttsReply = await maybeApplyTtsToPayload({
+              payload: reply,
+              cfg,
+              channel: ttsChannel,
+              kind: "final",
+              inboundAudio,
+              ttsAuto: sessionTtsAuto,
+            });
+            if (shouldRouteToOriginating && originatingChannel && originatingTo) {
+              await routeReply({
+                payload: ttsReply,
+                channel: originatingChannel,
+                to: originatingTo,
+                sessionKey: ctx.SessionKey,
+                accountId: ctx.AccountId,
+                threadId: ctx.MessageThreadId,
+                cfg,
+              });
+            } else {
+              dispatcher.sendFinalReply(ttsReply);
+            }
+          }
         } catch (err) {
           logVerbose(
             `dispatch-from-config: async mode - fire-and-forget error: ${err instanceof Error ? err.message : String(err)}`,

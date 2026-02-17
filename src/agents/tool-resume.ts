@@ -1,8 +1,13 @@
 /**
  * tool-resume.ts
- * 异步工具执行的 Resume 逻辑。
- * 工具在沙盒中异步执行，agent 可继续回复用户。
- * 工具完成后触发 resume，消息 turn 不丢失。
+ * Async tool execution resume logic.
+ * Tools execute asynchronously in sandbox; agent can continue replying.
+ * On tool completion, resume is triggered so the turn is not lost.
+ *
+ * Resource safety:
+ *   - activeRuns, pendingResults, messageQueue are all bounded
+ *   - Stale runs auto-reaped every 60 s (MAX_RUN_AGE_MS = 30 min)
+ *   - resumeCallbacks capped at MAX_CALLBACKS
  */
 
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
@@ -10,7 +15,16 @@ import { createSubsystemLogger } from "../logging/subsystem.js";
 
 const logger = createSubsystemLogger("tool-resume");
 
-// ---------- 类型定义 ----------
+// ---------- Limits ----------
+
+const MAX_ACTIVE_RUNS = 50;
+const MAX_PENDING_RESULTS = 100;
+const MAX_QUEUED_MESSAGES = 200;
+const MAX_CALLBACKS = 50;
+const MAX_RUN_AGE_MS = 30 * 60 * 1000; // 30 minutes
+const REAP_INTERVAL_MS = 60_000;
+
+// ---------- Types ----------
 
 export type AsyncToolRun = {
   id: string;
@@ -25,46 +39,65 @@ export type AsyncToolRun = {
 
 export type ResumeCallback = (run: AsyncToolRun) => void | Promise<void>;
 
-// ---------- 状态管理 ----------
+// ---------- State ----------
 
 const activeRuns = new Map<string, AsyncToolRun>();
 const pendingResults = new Map<string, AsyncToolRun>();
 const resumeCallbacks: ResumeCallback[] = [];
-
-// ---------- 消息队列（防止消息丢失） ----------
-
 const messageQueue: AgentMessage[] = [];
 
-/**
- * 将用户消息入队（工具执行期间收到的消息）
- */
+// ---------- Stale run reaper ----------
+
+const reapTimer = setInterval(() => {
+  const now = Date.now();
+  for (const [id, run] of activeRuns) {
+    if (now - run.startedAt > MAX_RUN_AGE_MS) {
+      logger.warn("tool-resume: reaping stale active run", { id, tool: run.toolName });
+      run.status = "failed";
+      run.error = "timeout: exceeded max run age";
+      run.completedAt = now;
+      activeRuns.delete(id);
+    }
+  }
+  for (const [id, run] of pendingResults) {
+    if (run.completedAt && now - run.completedAt > MAX_RUN_AGE_MS) {
+      pendingResults.delete(id);
+    }
+  }
+}, REAP_INTERVAL_MS);
+reapTimer.unref?.();
+
+// ---------- Message queue ----------
+
 export function enqueueMessage(message: AgentMessage): void {
+  if (messageQueue.length >= MAX_QUEUED_MESSAGES) {
+    messageQueue.shift();
+    logger.warn("tool-resume: message queue full, dropping oldest");
+  }
   messageQueue.push(message);
   logger.debug("tool-resume: message enqueued", { queueLength: messageQueue.length });
 }
 
-/**
- * 获取并清空待处理消息队列
- */
 export function drainMessageQueue(): AgentMessage[] {
   const messages = [...messageQueue];
   messageQueue.length = 0;
   return messages;
 }
 
-/**
- * 检查是否有待处理消息
- */
 export function hasQueuedMessages(): boolean {
   return messageQueue.length > 0;
 }
 
-// ---------- 异步工具运行管理 ----------
+// ---------- Async run management ----------
 
-/**
- * 注册一个异步工具运行
- */
 export function registerAsyncRun(params: { toolCallId: string; toolName: string }): AsyncToolRun {
+  if (activeRuns.size >= MAX_ACTIVE_RUNS) {
+    // Evict oldest run
+    const oldest = activeRuns.values().next().value as AsyncToolRun;
+    logger.warn("tool-resume: active runs at limit, evicting oldest", { id: oldest.id });
+    activeRuns.delete(oldest.id);
+  }
+
   const run: AsyncToolRun = {
     id: `async_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     toolCallId: params.toolCallId,
@@ -78,9 +111,6 @@ export function registerAsyncRun(params: { toolCallId: string; toolName: string 
   return run;
 }
 
-/**
- * 标记异步工具运行完成
- */
 export function completeAsyncRun(runId: string, result: unknown): void {
   const run = activeRuns.get(runId);
   if (!run) {
@@ -93,6 +123,12 @@ export function completeAsyncRun(runId: string, result: unknown): void {
   run.completedAt = Date.now();
 
   activeRuns.delete(runId);
+
+  // Evict oldest pending result if at limit
+  if (pendingResults.size >= MAX_PENDING_RESULTS) {
+    const oldestKey = pendingResults.keys().next().value as string;
+    pendingResults.delete(oldestKey);
+  }
   pendingResults.set(runId, run);
 
   logger.info("tool-resume: async run completed", {
@@ -101,7 +137,6 @@ export function completeAsyncRun(runId: string, result: unknown): void {
     elapsed_ms: run.completedAt - run.startedAt,
   });
 
-  // 通知所有 resume 回调
   for (const callback of resumeCallbacks) {
     try {
       void callback(run);
@@ -111,9 +146,6 @@ export function completeAsyncRun(runId: string, result: unknown): void {
   }
 }
 
-/**
- * 标记异步工具运行失败
- */
 export function failAsyncRun(runId: string, error: string): void {
   const run = activeRuns.get(runId);
   if (!run) {
@@ -125,6 +157,11 @@ export function failAsyncRun(runId: string, error: string): void {
   run.completedAt = Date.now();
 
   activeRuns.delete(runId);
+
+  if (pendingResults.size >= MAX_PENDING_RESULTS) {
+    const oldestKey = pendingResults.keys().next().value as string;
+    pendingResults.delete(oldestKey);
+  }
   pendingResults.set(runId, run);
 
   logger.info("tool-resume: async run failed", { id: runId, error });
@@ -136,12 +173,13 @@ export function failAsyncRun(runId: string, error: string): void {
   }
 }
 
-// ---------- Resume 回调 ----------
+// ---------- Resume callbacks ----------
 
-/**
- * 注册 resume 回调（当异步工具完成时调用）
- */
 export function onAsyncComplete(callback: ResumeCallback): () => void {
+  if (resumeCallbacks.length >= MAX_CALLBACKS) {
+    logger.warn("tool-resume: callback limit reached, dropping oldest");
+    resumeCallbacks.shift();
+  }
   resumeCallbacks.push(callback);
   return () => {
     const idx = resumeCallbacks.indexOf(callback);
@@ -151,34 +189,22 @@ export function onAsyncComplete(callback: ResumeCallback): () => void {
   };
 }
 
-// ---------- 查询 ----------
+// ---------- Queries ----------
 
-/**
- * 获取所有活跃的异步运行
- */
 export function getActiveRuns(): AsyncToolRun[] {
   return Array.from(activeRuns.values());
 }
 
-/**
- * 获取并消费待处理的完成结果
- */
 export function consumePendingResults(): AsyncToolRun[] {
   const results = Array.from(pendingResults.values());
   pendingResults.clear();
   return results;
 }
 
-/**
- * 是否有活跃的异步工具在运行
- */
 export function hasActiveRuns(): boolean {
   return activeRuns.size > 0;
 }
 
-/**
- * 重置（用于测试）
- */
 export function resetToolResumeForTests(): void {
   activeRuns.clear();
   pendingResults.clear();
