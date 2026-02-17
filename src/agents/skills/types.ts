@@ -28,6 +28,8 @@ export type VersoSkillMetadata = {
     anyBins?: string[];
     env?: string[];
     config?: string[];
+    /** Python packages required by this skill (pip format, e.g. "requests>=2.31.0"). */
+    pythonPackages?: string[];
   };
   install?: SkillInstallSpec[];
 };

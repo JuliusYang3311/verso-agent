@@ -14,6 +14,7 @@ export {
   applySkillEnvOverrides,
   applySkillEnvOverridesFromSnapshot,
 } from "./skills/env-overrides.js";
+export { collectPythonRequirements, hasPythonSkills } from "./skills/python-requirements.js";
 export type {
   VersoSkillMetadata,
   SkillEligibilityContext,

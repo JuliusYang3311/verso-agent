@@ -1,0 +1,27 @@
+# Verso — Unified Python Dependencies
+# Auto-merged from skills with Python requirements.
+# Used by session-venv to pre-install into per-session virtual environments.
+
+# === Video Generation (skills/videogeneration) ===
+moviepy>=2.0.0
+edge-tts>=6.1.0
+Pillow>=10.0.0
+requests>=2.31.0
+loguru>=0.7.0
+pydantic>=2.0.0
+
+# === Xiaohongshu (skills/xiaohongshu) ===
+playwright>=1.49.0
+
+# === DID Analysis (skills/did_analysis) ===
+pandas
+numpy
+matplotlib
+statsmodels
+scipy
+patsy
+
+# === Local Places (skills/local-places) ===
+fastapi>=0.110.0
+httpx>=0.27.0
+uvicorn[standard]>=0.29.0

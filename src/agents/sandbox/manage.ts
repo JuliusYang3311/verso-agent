@@ -1,5 +1,6 @@
 import { stopBrowserBridgeServer } from "../../browser/bridge-server.js";
 import { loadConfig } from "../../config/config.js";
+import { destroySessionVenv } from "../session-venv.js";
 import { BROWSER_BRIDGES } from "./browser-bridges.js";
 import { resolveSandboxConfigForAgent } from "./config.js";
 import { dockerContainerState, execDocker } from "./docker.js";
@@ -93,12 +94,19 @@ export async function listSandboxBrowsers(): Promise<SandboxBrowserInfo[]> {
 }
 
 export async function removeSandboxContainer(containerName: string): Promise<void> {
+  // Look up sessionKey before removing registry entry (for venv cleanup).
+  const registry = await readRegistry();
+  const entry = registry.entries.find((e) => e.containerName === containerName);
   try {
     await execDocker(["rm", "-f", containerName], { allowFailure: true });
   } catch {
     // ignore removal failures
   }
   await removeRegistryEntry(containerName);
+  // Clean up session-bound Python venv.
+  if (entry?.sessionKey) {
+    void destroySessionVenv(entry.sessionKey);
+  }
 }
 
 export async function removeSandboxBrowserContainer(containerName: string): Promise<void> {

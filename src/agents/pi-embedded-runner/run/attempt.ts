@@ -50,11 +50,13 @@ import { resolveSandboxContext } from "../../sandbox.js";
 import { resolveSandboxRuntimeStatus } from "../../sandbox/runtime-status.js";
 import { repairSessionFileIfNeeded } from "../../session-file-repair.js";
 import { guardSessionManager } from "../../session-tool-result-guard-wrapper.js";
+import { ensureSessionVenv } from "../../session-venv.js";
 import { acquireSessionWriteLock } from "../../session-write-lock.js";
 import { detectRuntimeShell } from "../../shell-utils.js";
 import {
   applySkillEnvOverrides,
   applySkillEnvOverridesFromSnapshot,
+  hasPythonSkills,
   loadWorkspaceSkillEntries,
   resolveSkillsPromptForRun,
 } from "../../skills.js";
@@ -181,6 +183,14 @@ export async function runEmbeddedAttempt(
           skills: skillEntries ?? [],
           config: params.config,
         });
+
+    // Ensure a session-bound Python venv if any loaded skill requires python3.
+    if (hasPythonSkills(skillEntries)) {
+      await ensureSessionVenv({
+        sessionKey: params.sessionKey ?? params.sessionId,
+        workspaceDir: effectiveWorkspace,
+      });
+    }
 
     const skillsPrompt = resolveSkillsPromptForRun({
       skillsSnapshot: params.skillsSnapshot,

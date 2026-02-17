@@ -82,6 +82,183 @@ export type DispatchFromConfigResult = {
   counts: Record<ReplyDispatchKind, number>;
 };
 
+/**
+ * Explicit context object for async agent turns.
+ * Replaces implicit closure capture — only these fields are retained
+ * while an async turn runs in the background.
+ */
+type AsyncTurnContext = {
+  ctx: FinalizedMsgContext;
+  cfg: VersoConfig;
+  dispatcher: ReplyDispatcher;
+  ttsChannel: string | undefined;
+  inboundAudio: boolean;
+  sessionTtsAuto: string | undefined;
+  shouldRouteToOriginating: boolean | string | undefined;
+  originatingChannel: string | undefined;
+  originatingTo: string | undefined;
+  shouldSendToolSummaries: boolean;
+  replyResolver: typeof getReplyFromConfig;
+  replyOptions?: Omit<GetReplyOptions, "onToolResult" | "onBlockReply">;
+};
+
+async function routePayloadToOriginating(
+  turnCtx: AsyncTurnContext,
+  payload: ReplyPayload,
+  abortSignal?: AbortSignal,
+  mirror?: boolean,
+): Promise<void> {
+  const { originatingChannel, originatingTo, ctx, cfg } = turnCtx;
+  if (!originatingChannel || !originatingTo) {
+    return;
+  }
+  if (abortSignal?.aborted) {
+    return;
+  }
+  const result = await routeReply({
+    payload,
+    channel: originatingChannel,
+    to: originatingTo,
+    sessionKey: ctx.SessionKey,
+    accountId: ctx.AccountId,
+    threadId: ctx.MessageThreadId,
+    cfg,
+    abortSignal,
+    mirror,
+  });
+  if (!result.ok) {
+    logVerbose(`dispatch-from-config: route-reply failed: ${result.error ?? "unknown error"}`);
+  }
+}
+
+function buildTurnReplyCallbacks(
+  turnCtx: AsyncTurnContext,
+): Pick<GetReplyOptions, "onToolResult" | "onBlockReply"> {
+  return {
+    onToolResult: turnCtx.shouldSendToolSummaries
+      ? (payload: ReplyPayload) => {
+          const run = async () => {
+            const ttsPayload = await maybeApplyTtsToPayload({
+              payload,
+              cfg: turnCtx.cfg,
+              channel: turnCtx.ttsChannel,
+              kind: "tool",
+              inboundAudio: turnCtx.inboundAudio,
+              ttsAuto: turnCtx.sessionTtsAuto,
+            });
+            if (turnCtx.shouldRouteToOriginating) {
+              await routePayloadToOriginating(turnCtx, ttsPayload, undefined, false);
+            } else {
+              turnCtx.dispatcher.sendToolResult(ttsPayload);
+            }
+          };
+          return run();
+        }
+      : undefined,
+    onBlockReply: (payload: ReplyPayload, context) => {
+      const run = async () => {
+        const ttsPayload = await maybeApplyTtsToPayload({
+          payload,
+          cfg: turnCtx.cfg,
+          channel: turnCtx.ttsChannel,
+          kind: "block",
+          inboundAudio: turnCtx.inboundAudio,
+          ttsAuto: turnCtx.sessionTtsAuto,
+        });
+        if (turnCtx.shouldRouteToOriginating) {
+          await routePayloadToOriginating(turnCtx, ttsPayload, context?.abortSignal, false);
+        } else {
+          turnCtx.dispatcher.sendBlockReply(ttsPayload);
+        }
+      };
+      return run();
+    },
+  };
+}
+
+async function deliverTurnReplies(
+  turnCtx: AsyncTurnContext,
+  replyResult: ReplyPayload | ReplyPayload[] | null | undefined,
+): Promise<void> {
+  const replies = replyResult ? (Array.isArray(replyResult) ? replyResult : [replyResult]) : [];
+  for (const reply of replies) {
+    const ttsReply = await maybeApplyTtsToPayload({
+      payload: reply,
+      cfg: turnCtx.cfg,
+      channel: turnCtx.ttsChannel,
+      kind: "final",
+      inboundAudio: turnCtx.inboundAudio,
+      ttsAuto: turnCtx.sessionTtsAuto,
+    });
+    if (turnCtx.shouldRouteToOriginating && turnCtx.originatingChannel && turnCtx.originatingTo) {
+      await routeReply({
+        payload: ttsReply,
+        channel: turnCtx.originatingChannel,
+        to: turnCtx.originatingTo,
+        sessionKey: turnCtx.ctx.SessionKey,
+        accountId: turnCtx.ctx.AccountId,
+        threadId: turnCtx.ctx.MessageThreadId,
+        cfg: turnCtx.cfg,
+      });
+    } else {
+      turnCtx.dispatcher.sendFinalReply(ttsReply);
+    }
+  }
+}
+
+async function runAsyncAgentTurn(turnCtx: AsyncTurnContext): Promise<void> {
+  try {
+    const callbacks = buildTurnReplyCallbacks(turnCtx);
+    const result = await turnCtx.replyResolver(
+      turnCtx.ctx,
+      { ...turnCtx.replyOptions, ...callbacks },
+      turnCtx.cfg,
+    );
+    await deliverTurnReplies(turnCtx, result);
+  } catch (err) {
+    logVerbose(
+      `dispatch-from-config: async agent turn error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    try {
+      const errorPayload: ReplyPayload = {
+        text: `Error processing your message: ${err instanceof Error ? err.message : String(err)}`,
+      };
+      if (turnCtx.shouldRouteToOriginating && turnCtx.originatingChannel && turnCtx.originatingTo) {
+        await routeReply({
+          payload: errorPayload,
+          channel: turnCtx.originatingChannel,
+          to: turnCtx.originatingTo,
+          sessionKey: turnCtx.ctx.SessionKey,
+          accountId: turnCtx.ctx.AccountId,
+          threadId: turnCtx.ctx.MessageThreadId,
+          cfg: turnCtx.cfg,
+        });
+      } else {
+        turnCtx.dispatcher.sendFinalReply(errorPayload);
+      }
+    } catch (deliveryErr) {
+      logVerbose(`dispatch-from-config: failed to deliver error: ${String(deliveryErr)}`);
+    }
+  }
+}
+
+async function runQueuedAgentTurn(
+  turnCtx: AsyncTurnContext,
+  sessionIdForRuns: string,
+): Promise<void> {
+  const ended = await waitForEmbeddedPiRunEnd(sessionIdForRuns, 300_000);
+  if (!ended) {
+    logVerbose("dispatch-from-config: queued turn - wait timeout, running anyway");
+  }
+  const callbacks = buildTurnReplyCallbacks(turnCtx);
+  const result = await turnCtx.replyResolver(
+    turnCtx.ctx,
+    { ...turnCtx.replyOptions, ...callbacks },
+    turnCtx.cfg,
+  );
+  await deliverTurnReplies(turnCtx, result);
+}
+
 export async function dispatchReplyFromConfig(params: {
   ctx: FinalizedMsgContext;
   cfg: VersoConfig;
@@ -304,6 +481,20 @@ export async function dispatchReplyFromConfig(params: {
 
     // Async dispatch mode: check if there's an active run and steer or fire-and-forget.
     if (asyncDispatchEnabled && sessionIdForRuns) {
+      const turnCtx: AsyncTurnContext = {
+        ctx,
+        cfg,
+        dispatcher,
+        ttsChannel,
+        inboundAudio,
+        sessionTtsAuto,
+        shouldRouteToOriginating,
+        originatingChannel,
+        originatingTo,
+        shouldSendToolSummaries,
+        replyResolver: params.replyResolver ?? getReplyFromConfig,
+        replyOptions: params.replyOptions,
+      };
       const hasActiveRun = isEmbeddedPiRunActive(sessionIdForRuns);
 
       if (hasActiveRun) {
@@ -354,89 +545,7 @@ export async function dispatchReplyFromConfig(params: {
           logVerbose(
             `dispatch-from-config: interstitial probe - queuing full turn behind active run (session=${sessionIdForRuns})`,
           );
-          const queuedTurnTask = (async () => {
-            // Wait for the current turn to complete (5-minute timeout).
-            const ended = await waitForEmbeddedPiRunEnd(sessionIdForRuns, 300_000);
-            if (!ended) {
-              logVerbose("dispatch-from-config: queued turn - wait timeout, running anyway");
-            }
-            // Now dispatch the full turn with tools.
-            const queuedReplyResult = await (params.replyResolver ?? getReplyFromConfig)(
-              ctx,
-              {
-                ...params.replyOptions,
-                onToolResult: shouldSendToolSummaries
-                  ? (payload: ReplyPayload) => {
-                      const run = async () => {
-                        const ttsPayload = await maybeApplyTtsToPayload({
-                          payload,
-                          cfg,
-                          channel: ttsChannel,
-                          kind: "tool",
-                          inboundAudio,
-                          ttsAuto: sessionTtsAuto,
-                        });
-                        if (shouldRouteToOriginating) {
-                          await sendPayloadAsync(ttsPayload, undefined, false);
-                        } else {
-                          dispatcher.sendToolResult(ttsPayload);
-                        }
-                      };
-                      return run();
-                    }
-                  : undefined,
-                onBlockReply: (payload: ReplyPayload, context) => {
-                  const run = async () => {
-                    const ttsPayload = await maybeApplyTtsToPayload({
-                      payload,
-                      cfg,
-                      channel: ttsChannel,
-                      kind: "block",
-                      inboundAudio,
-                      ttsAuto: sessionTtsAuto,
-                    });
-                    if (shouldRouteToOriginating) {
-                      await sendPayloadAsync(ttsPayload, context?.abortSignal, false);
-                    } else {
-                      dispatcher.sendBlockReply(ttsPayload);
-                    }
-                  };
-                  return run();
-                },
-              },
-              cfg,
-            );
-
-            // Deliver the final reply from the queued turn to the user.
-            const queuedReplies = queuedReplyResult
-              ? Array.isArray(queuedReplyResult)
-                ? queuedReplyResult
-                : [queuedReplyResult]
-              : [];
-            for (const reply of queuedReplies) {
-              const ttsReply = await maybeApplyTtsToPayload({
-                payload: reply,
-                cfg,
-                channel: ttsChannel,
-                kind: "final",
-                inboundAudio,
-                ttsAuto: sessionTtsAuto,
-              });
-              if (shouldRouteToOriginating && originatingChannel && originatingTo) {
-                await routeReply({
-                  payload: ttsReply,
-                  channel: originatingChannel,
-                  to: originatingTo,
-                  sessionKey: ctx.SessionKey,
-                  accountId: ctx.AccountId,
-                  threadId: ctx.MessageThreadId,
-                  cfg,
-                });
-              } else {
-                dispatcher.sendFinalReply(ttsReply);
-              }
-            }
-          })();
+          const queuedTurnTask = runQueuedAgentTurn(turnCtx, sessionIdForRuns);
           queuedTurnTask.catch((err) => {
             logVerbose(
               `dispatch-from-config: queued turn error: ${err instanceof Error ? err.message : String(err)}`,
@@ -471,112 +580,7 @@ export async function dispatchReplyFromConfig(params: {
         `dispatch-from-config: async mode - fire-and-forget agent turn (session=${sessionIdForRuns})`,
       );
 
-      const fireAndForgetTask = (async () => {
-        try {
-          const asyncReplyResult = await (params.replyResolver ?? getReplyFromConfig)(
-            ctx,
-            {
-              ...params.replyOptions,
-              onToolResult: shouldSendToolSummaries
-                ? (payload: ReplyPayload) => {
-                    const run = async () => {
-                      const ttsPayload = await maybeApplyTtsToPayload({
-                        payload,
-                        cfg,
-                        channel: ttsChannel,
-                        kind: "tool",
-                        inboundAudio,
-                        ttsAuto: sessionTtsAuto,
-                      });
-                      if (shouldRouteToOriginating) {
-                        await sendPayloadAsync(ttsPayload, undefined, false);
-                      } else {
-                        dispatcher.sendToolResult(ttsPayload);
-                      }
-                    };
-                    return run();
-                  }
-                : undefined,
-              onBlockReply: (payload: ReplyPayload, context) => {
-                const run = async () => {
-                  const ttsPayload = await maybeApplyTtsToPayload({
-                    payload,
-                    cfg,
-                    channel: ttsChannel,
-                    kind: "block",
-                    inboundAudio,
-                    ttsAuto: sessionTtsAuto,
-                  });
-                  if (shouldRouteToOriginating) {
-                    await sendPayloadAsync(ttsPayload, context?.abortSignal, false);
-                  } else {
-                    dispatcher.sendBlockReply(ttsPayload);
-                  }
-                };
-                return run();
-              },
-            },
-            cfg,
-          );
-
-          // Deliver the final reply from the async turn to the user.
-          const asyncReplies = asyncReplyResult
-            ? Array.isArray(asyncReplyResult)
-              ? asyncReplyResult
-              : [asyncReplyResult]
-            : [];
-          for (const reply of asyncReplies) {
-            const ttsReply = await maybeApplyTtsToPayload({
-              payload: reply,
-              cfg,
-              channel: ttsChannel,
-              kind: "final",
-              inboundAudio,
-              ttsAuto: sessionTtsAuto,
-            });
-            if (shouldRouteToOriginating && originatingChannel && originatingTo) {
-              await routeReply({
-                payload: ttsReply,
-                channel: originatingChannel,
-                to: originatingTo,
-                sessionKey: ctx.SessionKey,
-                accountId: ctx.AccountId,
-                threadId: ctx.MessageThreadId,
-                cfg,
-              });
-            } else {
-              dispatcher.sendFinalReply(ttsReply);
-            }
-          }
-        } catch (err) {
-          logVerbose(
-            `dispatch-from-config: async mode - fire-and-forget error: ${err instanceof Error ? err.message : String(err)}`,
-          );
-          // Try to send error to user.
-          try {
-            const errorPayload: ReplyPayload = {
-              text: `Error processing your message: ${err instanceof Error ? err.message : String(err)}`,
-            };
-            if (shouldRouteToOriginating && originatingChannel && originatingTo) {
-              await routeReply({
-                payload: errorPayload,
-                channel: originatingChannel,
-                to: originatingTo,
-                sessionKey: ctx.SessionKey,
-                accountId: ctx.AccountId,
-                threadId: ctx.MessageThreadId,
-                cfg,
-              });
-            } else {
-              dispatcher.sendFinalReply(errorPayload);
-            }
-          } catch (deliveryErr) {
-            logVerbose(
-              `dispatch-from-config: async mode - failed to deliver error: ${String(deliveryErr)}`,
-            );
-          }
-        }
-      })();
+      const fireAndForgetTask = runAsyncAgentTurn(turnCtx);
 
       // Don't await the task - fire and forget.
       // Catch unhandled rejections to prevent process crashes.

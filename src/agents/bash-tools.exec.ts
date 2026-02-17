@@ -34,6 +34,7 @@ import {
   validateHostEnv,
 } from "./exec-env.js";
 import { runExecProcess } from "./exec-run-process.js";
+import { getSessionVenvPath } from "./session-venv.js";
 // Re-export types for backward compatibility (consumed by barrel and tests).
 export type { ExecProcessHandle, ExecProcessOutcome, ExecToolDetails } from "./exec-run-process.js";
 
@@ -377,6 +378,14 @@ export function createExecTool(
         applyShellPath(env, shellPath);
       }
       applyPathPrepend(env, defaultPathPrepend);
+
+      // Inject session venv into PATH if available.
+      const sessionVenvPath = defaults?.sessionKey ? getSessionVenvPath(defaults.sessionKey) : null;
+      if (sessionVenvPath) {
+        const venvBin = `${sessionVenvPath}/bin`;
+        env.VIRTUAL_ENV = sessionVenvPath;
+        env.PATH = env.PATH ? `${venvBin}:${env.PATH}` : venvBin;
+      }
 
       // ── Node host execution ──────────────────────────────
       if (host === "node") {

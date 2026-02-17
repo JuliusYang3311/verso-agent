@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { MsgContext } from "../../auto-reply/templating.js";
+import { destroySessionVenv } from "../../agents/session-venv.js";
 import {
   deliveryContextFromSession,
   mergeDeliveryContext,
@@ -498,11 +499,16 @@ export async function removeSessionFromStore(params: {
   sessionKey: string;
 }): Promise<boolean> {
   const { storePath, sessionKey } = params;
-  return await updateSessionStore(storePath, (store) => {
+  const removed = await updateSessionStore(storePath, (store) => {
     if (Object.hasOwn(store, sessionKey)) {
       delete store[sessionKey];
       return true;
     }
     return false;
   });
+  // Clean up session-bound Python venv (fire-and-forget).
+  if (removed) {
+    void destroySessionVenv(sessionKey);
+  }
+  return removed;
 }
