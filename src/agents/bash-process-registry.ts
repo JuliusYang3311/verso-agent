@@ -72,6 +72,62 @@ const finishedSessions = new Map<string, FinishedSession>();
 
 let sweeper: NodeJS.Timeout | null = null;
 
+// --- Spawn concurrency gate ---
+const DEFAULT_MAX_CONCURRENT = 50;
+const ZOMBIE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SPAWN_WAIT_TIMEOUT_MS = 30_000; // 30 seconds
+const SPAWN_WAIT_POLL_MS = 200;
+
+const maxConcurrent = Math.max(
+  1,
+  Number.parseInt(process.env.PI_BASH_MAX_CONCURRENT ?? "", 10) || DEFAULT_MAX_CONCURRENT,
+);
+
+/** Returns true if a new process can be spawned without exceeding the concurrency limit. */
+export function canSpawnProcess(): boolean {
+  return runningSessions.size < maxConcurrent;
+}
+
+/** Waits up to 30 seconds for a spawn slot to become available. Returns true if acquired. */
+export function waitForSpawnSlot(): Promise<boolean> {
+  if (canSpawnProcess()) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise<boolean>((resolve) => {
+    const deadline = Date.now() + SPAWN_WAIT_TIMEOUT_MS;
+    const timer = setInterval(() => {
+      if (canSpawnProcess()) {
+        clearInterval(timer);
+        resolve(true);
+        return;
+      }
+      if (Date.now() >= deadline) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, SPAWN_WAIT_POLL_MS);
+    timer.unref?.();
+  });
+}
+
+/** Explicitly close child stdio streams to free file descriptors. */
+export function cleanupChildStreams(session: ProcessSession): void {
+  const child = session.child;
+  if (!child) {
+    return;
+  }
+  for (const stream of [child.stdin, child.stdout, child.stderr]) {
+    if (stream && !stream.destroyed) {
+      try {
+        stream.destroy();
+      } catch {
+        // ignore — stream may already be closed
+      }
+    }
+  }
+}
+
 function isSessionIdTaken(id: string) {
   return runningSessions.has(id) || finishedSessions.has(id);
 }
@@ -148,6 +204,7 @@ export function markExited(
   session.exitCode = exitCode;
   session.exitSignal = exitSignal;
   session.tail = tail(session.aggregated, 2000);
+  cleanupChildStreams(session);
   moveToFinished(session, status);
 }
 
@@ -253,6 +310,20 @@ function pruneFinishedSessions() {
   for (const [id, session] of finishedSessions.entries()) {
     if (session.endedAt < cutoff) {
       finishedSessions.delete(id);
+    }
+  }
+  // Reap zombie processes: kill running sessions that have been alive > ZOMBIE_TIMEOUT_MS
+  const zombieCutoff = Date.now() - ZOMBIE_TIMEOUT_MS;
+  for (const [_id, session] of runningSessions.entries()) {
+    if (session.startedAt < zombieCutoff && !session.exited) {
+      try {
+        if (session.child?.pid) {
+          process.kill(session.child.pid, "SIGKILL");
+        }
+      } catch {
+        // process may already be dead
+      }
+      markExited(session, null, "SIGKILL", "killed");
     }
   }
 }
