@@ -730,9 +730,35 @@ export class MemoryIndexManager implements MemorySearchManager {
     ]);
     this.watcher = chokidar.watch(Array.from(watchPaths), {
       ignoreInitial: true,
+      ignored: [
+        // Only .md files are indexed — skip everything else to avoid FD exhaustion
+        /(^|[/\\])\../, // dotfiles
+        /\.sqlite3?$/,
+        /\.db$/,
+        /\.jsonl?$/,
+        /\.bin$/,
+        /\.pkl$/,
+        /\.vec$/,
+        /\.wal$/,
+        /\.shm$/,
+        /-journal$/,
+        /node_modules/,
+        (filePath: string) => {
+          // Allow directories (chokidar needs to traverse them) and .md files
+          try {
+            const stat = fsSync.lstatSync(filePath);
+            if (stat.isDirectory()) {
+              return false;
+            }
+          } catch {
+            return false;
+          }
+          return !filePath.endsWith(".md");
+        },
+      ],
       awaitWriteFinish: {
         stabilityThreshold: this.settings.sync.watchDebounceMs,
-        pollInterval: 100,
+        pollInterval: 500,
       },
     });
     const markDirty = () => {
@@ -839,8 +865,9 @@ export class MemoryIndexManager implements MemorySearchManager {
     progress?: MemorySyncProgressState;
   }) {
     const files = await listMemoryFiles(this.workspaceDir, this.settings.extraPaths);
-    const fileEntries = await Promise.all(
-      files.map(async (file) => buildFileEntry(file, this.workspaceDir)),
+    const fileEntries = await runWithConcurrency(
+      files.map((file) => async () => buildFileEntry(file, this.workspaceDir)),
+      this.getIndexConcurrency(),
     );
     log.debug("memory sync: indexing memory files", {
       files: fileEntries.length,

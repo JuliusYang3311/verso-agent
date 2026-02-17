@@ -64,22 +64,24 @@ export async function ensureMediaDir() {
   return mediaDir;
 }
 
+const CLEAN_CONCURRENCY = 8;
+
 export async function cleanOldMedia(ttlMs = DEFAULT_TTL_MS) {
   const mediaDir = await ensureMediaDir();
   const entries = await fs.readdir(mediaDir).catch(() => []);
   const now = Date.now();
-  await Promise.all(
-    entries.map(async (file) => {
-      const full = path.join(mediaDir, file);
+  let idx = 0;
+  const run = async () => {
+    while (idx < entries.length) {
+      const i = idx++;
+      const full = path.join(mediaDir, entries[i]);
       const stat = await fs.stat(full).catch(() => null);
-      if (!stat) {
-        return;
-      }
-      if (now - stat.mtimeMs > ttlMs) {
+      if (stat && now - stat.mtimeMs > ttlMs) {
         await fs.rm(full).catch(() => {});
       }
-    }),
-  );
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CLEAN_CONCURRENCY, entries.length) }, run));
 }
 
 function looksLikeUrl(src: string) {

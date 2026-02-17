@@ -379,8 +379,14 @@ export const driveDownloadFile: AnyAgentTool = {
     const dest = fs.createWriteStream(localPath);
 
     return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        if (!dest.destroyed) {
+          dest.destroy();
+        }
+      };
       res.data
         .on("end", () => {
+          cleanup();
           resolve(
             jsonResult({
               success: true,
@@ -392,9 +398,15 @@ export const driveDownloadFile: AnyAgentTool = {
           );
         })
         .on("error", (err: Error) => {
+          cleanup();
           reject(new Error(`Download failed: ${err.message}`));
         })
         .pipe(dest);
+
+      dest.on("error", (err: Error) => {
+        res.data.destroy();
+        reject(new Error(`Write failed: ${err.message}`));
+      });
     });
   },
 };
