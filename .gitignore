@@ -69,7 +69,11 @@ apps/ios/*.mobileprovision
 
 # Local untracked files
 .local/
-*.md
+IDENTITY.md
+USER.md
+Soul.md
+contributing.md
+security.md
 .tgz
 
 
