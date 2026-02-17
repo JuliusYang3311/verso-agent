@@ -77,3 +77,32 @@ export function dropVectorTable(db: DatabaseSync): void {
     log.debug(`Failed to drop ${VECTOR_TABLE}: ${message}`);
   }
 }
+
+// ---------- File-level vector table (for hierarchical search) ----------
+
+export const FILES_VECTOR_TABLE = "files_vec";
+
+export function ensureFileVectorTable(db: DatabaseSync, dimensions: number): boolean {
+  try {
+    db.exec(
+      `CREATE VIRTUAL TABLE IF NOT EXISTS ${FILES_VECTOR_TABLE} USING vec0(\n` +
+        `  path TEXT PRIMARY KEY,\n` +
+        `  embedding FLOAT[${dimensions}]\n` +
+        `)`,
+    );
+    return true;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.debug(`Failed to create ${FILES_VECTOR_TABLE}: ${message}`);
+    return false;
+  }
+}
+
+export function dropFileVectorTable(db: DatabaseSync): void {
+  try {
+    db.exec(`DROP TABLE IF EXISTS ${FILES_VECTOR_TABLE}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log.debug(`Failed to drop ${FILES_VECTOR_TABLE}: ${message}`);
+  }
+}

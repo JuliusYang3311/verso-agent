@@ -5,7 +5,7 @@ export function ensureMemoryIndexSchema(params: {
   embeddingCacheTable: string;
   ftsTable: string;
   ftsEnabled: boolean;
-}): { ftsAvailable: boolean; ftsError?: string } {
+}): { ftsAvailable: boolean; filesFtsAvailable: boolean; ftsError?: string } {
   params.db.exec(`
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
@@ -76,10 +76,39 @@ export function ensureMemoryIndexSchema(params: {
 
   ensureColumn(params.db, "files", "source", "TEXT NOT NULL DEFAULT 'memory'");
   ensureColumn(params.db, "chunks", "source", "TEXT NOT NULL DEFAULT 'memory'");
+
+  // L0/L1 columns for progressive loading
+  ensureColumn(params.db, "chunks", "l0_abstract", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(params.db, "chunks", "l1_overview", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(params.db, "chunks", "l1_status", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(params.db, "files", "l0_abstract", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(params.db, "files", "l0_embedding", "TEXT NOT NULL DEFAULT '[]'");
+
   params.db.exec(`CREATE INDEX IF NOT EXISTS idx_chunks_path ON chunks(path);`);
   params.db.exec(`CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source);`);
 
-  return { ftsAvailable, ...(ftsError ? { ftsError } : {}) };
+  // Files FTS for hierarchical search keyword matching
+  let filesFtsAvailable = false;
+  if (params.ftsEnabled) {
+    try {
+      params.db.exec(
+        `CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(\n` +
+          `  l0_abstract,\n` +
+          `  path UNINDEXED,\n` +
+          `  source UNINDEXED\n` +
+          `);`,
+      );
+      filesFtsAvailable = true;
+    } catch {
+      // files_fts not available — hierarchical keyword search will be skipped
+    }
+  }
+
+  return {
+    ftsAvailable,
+    filesFtsAvailable,
+    ...(ftsError ? { ftsError } : {}),
+  };
 }
 
 function ensureColumn(

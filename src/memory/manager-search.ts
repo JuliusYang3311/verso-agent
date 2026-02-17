@@ -17,6 +17,10 @@ export type SearchRowResult = {
   source: SearchSource;
   /** Epoch ms when this chunk was last indexed. */
   timestamp?: number;
+  /** L0 abstract for progressive loading. */
+  l0Abstract?: string;
+  /** L1 overview for progressive loading. */
+  l1Overview?: string;
 };
 
 export async function searchVector(params: {
@@ -37,7 +41,7 @@ export async function searchVector(params: {
     const rows = params.db
       .prepare(
         `SELECT c.id, c.path, c.start_line, c.end_line, c.text,\n` +
-          `       c.source, c.updated_at,\n` +
+          `       c.source, c.updated_at, c.l0_abstract, c.l1_overview,\n` +
           `       vec_distance_cosine(v.embedding, ?) AS dist\n` +
           `  FROM ${params.vectorTable} v\n` +
           `  JOIN chunks c ON c.id = v.id\n` +
@@ -58,6 +62,8 @@ export async function searchVector(params: {
       text: string;
       source: SearchSource;
       updated_at: number;
+      l0_abstract: string;
+      l1_overview: string;
       dist: number;
     }>;
     return rows.map((row) => ({
@@ -69,6 +75,8 @@ export async function searchVector(params: {
       snippet: truncateUtf16Safe(row.text, params.snippetMaxChars),
       source: row.source,
       timestamp: row.updated_at,
+      l0Abstract: row.l0_abstract || undefined,
+      l1Overview: row.l1_overview || undefined,
     }));
   }
 
@@ -188,4 +196,101 @@ export async function searchKeyword(params: {
       source: row.source,
     };
   });
+}
+
+// ---------- File-level search functions (for hierarchical search) ----------
+
+export type FileSearchResult = {
+  path: string;
+  source: SearchSource;
+  score: number;
+  l0Abstract: string;
+};
+
+/**
+ * Vector search at file level using files_vec table.
+ */
+export async function searchVectorFiles(params: {
+  db: DatabaseSync;
+  filesVectorTable: string;
+  queryVec: number[];
+  limit: number;
+  ensureFileVectorReady: (dimensions: number) => Promise<boolean>;
+}): Promise<FileSearchResult[]> {
+  if (params.queryVec.length === 0 || params.limit <= 0) {
+    return [];
+  }
+  if (!(await params.ensureFileVectorReady(params.queryVec.length))) {
+    return [];
+  }
+  try {
+    const rows = params.db
+      .prepare(
+        `SELECT f.path, f.source, f.l0_abstract,\n` +
+          `       vec_distance_cosine(v.embedding, ?) AS dist\n` +
+          `  FROM ${params.filesVectorTable} v\n` +
+          `  JOIN files f ON f.path = v.path\n` +
+          ` ORDER BY dist ASC\n` +
+          ` LIMIT ?`,
+      )
+      .all(vectorToBlob(params.queryVec), params.limit) as Array<{
+      path: string;
+      source: SearchSource;
+      l0_abstract: string;
+      dist: number;
+    }>;
+    return rows.map((row) => ({
+      path: row.path,
+      source: row.source,
+      score: 1 - row.dist,
+      l0Abstract: row.l0_abstract || "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Keyword search at file level using files_fts table.
+ */
+export function searchKeywordFiles(params: {
+  db: DatabaseSync;
+  filesFtsTable: string;
+  query: string;
+  limit: number;
+  buildFtsQuery: (raw: string) => string | null;
+  bm25RankToScore: (rank: number) => number;
+}): FileSearchResult[] {
+  if (params.limit <= 0) {
+    return [];
+  }
+  const ftsQuery = params.buildFtsQuery(params.query);
+  if (!ftsQuery) {
+    return [];
+  }
+  try {
+    const rows = params.db
+      .prepare(
+        `SELECT path, source, l0_abstract,\n` +
+          `       bm25(${params.filesFtsTable}) AS rank\n` +
+          `  FROM ${params.filesFtsTable}\n` +
+          ` WHERE ${params.filesFtsTable} MATCH ?\n` +
+          ` ORDER BY rank ASC\n` +
+          ` LIMIT ?`,
+      )
+      .all(ftsQuery, params.limit) as Array<{
+      path: string;
+      source: SearchSource;
+      l0_abstract: string;
+      rank: number;
+    }>;
+    return rows.map((row) => ({
+      path: row.path,
+      source: row.source,
+      score: params.bm25RankToScore(row.rank),
+      l0Abstract: row.l0_abstract || "",
+    }));
+  } catch {
+    return [];
+  }
 }

@@ -24,6 +24,7 @@ export type ResolvedMemorySearchConfig = {
   };
   experimental: {
     sessionMemory: boolean;
+    l1LlmMode: boolean;
   };
   fallback: "openai" | "gemini" | "local" | "voyage" | "none";
   model: string;
@@ -126,6 +127,8 @@ function mergeConfig(
   const enabled = overrides?.enabled ?? defaults?.enabled ?? true;
   const sessionMemory =
     overrides?.experimental?.sessionMemory ?? defaults?.experimental?.sessionMemory ?? false;
+  const l1LlmMode =
+    overrides?.experimental?.l1LlmMode ?? defaults?.experimental?.l1LlmMode ?? false;
   const provider = overrides?.provider ?? defaults?.provider ?? "auto";
   const defaultRemote = defaults?.remote;
   const overrideRemote = overrides?.remote;
@@ -261,6 +264,7 @@ function mergeConfig(
     remote,
     experimental: {
       sessionMemory,
+      l1LlmMode,
     },
     fallback,
     model,

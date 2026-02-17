@@ -232,6 +232,8 @@ export type MemorySearchConfig = {
   experimental?: {
     /** Enable session transcript indexing (experimental, default: false). */
     sessionMemory?: boolean;
+    /** Enable L1 overview generation using LLM (default: false, uses heuristic). */
+    l1LlmMode?: boolean;
   };
   /** Embedding provider mode. */
   provider?: "openai" | "gemini" | "local" | "voyage";

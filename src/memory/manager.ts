@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import type { ContextParams } from "../agents/dynamic-context.js";
 import type { ResolvedMemorySearchConfig } from "../agents/memory-search.js";
 import type { VersoConfig } from "../config/config.js";
 import type {
@@ -35,6 +37,8 @@ import {
   buildFileEntry,
   chunkMarkdown,
   ensureDir,
+  generateFileL0,
+  generateL0Abstract,
   hashText,
   isMemoryPath,
   listMemoryFiles,
@@ -58,6 +62,7 @@ import {
   embedQueryWithTimeout,
   withTimeout,
 } from "./manager-embeddings.js";
+import { searchHierarchical } from "./manager-hierarchical-search.js";
 import { searchKeyword, searchVector } from "./manager-search.js";
 import {
   type SessionDeltaState,
@@ -74,10 +79,12 @@ import {
 import {
   type VectorState,
   VECTOR_TABLE,
+  FILES_VECTOR_TABLE,
   vectorToBlob,
   loadVectorExtension,
   ensureVectorTable,
   dropVectorTable,
+  ensureFileVectorTable,
 } from "./manager-vectors.js";
 import { ensureMemoryIndexSchema } from "./memory-schema.js";
 import { requireNodeSqlite } from "./sqlite.js";
@@ -141,6 +148,10 @@ export class MemoryIndexManager implements MemorySearchManager {
     available: boolean;
     loadError?: string;
   };
+  private readonly filesFts: {
+    available: boolean;
+  };
+  private fileVectorTableReady = false;
   private vectorReady: Promise<boolean> | null = null;
   private watcher: FSWatcher | null = null;
   private watchTimer: NodeJS.Timeout | null = null;
@@ -220,6 +231,7 @@ export class MemoryIndexManager implements MemorySearchManager {
       maxEntries: params.settings.cache.maxEntries,
     };
     this.fts = { enabled: params.settings.query.hybrid.enabled, available: false };
+    this.filesFts = { available: false };
     this.ensureSchema();
     this.vector = {
       enabled: params.settings.store.vector.enabled,
@@ -236,6 +248,19 @@ export class MemoryIndexManager implements MemorySearchManager {
     this.dirty = this.sources.has("memory");
     this.batch = this.resolveBatchConfig();
     this.batchFailureTracker = createBatchFailureTracker(this.batch.enabled);
+  }
+
+  private async loadContextParams(): Promise<Partial<ContextParams>> {
+    try {
+      const paramsPath = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../evolver/assets/gep/context_params.json",
+      );
+      const content = await fs.readFile(paramsPath, "utf-8");
+      return JSON.parse(content) as Partial<ContextParams>;
+    } catch {
+      return {};
+    }
   }
 
   async warmSession(sessionKey?: string): Promise<void> {
@@ -280,13 +305,81 @@ export class MemoryIndexManager implements MemorySearchManager {
       Math.max(1, Math.floor(maxResults * hybrid.candidateMultiplier)),
     );
 
-    const keywordResults = hybrid.enabled
-      ? await this.searchKeyword(cleaned, candidates).catch(() => [])
-      : [];
-
     const ctx = this.buildEmbeddingContext();
     const queryVec = await embedQueryWithTimeout(ctx, cleaned);
     const hasVector = queryVec.some((v) => v !== 0);
+
+    // Load context params for hierarchical search settings
+    const contextParams = await this.loadContextParams();
+
+    // Use hierarchical search (file-level pre-filter → chunk-level search)
+    if (hasVector) {
+      try {
+        const results = await searchHierarchical({
+          db: this.db,
+          queryVec,
+          query: cleaned,
+          limit: candidates,
+          snippetMaxChars: SNIPPET_MAX_CHARS,
+          providerModel: this.provider.model,
+          vectorTable: VECTOR_TABLE,
+          filesVectorTable: FILES_VECTOR_TABLE,
+          filesFtsTable: "files_fts",
+          ftsAvailable: this.fts.available,
+          filesFtsAvailable: this.filesFts.available,
+          contextParams: contextParams as ContextParams,
+          ensureVectorReady: async (dims) => await this.ensureVectorReady(dims),
+          ensureFileVectorReady: async (dims) => {
+            const ready = await this.ensureVectorReady(dims);
+            if (ready && !this.fileVectorTableReady) {
+              this.fileVectorTableReady = ensureFileVectorTable(this.db, dims);
+            }
+            return ready && this.fileVectorTableReady;
+          },
+          sourceFilterVec: this.buildSourceFilter("c"),
+          sourceFilterChunks: this.buildSourceFilter(),
+        });
+
+        // Apply keyword boost if hybrid enabled
+        if (hybrid.enabled) {
+          const keywordResults = await this.searchKeyword(cleaned, candidates).catch(() => []);
+          if (keywordResults.length > 0) {
+            const merged = this.mergeHybridResults({
+              vector: results.map(
+                (r) => ({ ...r, id: r.id }) as MemorySearchResult & { id: string },
+              ),
+              keyword: keywordResults,
+              vectorWeight: hybrid.vectorWeight,
+              textWeight: hybrid.textWeight,
+            });
+            return merged.filter((entry) => entry.score >= minScore).slice(0, maxResults);
+          }
+        }
+
+        return results
+          .map(
+            (r) =>
+              ({
+                path: r.path,
+                startLine: r.startLine,
+                endLine: r.endLine,
+                score: r.score,
+                snippet: r.snippet,
+                source: r.source,
+                timestamp: r.timestamp,
+                l0Abstract: r.l0Abstract,
+                l1Overview: r.l1Overview,
+              }) as MemorySearchResult,
+          )
+          .filter((entry) => entry.score >= minScore)
+          .slice(0, maxResults);
+      } catch (err) {
+        log.debug(`hierarchical search failed, falling back: ${String(err)}`);
+        // Fall through to flat search on error
+      }
+    }
+
+    // Fallback: flat chunk search (only reached on error or no vector)
     const vectorResults = hasVector
       ? await this.searchVector(queryVec, candidates).catch(() => [])
       : [];
@@ -294,6 +387,10 @@ export class MemoryIndexManager implements MemorySearchManager {
     if (!hybrid.enabled) {
       return vectorResults.filter((entry) => entry.score >= minScore).slice(0, maxResults);
     }
+
+    const keywordResults = hybrid.enabled
+      ? await this.searchKeyword(cleaned, candidates).catch(() => [])
+      : [];
 
     const merged = this.mergeHybridResults({
       vector: vectorResults,
@@ -355,6 +452,17 @@ export class MemoryIndexManager implements MemorySearchManager {
     vectorWeight: number;
     textWeight: number;
   }): MemorySearchResult[] {
+    // Build L0/L1 lookup from vector results (keyword search doesn't provide them)
+    const l0l1Map = new Map<string, { l0Abstract?: string; l1Overview?: string }>();
+    for (const r of params.vector) {
+      if (r.l0Abstract || r.l1Overview) {
+        l0l1Map.set(`${r.path}:${r.startLine}:${r.endLine}`, {
+          l0Abstract: r.l0Abstract,
+          l1Overview: r.l1Overview,
+        });
+      }
+    }
+
     const merged = mergeHybridResults({
       vector: params.vector.map((r) => ({
         id: r.id,
@@ -378,7 +486,15 @@ export class MemoryIndexManager implements MemorySearchManager {
       vectorWeight: params.vectorWeight,
       textWeight: params.textWeight,
     });
-    return merged.map((entry) => entry as MemorySearchResult);
+    return merged.map((entry) => {
+      const key = `${entry.path}:${entry.startLine}:${entry.endLine}`;
+      const l0l1 = l0l1Map.get(key);
+      return {
+        ...entry,
+        l0Abstract: l0l1?.l0Abstract,
+        l1Overview: l0l1?.l1Overview,
+      } as MemorySearchResult;
+    });
   }
 
   async sync(params?: {
@@ -700,6 +816,7 @@ export class MemoryIndexManager implements MemorySearchManager {
       ftsEnabled: this.fts.enabled,
     });
     this.fts.available = result.ftsAvailable;
+    this.filesFts.available = result.filesFtsAvailable;
     if (result.ftsError) {
       this.fts.loadError = result.ftsError;
       log.warn(`fts unavailable: ${result.ftsError}`);
@@ -1391,6 +1508,13 @@ export class MemoryIndexManager implements MemorySearchManager {
     const sample = embeddings.find((embedding) => embedding.length > 0);
     const vectorReady = sample ? await this.ensureVectorReady(sample.length) : false;
     const now = Date.now();
+
+    // Generate L0 abstracts for each chunk
+    const chunkL0s: string[] = [];
+    for (const chunk of chunks) {
+      chunkL0s.push(generateL0Abstract(chunk));
+    }
+
     if (vectorReady) {
       try {
         this.db
@@ -1413,19 +1537,21 @@ export class MemoryIndexManager implements MemorySearchManager {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const embedding = embeddings[i] ?? [];
+      const l0 = chunkL0s[i] ?? "";
       const id = hashText(
         `${options.source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${this.provider.model}`,
       );
       this.db
         .prepare(
-          `INSERT INTO chunks (id, path, source, start_line, end_line, hash, model, text, embedding, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO chunks (id, path, source, start_line, end_line, hash, model, text, embedding, updated_at, l0_abstract)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
              hash=excluded.hash,
              model=excluded.model,
              text=excluded.text,
              embedding=excluded.embedding,
-             updated_at=excluded.updated_at`,
+             updated_at=excluded.updated_at,
+             l0_abstract=excluded.l0_abstract`,
         )
         .run(
           id,
@@ -1438,6 +1564,7 @@ export class MemoryIndexManager implements MemorySearchManager {
           chunk.text,
           JSON.stringify(embedding),
           now,
+          l0,
         );
       if (vectorReady && embedding.length > 0) {
         try {
@@ -1464,15 +1591,67 @@ export class MemoryIndexManager implements MemorySearchManager {
           );
       }
     }
+
+    // Generate file-level L0 abstract
+    const fileL0 = generateFileL0(chunkL0s);
+
+    // Embed file-level L0 and write to files_vec
+    let fileL0Embedding: number[] = [];
+    if (fileL0 && vectorReady && sample) {
+      try {
+        fileL0Embedding = await embedQueryWithTimeout(ctx, fileL0);
+      } catch {
+        // Non-fatal: file-level embedding failure doesn't block indexing
+      }
+      if (fileL0Embedding.length > 0) {
+        // Ensure file vector table exists
+        if (!this.fileVectorTableReady) {
+          this.fileVectorTableReady = ensureFileVectorTable(this.db, fileL0Embedding.length);
+        }
+        if (this.fileVectorTableReady) {
+          try {
+            this.db.prepare(`DELETE FROM ${FILES_VECTOR_TABLE} WHERE path = ?`).run(entry.path);
+          } catch {}
+          try {
+            this.db
+              .prepare(`INSERT INTO ${FILES_VECTOR_TABLE} (path, embedding) VALUES (?, ?)`)
+              .run(entry.path, vectorToBlob(fileL0Embedding));
+          } catch {}
+        }
+      }
+    }
+
+    // Write to files_fts
+    if (fileL0 && this.filesFts.available) {
+      try {
+        this.db.prepare(`DELETE FROM files_fts WHERE path = ?`).run(entry.path);
+      } catch {}
+      try {
+        this.db
+          .prepare(`INSERT INTO files_fts (l0_abstract, path, source) VALUES (?, ?, ?)`)
+          .run(fileL0, entry.path, options.source);
+      } catch {}
+    }
+
     this.db
       .prepare(
-        `INSERT INTO files (path, source, hash, mtime, size) VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO files (path, source, hash, mtime, size, l0_abstract, l0_embedding) VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(path) DO UPDATE SET
            source=excluded.source,
            hash=excluded.hash,
            mtime=excluded.mtime,
-           size=excluded.size`,
+           size=excluded.size,
+           l0_abstract=excluded.l0_abstract,
+           l0_embedding=excluded.l0_embedding`,
       )
-      .run(entry.path, options.source, entry.hash, entry.mtimeMs, entry.size);
+      .run(
+        entry.path,
+        options.source,
+        entry.hash,
+        entry.mtimeMs,
+        entry.size,
+        fileL0,
+        JSON.stringify(fileL0Embedding),
+      );
   }
 }

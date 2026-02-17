@@ -323,6 +323,7 @@ export const MemorySearchSchema = z
     experimental: z
       .object({
         sessionMemory: z.boolean().optional(),
+        l1LlmMode: z.boolean().optional(),
       })
       .strict()
       .optional(),

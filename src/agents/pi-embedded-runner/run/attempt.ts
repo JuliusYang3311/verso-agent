@@ -610,6 +610,8 @@ export async function runEmbeddedAttempt(
                     startLine: r.startLine,
                     endLine: r.endLine,
                     timestamp: r.timestamp,
+                    l0Abstract: r.l0Abstract,
+                    l1Overview: r.l1Overview,
                   }));
                 }
               } catch (retrievalErr) {

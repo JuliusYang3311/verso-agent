@@ -173,43 +173,68 @@ web-search, brave-search, novel-writer
   - 对话中包含大量工具调用结果 → ratio 降低，为检索留空间
   - 用户明确引用历史话题 → ratio 降低，检索权重增加
 
-**B. 动态向量检索**:
+**B. L0/L1/L2 渐进式向量检索**（参考 OpenViking 架构）:
 
-- 不使用固定 top-k，而是基于**相似度阈值**动态返回
-- 算法：
-  ```
-  1. 用当前消息 embedding 检索向量库
-  2. 设定基础阈值 baseThreshold（如 0.72）
-  3. 返回所有 score > baseThreshold 的结果
-  4. 如果结果太多（超出剩余 token 预算），按 score 排序截断
-  5. 如果结果为 0，降低阈值重试一次（floor = 0.5）
-  6. 对检索结果施加时间衰减：score _= timeDecayFactor(messageAge) timeDecayFactor = exp(-λ _ hoursAgo), λ = 0.01
-  ```
-- 检索结果按 score 排序后填入剩余 token 预算
+三层信息粒度，渐进加载：
 
-**C. 合并策略**:
+| 层级 | 内容              | Token | 生成时机                     | 用途                    |
+| ---- | ----------------- | ----- | ---------------------------- | ----------------------- |
+| L0   | 摘要（首句/标题） | ~100  | 索引时同步生成（无 LLM）     | 文件级预过滤 + 向量搜索 |
+| L1   | 结构化概览        | ~500  | 后台异步生成（启发式或 LLM） | 中等粒度上下文填充      |
+| L2   | 完整原文          | 无限  | 已有（chunk text）           | 按需加载高价值片段      |
+
+- 不使用固定 top-k，基于**相似度阈值**动态返回（保留原有阈值机制）
+- 检索采用**分层算法**（可选，`hierarchicalSearch` flag 控制）：
+
+  ```
+  Phase 1: 文件级预过滤
+    1. 用 query embedding 在 files_vec 中搜索 → top-N 文件
+    2. 在 files_fts 中关键词搜索 → top-N 文件
+    3. 混合合并（fileVectorWeight * vector + fileBm25Weight * bm25）
+
+  Phase 2: Chunk 级搜索 + 分数传播
+    1. 在 top 文件的 chunks 中搜索
+    2. 分数传播: final_score = α * chunk_score + (1-α) * file_score
+    3. 提前终止: top-k 连续 convergenceRounds 轮不变 → 停止
+  ```
+
+- 分层检索为默认模式，flat search 仅作为错误回退
+- 时间衰减：`score *= exp(-λ * hoursAgo)`, λ = timeDecayLambda
+
+**C. 渐进式加载 + 合并策略**:
 
 ```
 totalBudget = contextLimit - systemPromptTokens - reserveForReply
 recentBudget = totalBudget * dynamicRecentRatio()
 retrievalBudget = totalBudget - recentBudget
 
+渐进式加载（progressiveLoadingEnabled = true 时启用）：
+  1. 所有候选先通过阈值过滤 + 时间衰减
+  2. 按 score 排序，逐个装入 retrievalBudget：
+     - 优先 L2（全文 snippet），放得下则用
+     - 放不下 → L1（概览），可用且放得下
+     - 放不下 → L0（摘要），一定放得下
+  3. 最大化 budget 内的信息密度
+
 context = [
   ...systemPrompt,
-  ...compactionSummary (if exists),       // 历史摘要
-  ...vectorRetrievedChunks,               // 动态检索的历史片段
-  ...recentMessages,                      // 动态保留的近期消息
-  currentUserMessage                      // 当前消息
+  ...compactionSummary (if exists),
+  ...retrievedChunks (L0/L1/L2 混合，渐进式装入 retrievalBudget),
+  ...recentMessages (动态保留的近期消息),
+  currentUserMessage
 ]
 ```
 
 **关键实现文件**:
 
-- `src/agents/dynamic-context.ts` — 上下文构建器 ✅
+- `src/agents/dynamic-context.ts` — 上下文构建器 + 渐进式加载 ✅
 - `src/agents/pi-embedded-runner/run/attempt.ts` — 集成动态上下文 ✅
 - `src/evolver/assets/gep/context_params.json` — 超参数配置 ✅
-- `src/memory/manager.ts` — 启用 session 实时向量化（待集成）
-- `src/memory/manager-search.ts` — 修改为支持阈值检索（待集成）
+- `src/memory/manager.ts` — 索引流程（L0 生成 + 文件级向量）+ 搜索分层调度
+- `src/memory/manager-search.ts` — chunk 级 + 文件级检索
+- `src/memory/manager-hierarchical-search.ts` — 分层检索（Phase 1 + Phase 2 + 分数传播）
+- `src/memory/manager-l1-generator.ts` — L1 后台生成器（启发式 + 可选 LLM）
+- `src/memory/internal.ts` — L0 生成函数（`generateL0Abstract`, `generateFileL0`）
 
 #### 3.2.2 实时向量化
 
@@ -239,6 +264,7 @@ Compact 和 Flush 从「防止历史溢出」转变为「安全网」：
 ```
 context_params.json:
 {
+  // 基础检索参数
   "baseThreshold": 0.72,        // 向量检索相似度阈值
   "thresholdFloor": 0.5,        // 阈值下限（无结果时降级）
   "timeDecayLambda": 0.01,      // 时间衰减系数 λ
@@ -248,7 +274,25 @@ context_params.json:
   "hybridVectorWeight": 0.7,    // 混合检索中向量权重
   "hybridBm25Weight": 0.3,      // 混合检索中 BM25 权重
   "compactSafetyMargin": 1.2,   // compact 安全系数
-  "flushSoftThreshold": 4000    // flush 软阈值 tokens
+  "flushSoftThreshold": 4000,   // flush 软阈值 tokens
+
+  // 分层检索参数
+  "hierarchicalSearch": true,            // 分层检索（默认启用，文件级预过滤 → chunk 级搜索）
+  "hierarchicalFileLimit": 10,           // Phase 1 返回的 top-N 文件数
+  "hierarchicalAlpha": 0.7,              // 分数传播系数 α（chunk vs file 权重）
+  "hierarchicalConvergenceRounds": 3,    // 提前终止：top-k 不变轮数
+  "fileVectorWeight": 0.7,              // 文件级混合检索向量权重
+  "fileBm25Weight": 0.3,               // 文件级混合检索 BM25 权重
+
+  // L0/L1 生成参数
+  "l0EmbeddingEnabled": true,           // 生成并存储文件级 L0 embedding
+  "l1GenerationEnabled": true,          // 启用 L1 后台生成
+  "l1UseLlm": false,                    // L1 使用 LLM 生成（true）还是启发式（false）
+  "l1LlmRateLimitMs": 10000,           // L1 LLM 调用最小间隔
+
+  // 渐进式加载参数
+  "progressiveLoadingEnabled": true,    // 启用 L0/L1/L2 渐进式加载
+  "progressiveL2MaxChunks": 5          // L2 全文加载的最大 chunk 数
 }
 ```
 

@@ -8,5 +8,20 @@
   "hybridVectorWeight": 0.7,
   "hybridBm25Weight": 0.3,
   "compactSafetyMargin": 1.2,
-  "flushSoftThreshold": 4000
+  "flushSoftThreshold": 4000,
+
+  "hierarchicalSearch": true,
+  "hierarchicalFileLimit": 10,
+  "hierarchicalAlpha": 0.7,
+  "hierarchicalConvergenceRounds": 3,
+  "fileVectorWeight": 0.7,
+  "fileBm25Weight": 0.3,
+
+  "l0EmbeddingEnabled": true,
+  "l1GenerationEnabled": true,
+  "l1UseLlm": false,
+  "l1LlmRateLimitMs": 10000,
+
+  "progressiveLoadingEnabled": true,
+  "progressiveL2MaxChunks": 5
 }

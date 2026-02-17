@@ -29,6 +29,21 @@ export type ContextParams = {
   hybridBm25Weight: number;
   compactSafetyMargin: number;
   flushSoftThreshold: number;
+  // Hierarchical search params
+  hierarchicalSearch?: boolean;
+  hierarchicalFileLimit?: number;
+  hierarchicalAlpha?: number;
+  hierarchicalConvergenceRounds?: number;
+  fileVectorWeight?: number;
+  fileBm25Weight?: number;
+  // L0/L1 generation params
+  l0EmbeddingEnabled?: boolean;
+  l1GenerationEnabled?: boolean;
+  l1UseLlm?: boolean;
+  l1LlmRateLimitMs?: number;
+  // Progressive loading params
+  progressiveLoadingEnabled?: boolean;
+  progressiveL2MaxChunks?: number;
 };
 
 export type RetrievedChunk = {
@@ -39,6 +54,9 @@ export type RetrievedChunk = {
   startLine: number;
   endLine: number;
   timestamp?: number; // Message timestamp (used for time decay)
+  l0Abstract?: string;
+  l1Overview?: string;
+  level?: "l0" | "l1" | "l2";
 };
 
 export type DynamicContextResult = {
@@ -239,6 +257,77 @@ function estimateSnippetTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+// ---------- Progressive loading (L0/L1/L2) ----------
+
+/**
+ * Progressively load chunks into the token budget.
+ * Priority: L2 (full text) > L1 (overview) > L0 (abstract).
+ * Maximizes information density within the budget.
+ */
+export function progressiveLoadChunks(
+  chunks: RetrievedChunk[],
+  params: ContextParams,
+  budgetTokens: number,
+): { chunks: RetrievedChunk[]; tokensUsed: number } {
+  if (chunks.length === 0 || budgetTokens <= 0) {
+    return { chunks: [], tokensUsed: 0 };
+  }
+
+  const l2MaxChunks = params.progressiveL2MaxChunks ?? 5;
+  const selected: RetrievedChunk[] = [];
+  let tokensUsed = 0;
+  let l2Count = 0;
+
+  for (const chunk of chunks) {
+    if (tokensUsed >= budgetTokens) {
+      break;
+    }
+
+    const l2Tokens = estimateSnippetTokens(chunk.snippet);
+    const l1Text = chunk.l1Overview || "";
+    const l1Tokens = l1Text ? estimateSnippetTokens(l1Text) : 0;
+    const l0Text = chunk.l0Abstract || "";
+    const l0Tokens = l0Text ? estimateSnippetTokens(l0Text) : 0;
+
+    // Try L2 (full snippet) first
+    if (tokensUsed + l2Tokens <= budgetTokens && l2Count < l2MaxChunks) {
+      selected.push({ ...chunk, level: "l2" });
+      tokensUsed += l2Tokens;
+      l2Count++;
+      continue;
+    }
+
+    // Try L1 (overview) if available
+    if (l1Text && tokensUsed + l1Tokens <= budgetTokens) {
+      selected.push({
+        ...chunk,
+        snippet: l1Text,
+        level: "l1",
+      });
+      tokensUsed += l1Tokens;
+      continue;
+    }
+
+    // Try L0 (abstract) — always fits if short enough
+    if (l0Text && tokensUsed + l0Tokens <= budgetTokens) {
+      selected.push({
+        ...chunk,
+        snippet: l0Text,
+        level: "l0",
+      });
+      tokensUsed += l0Tokens;
+      continue;
+    }
+
+    // Nothing fits, stop
+    if (selected.length > 0) {
+      break;
+    }
+  }
+
+  return { chunks: selected, tokensUsed };
+}
+
 // ---------- Main entry point ----------
 
 /**
@@ -321,7 +410,32 @@ export function buildDynamicContext(options: {
     chunks: filteredChunks,
     tokensUsed: retrievalTokens,
     thresholdUsed,
-  } = filterRetrievedChunks(nonDuplicateChunks, params, retrievalBudget);
+  } = params.progressiveLoadingEnabled
+    ? (() => {
+        // Apply time decay + threshold filter first, then progressive loading
+        const decayed = nonDuplicateChunks.map((chunk) => {
+          const decay = chunk.timestamp
+            ? timeDecayFactor(chunk.timestamp, params.timeDecayLambda)
+            : 1;
+          return { ...chunk, score: chunk.score * decay };
+        });
+        decayed.sort((a, b) => b.score - a.score);
+        let filtered = decayed.filter((c) => c.score >= params.baseThreshold);
+        if (filtered.length === 0) {
+          filtered = decayed.filter((c) => c.score >= params.thresholdFloor);
+        }
+        const result = progressiveLoadChunks(filtered, params, retrievalBudget);
+        const threshold =
+          result.chunks.length > 0
+            ? result.chunks[result.chunks.length - 1].score
+            : params.baseThreshold;
+        return {
+          chunks: result.chunks,
+          tokensUsed: result.tokensUsed,
+          thresholdUsed: threshold,
+        };
+      })()
+    : filterRetrievedChunks(nonDuplicateChunks, params, retrievalBudget);
 
   return {
     recentMessages,

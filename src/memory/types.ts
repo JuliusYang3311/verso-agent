@@ -10,6 +10,12 @@ export type MemorySearchResult = {
   citation?: string;
   /** Epoch ms when this chunk was last indexed. Used for time decay in dynamic context. */
   timestamp?: number;
+  /** L0 abstract (~100 tokens) generated at index time. */
+  l0Abstract?: string;
+  /** L1 overview (~500 tokens) generated asynchronously. */
+  l1Overview?: string;
+  /** Which level was loaded for this result. */
+  level?: "l0" | "l1" | "l2";
 };
 
 export type MemoryEmbeddingProbeResult = {

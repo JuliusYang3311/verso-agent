@@ -118,3 +118,79 @@ export function mergeHybridResults(params: {
 
   return merged.toSorted((a, b) => b.score - a.score);
 }
+
+// ---------- File-level hybrid merge (for hierarchical search) ----------
+
+export type HybridFileVectorResult = {
+  path: string;
+  source: HybridSource;
+  score: number;
+  l0Abstract: string;
+};
+
+export type HybridFileKeywordResult = {
+  path: string;
+  source: HybridSource;
+  score: number;
+  l0Abstract: string;
+};
+
+export function mergeHybridFileResults(params: {
+  vector: HybridFileVectorResult[];
+  keyword: HybridFileKeywordResult[];
+  vectorWeight: number;
+  textWeight: number;
+}): Array<{
+  path: string;
+  source: HybridSource;
+  score: number;
+  l0Abstract: string;
+}> {
+  const byPath = new Map<
+    string,
+    {
+      path: string;
+      source: HybridSource;
+      vectorScore: number;
+      textScore: number;
+      l0Abstract: string;
+    }
+  >();
+
+  for (const r of params.vector) {
+    byPath.set(r.path, {
+      path: r.path,
+      source: r.source,
+      vectorScore: r.score,
+      textScore: 0,
+      l0Abstract: r.l0Abstract,
+    });
+  }
+
+  for (const r of params.keyword) {
+    const existing = byPath.get(r.path);
+    if (existing) {
+      existing.textScore = r.score;
+      if (!existing.l0Abstract && r.l0Abstract) {
+        existing.l0Abstract = r.l0Abstract;
+      }
+    } else {
+      byPath.set(r.path, {
+        path: r.path,
+        source: r.source,
+        vectorScore: 0,
+        textScore: r.score,
+        l0Abstract: r.l0Abstract,
+      });
+    }
+  }
+
+  return Array.from(byPath.values())
+    .map((entry) => ({
+      path: entry.path,
+      source: entry.source,
+      score: params.vectorWeight * entry.vectorScore + params.textWeight * entry.textScore,
+      l0Abstract: entry.l0Abstract,
+    }))
+    .toSorted((a, b) => b.score - a.score);
+}
