@@ -12,7 +12,11 @@ import { dispatchReplyFromConfig } from "./dispatch-from-config.js";
 // Mock the dependencies
 vi.mock("../../agents/pi-embedded-runner/runs.js", () => ({
   isEmbeddedPiRunActive: vi.fn(),
+  isDispatchPending: vi.fn(),
+  markDispatchPending: vi.fn(),
+  clearDispatchPending: vi.fn(),
   queueEmbeddedPiMessage: vi.fn(),
+  queuePendingMessage: vi.fn(),
 }));
 
 vi.mock("../../agents/agent-scope.js", () => ({
@@ -159,14 +163,15 @@ describe("dispatchReplyFromConfig - async dispatch mode", () => {
   });
 
   it("should fire-and-forget new agent turn in async mode when no active run", async () => {
-    const { isEmbeddedPiRunActive } = await import("../../agents/pi-embedded-runner/runs.js");
-    const { getReplyFromConfig: _getReplyFromConfig } = await import("../reply.js");
+    const { isEmbeddedPiRunActive, isDispatchPending, markDispatchPending } =
+      await import("../../agents/pi-embedded-runner/runs.js");
 
     // Enable async mode
     mockConfig.agents!.defaults!.asyncDispatch = true;
 
-    // Mock no active run
+    // Mock no active run, no pending dispatch
     vi.mocked(isEmbeddedPiRunActive).mockReturnValue(false);
+    vi.mocked(isDispatchPending).mockReturnValue(false);
 
     const result = await dispatchReplyFromConfig({
       ctx: mockCtx,
@@ -177,9 +182,8 @@ describe("dispatchReplyFromConfig - async dispatch mode", () => {
     // Should check for active run
     expect(isEmbeddedPiRunActive).toHaveBeenCalledWith("test-session");
 
-    // Should start fire-and-forget (getReplyFromConfig called but not awaited)
-    // Note: Can't directly test fire-and-forget without timing issues
-    // The test verifies the function returns immediately
+    // Should mark pending before fire-and-forget
+    expect(markDispatchPending).toHaveBeenCalledWith("test-session");
 
     // Should return immediately without queueing final reply
     expect(result.queuedFinal).toBe(false);
@@ -188,8 +192,36 @@ describe("dispatchReplyFromConfig - async dispatch mode", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
+  it("should buffer message when dispatch is pending", async () => {
+    const { isEmbeddedPiRunActive, isDispatchPending, queuePendingMessage } =
+      await import("../../agents/pi-embedded-runner/runs.js");
+    const { getReplyFromConfig } = await import("../reply.js");
+
+    // Enable async mode
+    mockConfig.agents!.defaults!.asyncDispatch = true;
+
+    // No active run, but dispatch is pending (turn fired but not yet registered)
+    vi.mocked(isEmbeddedPiRunActive).mockReturnValue(false);
+    vi.mocked(isDispatchPending).mockReturnValue(true);
+    vi.mocked(queuePendingMessage).mockReturnValue(true); // Buffered
+
+    const result = await dispatchReplyFromConfig({
+      ctx: mockCtx,
+      cfg: mockConfig,
+      dispatcher: mockDispatcher,
+    });
+
+    // Should buffer into pending dispatch
+    expect(queuePendingMessage).toHaveBeenCalledWith("test-session", "Hello");
+
+    // Should NOT start a new agent turn
+    expect(getReplyFromConfig).not.toHaveBeenCalled();
+
+    expect(result.queuedFinal).toBe(false);
+  });
+
   it("should fall through to new run when steering fails in async mode", async () => {
-    const { isEmbeddedPiRunActive, queueEmbeddedPiMessage } =
+    const { isEmbeddedPiRunActive, isDispatchPending, queueEmbeddedPiMessage } =
       await import("../../agents/pi-embedded-runner/runs.js");
 
     // Enable async mode
@@ -197,6 +229,7 @@ describe("dispatchReplyFromConfig - async dispatch mode", () => {
 
     // Mock active run but steering fails
     vi.mocked(isEmbeddedPiRunActive).mockReturnValue(true);
+    vi.mocked(isDispatchPending).mockReturnValue(false);
     vi.mocked(queueEmbeddedPiMessage).mockReturnValue(false); // Steering failed
 
     const result = await dispatchReplyFromConfig({

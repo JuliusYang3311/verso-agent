@@ -5,7 +5,11 @@ import type { ReplyDispatcher, ReplyDispatchKind } from "./reply-dispatcher.js";
 import { resolveSessionAgentId } from "../../agents/agent-scope.js";
 import {
   isEmbeddedPiRunActive,
+  isDispatchPending,
+  markDispatchPending,
+  clearDispatchPending,
   queueEmbeddedPiMessage,
+  queuePendingMessage,
 } from "../../agents/pi-embedded-runner/runs.js";
 import { loadSessionStore, resolveStorePath } from "../../config/sessions.js";
 import { logVerbose } from "../../globals.js";
@@ -96,6 +100,7 @@ type AsyncTurnContext = {
   originatingChannel: string | undefined;
   originatingTo: string | undefined;
   shouldSendToolSummaries: boolean;
+  sessionIdForRuns: string;
   replyResolver: typeof getReplyFromConfig;
   replyOptions?: Omit<GetReplyOptions, "onToolResult" | "onBlockReply">;
 };
@@ -237,6 +242,10 @@ async function runAsyncAgentTurn(turnCtx: AsyncTurnContext): Promise<void> {
     } catch (deliveryErr) {
       logVerbose(`dispatch-from-config: failed to deliver error: ${String(deliveryErr)}`);
     }
+  } finally {
+    // Clean up pending dispatch state — either setActiveEmbeddedRun already
+    // drained it, or the turn ended without ever registering.
+    clearDispatchPending(turnCtx.sessionIdForRuns);
   }
 }
 
@@ -473,13 +482,15 @@ export async function dispatchReplyFromConfig(params: {
         originatingChannel,
         originatingTo,
         shouldSendToolSummaries,
+        sessionIdForRuns,
         replyResolver: params.replyResolver ?? getReplyFromConfig,
         replyOptions: params.replyOptions,
       };
       const hasActiveRun = isEmbeddedPiRunActive(sessionIdForRuns);
+      const hasPendingDispatch = isDispatchPending(sessionIdForRuns);
 
       if (hasActiveRun) {
-        // Active run exists — steer the message into the running turn's queue.
+        // Active run — steer the message into the running turn's queue.
         const steered = queueEmbeddedPiMessage(sessionIdForRuns, ctx.Body ?? "");
         if (steered) {
           logVerbose(
@@ -490,13 +501,27 @@ export async function dispatchReplyFromConfig(params: {
           recordProcessed("completed", { reason: "async_steered" });
           return { queuedFinal: false, counts };
         }
-        // Failed to steer — fall through to start new run.
-        logVerbose(
-          `dispatch-from-config: async mode - failed to steer, starting new run (session=${sessionIdForRuns})`,
-        );
+        // Active but not streaming/compacting — fall through to pending buffer or new run.
       }
 
-      // No active run or steering failed: fire-and-forget new agent turn.
+      if (hasPendingDispatch) {
+        // Turn fired but not yet registered — buffer the message.
+        const buffered = queuePendingMessage(sessionIdForRuns, ctx.Body ?? "");
+        if (buffered) {
+          logVerbose(
+            `dispatch-from-config: async mode - buffered message for pending dispatch (session=${sessionIdForRuns})`,
+          );
+          markIdle("message_buffered");
+          const counts = dispatcher.getQueuedCounts();
+          recordProcessed("completed", { reason: "async_buffered" });
+          return { queuedFinal: false, counts };
+        }
+      }
+
+      // No active run and no pending dispatch (or buffering failed): fire-and-forget new agent turn.
+      // Mark pending BEFORE starting the turn to close the race window.
+      markDispatchPending(sessionIdForRuns);
+
       // Start the agent turn in the background without awaiting.
       logVerbose(
         `dispatch-from-config: async mode - fire-and-forget agent turn (session=${sessionIdForRuns})`,
