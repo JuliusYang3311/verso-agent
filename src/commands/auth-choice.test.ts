@@ -526,7 +526,7 @@ describe("applyAuthChoice", () => {
       mode: "api_key",
     });
     expect(result.config.agents?.defaults?.model?.primary).toBe(
-      "cloudflare-ai-gateway/claude-sonnet-4-5",
+      "cloudflare-ai-gateway/claude-sonnet-4-6",
     );
 
     const authProfilePath = authProfilePathFor(requireAgentDir());

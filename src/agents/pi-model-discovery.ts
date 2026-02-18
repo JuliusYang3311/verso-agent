@@ -30,10 +30,41 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
       });
     }
   }
+  // Sonnet 4.6: clone from Sonnet 4.5 templates (same pattern as Opus 4.6).
+  const sonnet45Templates = allModels.filter(
+    (m) => m.id === "claude-sonnet-4-5" || m.id === "claude-sonnet-4-5-thinking",
+  );
+  for (const template of sonnet45Templates) {
+    const sonnet46Id = template.id.replace("claude-sonnet-4-5", "claude-sonnet-4-6");
+    const alreadyExists = allModels.some(
+      (m) => m.provider === template.provider && m.id === sonnet46Id,
+    );
+    if (!alreadyExists) {
+      allModels.push({
+        ...template,
+        id: sonnet46Id,
+        name: (template.name || template.id).replace(/4[.-]?5/g, "4.6"),
+        contextWindow: 1048576,
+        maxTokens: 64000,
+      });
+    }
+  }
   const antigravityId = "google-antigravity";
   const requiredOpusModels = [
-    { id: "claude-opus-4-6", name: "Claude 4.6 Opus" },
-    { id: "claude-opus-4-6-thinking", name: "Claude 4.6 Opus (Thinking)", reasoning: true },
+    { id: "claude-opus-4-6", name: "Claude 4.6 Opus", maxTokens: 128000 },
+    {
+      id: "claude-opus-4-6-thinking",
+      name: "Claude 4.6 Opus (Thinking)",
+      reasoning: true,
+      maxTokens: 128000,
+    },
+    { id: "claude-sonnet-4-6", name: "Claude 4.6 Sonnet", maxTokens: 64000 },
+    {
+      id: "claude-sonnet-4-6-thinking",
+      name: "Claude 4.6 Sonnet (Thinking)",
+      reasoning: true,
+      maxTokens: 64000,
+    },
   ];
   for (const modelDef of requiredOpusModels) {
     const exists = allModels.some((m) => m.provider === antigravityId && m.id === modelDef.id);
@@ -48,7 +79,7 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
         input: ["text", "image"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 1048576,
-        maxTokens: 128000,
+        maxTokens: modelDef.maxTokens,
       } as Model<Api>);
     }
   }
@@ -67,6 +98,9 @@ export function discoverModels(authStorage: AuthStorage, agentDir: string): Mode
       }
       if (modelId === "claude-opus-4-6" || modelId.startsWith("claude-opus-4-6-")) {
         return { ...original, contextWindow: 1048576, maxTokens: 128000 };
+      }
+      if (modelId === "claude-sonnet-4-6" || modelId.startsWith("claude-sonnet-4-6-")) {
+        return { ...original, contextWindow: 1048576, maxTokens: 64000 };
       }
       return original;
     }
