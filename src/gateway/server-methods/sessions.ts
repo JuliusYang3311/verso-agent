@@ -3,6 +3,7 @@ import fs from "node:fs";
 import type { GatewayRequestHandlers } from "./types.js";
 import { resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import { abortEmbeddedPiRun, waitForEmbeddedPiRunEnd } from "../../agents/pi-embedded.js";
+import { removeSessionBrowserResources } from "../../agents/sandbox/manage.js";
 import { clearSessionQueues } from "../../auto-reply/reply/queue.js";
 import { loadConfig } from "../../config/config.js";
 import {
@@ -328,6 +329,8 @@ export const sessionsHandlers: GatewayRequestHandlers = {
         return;
       }
     }
+    // Eagerly release browser resources (bridge server + Docker container).
+    void removeSessionBrowserResources(target.canonicalKey);
     await updateSessionStore(storePath, (store) => {
       const primaryKey = target.storeKeys[0] ?? key;
       const existingKey = target.storeKeys.find((candidate) => store[candidate]);

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { MsgContext } from "../../auto-reply/templating.js";
+import { releaseSessionBrowserBridge } from "../../agents/sandbox/browser-bridges.js";
 import { destroySessionVenv } from "../../agents/session-venv.js";
 import {
   deliveryContextFromSession,
@@ -506,9 +507,10 @@ export async function removeSessionFromStore(params: {
     }
     return false;
   });
-  // Clean up session-bound Python venv (fire-and-forget).
+  // Clean up session-bound resources (fire-and-forget).
   if (removed) {
     void destroySessionVenv(sessionKey);
+    void releaseSessionBrowserBridge(sessionKey);
   }
   return removed;
 }

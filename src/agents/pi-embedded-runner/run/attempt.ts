@@ -47,6 +47,7 @@ import {
 import { toClientToolDefinitions } from "../../pi-tool-definition-adapter.js";
 import { createVersoCodingTools } from "../../pi-tools.js";
 import { resolveSandboxContext } from "../../sandbox.js";
+import { releaseSessionBrowserBridge } from "../../sandbox/browser-bridges.js";
 import { resolveSandboxRuntimeStatus } from "../../sandbox/runtime-status.js";
 import { repairSessionFileIfNeeded } from "../../session-file-repair.js";
 import { guardSessionManager } from "../../session-tool-result-guard-wrapper.js";
@@ -1059,6 +1060,11 @@ export async function runEmbeddedAttempt(
       // Always tear down the session (and release the lock) before we leave this attempt.
       sessionManager?.flushPendingToolResults?.();
       session?.dispose();
+      // Release browser bridge server to free the HTTP port (container stays for reuse).
+      const runSessionKey = params.sessionKey ?? params.sessionId;
+      if (runSessionKey) {
+        void releaseSessionBrowserBridge(runSessionKey);
+      }
       await sessionLock.release();
     }
   } finally {

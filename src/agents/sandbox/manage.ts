@@ -1,7 +1,7 @@
 import { stopBrowserBridgeServer } from "../../browser/bridge-server.js";
 import { loadConfig } from "../../config/config.js";
 import { destroySessionVenv } from "../session-venv.js";
-import { BROWSER_BRIDGES } from "./browser-bridges.js";
+import { BROWSER_BRIDGES, releaseSessionBrowserBridge } from "./browser-bridges.js";
 import { resolveSandboxConfigForAgent } from "./config.js";
 import { dockerContainerState, execDocker } from "./docker.js";
 import {
@@ -122,6 +122,30 @@ export async function removeSandboxBrowserContainer(containerName: string): Prom
     if (bridge.containerName === containerName) {
       await stopBrowserBridgeServer(bridge.bridge.server).catch(() => undefined);
       BROWSER_BRIDGES.delete(sessionKey);
+    }
+  }
+}
+
+/**
+ * Full browser resource cleanup for a session: stop bridge server, remove
+ * Docker container(s), and clear registry entries.
+ *
+ * Called on session deletion to prevent orphaned browser containers.
+ */
+export async function removeSessionBrowserResources(sessionKey: string): Promise<void> {
+  // 1. Stop in-memory bridge server (if any).
+  await releaseSessionBrowserBridge(sessionKey);
+
+  // 2. Remove Docker containers and registry entries linked to this session.
+  const registry = await readBrowserRegistry();
+  for (const entry of registry.entries) {
+    if (entry.sessionKey === sessionKey) {
+      try {
+        await execDocker(["rm", "-f", entry.containerName], { allowFailure: true });
+      } catch {
+        // ignore
+      }
+      await removeBrowserRegistryEntry(entry.containerName);
     }
   }
 }
