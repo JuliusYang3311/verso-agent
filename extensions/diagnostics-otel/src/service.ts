@@ -217,7 +217,7 @@ export function createDiagnosticsOtelService(): VersoPluginService {
             : {},
         );
         logProvider = new LoggerProvider();
-        logProvider.addLogRecordProcessor(processor);
+        (logProvider as any).addLogRecordProcessor(processor);
         const otelLogger = logProvider.getLogger("verso");
 
         stopLogTransport = registerLogTransport((logObj) => {

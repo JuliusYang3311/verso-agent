@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { LEGACY_MANIFEST_KEY } from "../compat/legacy-names.js";
 import {
   extractArchive,
   fileExists,
@@ -22,6 +23,7 @@ type HookPackageManifest = {
   version?: string;
   dependencies?: Record<string, string>;
   verso?: { hooks?: string[] };
+  [key: string]: unknown;
 };
 
 export type InstallHooksResult =
@@ -52,6 +54,25 @@ function _safeDirName(input: string): string {
   return trimmed.replaceAll("/", "__").replaceAll("\\", "__");
 }
 
+function resolveSafeInstallDir(
+  baseDir: string,
+  id: string,
+): { ok: true; path: string } | { ok: false; error: string } {
+  const targetDir = path.join(baseDir, _safeDirName(id));
+  const resolvedBase = path.resolve(baseDir);
+  const resolvedTarget = path.resolve(targetDir);
+  const relative = path.relative(resolvedBase, resolvedTarget);
+  if (
+    !relative ||
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    return { ok: false, error: "invalid hook name: path traversal detected" };
+  }
+  return { ok: true, path: targetDir };
+}
+
 function validateHookId(hookId: string): string | null {
   if (!hookId) {
     return "invalid hook name: missing";
@@ -79,7 +100,8 @@ export function resolveHookInstallDir(hookId: string, hooksDir?: string): string
 }
 
 async function ensureVersoHooks(manifest: HookPackageManifest) {
-  const hooks = manifest.verso?.hooks ?? manifest[LEGACY_MANIFEST_KEY]?.hooks;
+  const legacy = manifest[LEGACY_MANIFEST_KEY] as { hooks?: string[] } | undefined;
+  const hooks = manifest.verso?.hooks ?? legacy?.hooks;
   if (!Array.isArray(hooks)) {
     throw new Error("package.json missing verso.hooks");
   }

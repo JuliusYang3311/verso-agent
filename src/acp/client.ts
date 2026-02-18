@@ -5,6 +5,9 @@ import {
   type RequestPermissionRequest,
   type SessionNotification,
 } from "@agentclientprotocol/sdk";
+import { spawn, type ChildProcess } from "node:child_process";
+import readline from "node:readline";
+import { Writable, Readable } from "node:stream";
 import { ensureVersoCliOnPath } from "../infra/path-env.js";
 
 export type AcpClientOptions = {
@@ -152,7 +155,7 @@ export async function runAcpClientInteractive(opts: AcpClientOptions = {}): Prom
   console.log('Type a prompt, or "exit" to quit.\n');
 
   const prompt = () => {
-    rl.question("> ", async (input) => {
+    rl.question("> ", async (input: string) => {
       const text = input.trim();
       if (!text) {
         prompt();
@@ -180,7 +183,7 @@ export async function runAcpClientInteractive(opts: AcpClientOptions = {}): Prom
 
   prompt();
 
-  agent.on("exit", (code) => {
+  agent.on("exit", (code: number | null) => {
     console.log(`\nAgent exited with code ${code ?? 0}`);
     rl.close();
     process.exit(code ?? 0);

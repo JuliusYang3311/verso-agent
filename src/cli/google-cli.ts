@@ -29,7 +29,7 @@ export function registerGoogleCli(program: Command) {
         const input = await p.text({
           message: "Paste the authorization code here:",
           validate: (value) => {
-            if (!value.trim()) {
+            if (!value?.trim()) {
               return "Code is required";
             }
             return;

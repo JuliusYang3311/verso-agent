@@ -388,13 +388,13 @@ describe("Test verification in sandbox", () => {
     expect(result.error).toContain("pnpm lint");
   });
 
-  it("verifySrcChanges runs build + lint + test", () => {
+  it("verifySrcChanges runs tsc + build + lint + test", () => {
     mockExecForSandboxCreation({ buildOk: true, lintOk: true, testOk: true });
 
     const result = verifySrcChanges({ workspaceRoot: tempWorkspace });
 
     expect(result.ok).toBe(true);
-    expect(result.results).toHaveLength(3);
+    expect(result.results).toHaveLength(4);
   });
 
   it("each result includes elapsed time", () => {

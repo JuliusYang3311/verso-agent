@@ -1,7 +1,7 @@
 import type { RuntimeEnv } from "verso/plugin-sdk";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type {
-  CoreConfig,
+  VersoConfig,
   NextcloudTalkInboundMessage,
   NextcloudTalkWebhookPayload,
   NextcloudTalkWebhookServerOptions,
@@ -168,7 +168,7 @@ export function createNextcloudTalkWebhookServer(opts: NextcloudTalkWebhookServe
 
 export type NextcloudTalkMonitorOptions = {
   accountId?: string;
-  config?: CoreConfig;
+  config?: VersoConfig;
   runtime?: RuntimeEnv;
   abortSignal?: AbortSignal;
   onMessage?: (message: NextcloudTalkInboundMessage) => void | Promise<void>;
@@ -179,7 +179,7 @@ export async function monitorNextcloudTalkProvider(
   opts: NextcloudTalkMonitorOptions,
 ): Promise<{ stop: () => void }> {
   const core = getNextcloudTalkRuntime();
-  const cfg = opts.config ?? (core.config.loadConfig() as CoreConfig);
+  const cfg = opts.config ?? (core.config.loadConfig() as VersoConfig);
   const account = resolveNextcloudTalkAccount({
     cfg,
     accountId: opts.accountId,

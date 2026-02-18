@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { VersoConfig } from "verso/plugin-sdk";
-import { resolveMentionGatingWithBypass } from "verso/plugin-sdk";
+import { createReplyPrefixOptions, resolveMentionGatingWithBypass } from "verso/plugin-sdk";
 import type {
   GoogleChatAnnotation,
   GoogleChatAttachment,

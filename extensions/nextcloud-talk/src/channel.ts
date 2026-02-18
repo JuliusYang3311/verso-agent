@@ -69,10 +69,10 @@ export const nextcloudTalkPlugin: ChannelPlugin<ResolvedNextcloudTalkAccount> = 
   reload: { configPrefixes: ["channels.nextcloud-talk"] },
   configSchema: buildChannelConfigSchema(NextcloudTalkConfigSchema),
   config: {
-    listAccountIds: (cfg) => listNextcloudTalkAccountIds(cfg as CoreConfig),
+    listAccountIds: (cfg) => listNextcloudTalkAccountIds(cfg as VersoConfig),
     resolveAccount: (cfg, accountId) =>
-      resolveNextcloudTalkAccount({ cfg: cfg as CoreConfig, accountId }),
-    defaultAccountId: (cfg) => resolveDefaultNextcloudTalkAccountId(cfg as CoreConfig),
+      resolveNextcloudTalkAccount({ cfg: cfg as VersoConfig, accountId }),
+    defaultAccountId: (cfg) => resolveDefaultNextcloudTalkAccountId(cfg as VersoConfig),
     setAccountEnabled: ({ cfg, accountId, enabled }) =>
       setAccountEnabledInConfigSection({
         cfg,
@@ -99,7 +99,7 @@ export const nextcloudTalkPlugin: ChannelPlugin<ResolvedNextcloudTalkAccount> = 
     }),
     resolveAllowFrom: ({ cfg, accountId }) =>
       (
-        resolveNextcloudTalkAccount({ cfg: cfg as CoreConfig, accountId }).config.allowFrom ?? []
+        resolveNextcloudTalkAccount({ cfg: cfg as VersoConfig, accountId }).config.allowFrom ?? []
       ).map((entry) => String(entry).toLowerCase()),
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
@@ -146,7 +146,7 @@ export const nextcloudTalkPlugin: ChannelPlugin<ResolvedNextcloudTalkAccount> = 
   },
   groups: {
     resolveRequireMention: ({ cfg, accountId, groupId }) => {
-      const account = resolveNextcloudTalkAccount({ cfg: cfg as CoreConfig, accountId });
+      const account = resolveNextcloudTalkAccount({ cfg: cfg as VersoConfig, accountId });
       const rooms = account.config.rooms;
       if (!rooms || !groupId) {
         return true;
@@ -318,7 +318,7 @@ export const nextcloudTalkPlugin: ChannelPlugin<ResolvedNextcloudTalkAccount> = 
 
       const { stop } = await monitorNextcloudTalkProvider({
         accountId: account.accountId,
-        config: ctx.cfg as CoreConfig,
+        config: ctx.cfg as VersoConfig,
         runtime: ctx.runtime,
         abortSignal: ctx.abortSignal,
         statusSink: (patch) => ctx.setStatus({ accountId: ctx.accountId, ...patch }),
@@ -389,7 +389,7 @@ export const nextcloudTalkPlugin: ChannelPlugin<ResolvedNextcloudTalkAccount> = 
       }
 
       const resolved = resolveNextcloudTalkAccount({
-        cfg: changed ? (nextCfg as CoreConfig) : (cfg as CoreConfig),
+        cfg: changed ? (nextCfg as VersoConfig) : (cfg as VersoConfig),
         accountId,
       });
       const loggedOut = resolved.secretSource === "none";

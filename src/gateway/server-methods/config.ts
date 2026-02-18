@@ -23,6 +23,7 @@ import {
   type RestartSentinelPayload,
   writeRestartSentinel,
 } from "../../infra/restart-sentinel.js";
+import { scheduleGatewaySigusr1Restart } from "../../infra/restart.js";
 import { loadVersoPlugins } from "../../plugins/loader.js";
 import {
   ErrorCodes,

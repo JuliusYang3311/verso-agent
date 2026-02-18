@@ -6,7 +6,7 @@ import {
   type RuntimeEnv,
 } from "verso/plugin-sdk";
 import type { ResolvedNextcloudTalkAccount } from "./accounts.js";
-import type { CoreConfig, GroupPolicy, NextcloudTalkInboundMessage } from "./types.js";
+import type { GroupPolicy, NextcloudTalkInboundMessage } from "./types.js";
 import {
   normalizeNextcloudTalkAllowlist,
   resolveNextcloudTalkAllowlistMatch,
@@ -58,7 +58,7 @@ async function deliverNextcloudTalkReply(params: {
 export async function handleNextcloudTalkInbound(params: {
   message: NextcloudTalkInboundMessage;
   account: ResolvedNextcloudTalkAccount;
-  config: CoreConfig;
+  config: VersoConfig;
   runtime: RuntimeEnv;
   statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
 }): Promise<void> {
@@ -239,7 +239,7 @@ export async function handleNextcloudTalkInbound(params: {
   });
 
   const fromLabel = isGroup ? `room:${roomName || roomToken}` : senderName || `user:${senderId}`;
-  const storePath = core.channel.session.resolveStorePath(config.session?.store, {
+  const storePath = core.channel.session.resolveStorePath((config as VersoConfig).session?.store, {
     agentId: route.agentId,
   });
   const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(config as VersoConfig);

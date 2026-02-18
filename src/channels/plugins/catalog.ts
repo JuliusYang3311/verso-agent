@@ -50,6 +50,7 @@ type ExternalCatalogEntry = {
   version?: string;
   description?: string;
   verso?: VersoPackageManifest;
+  [key: string]: unknown;
 };
 
 const DEFAULT_CATALOG_PATHS = [
@@ -224,7 +225,7 @@ function buildCatalogEntry(candidate: {
 }
 
 function buildExternalCatalogEntry(entry: ExternalCatalogEntry): ChannelPluginCatalogEntry | null {
-  const manifest = entry.verso ?? entry[LEGACY_MANIFEST_KEY];
+  const manifest = entry.verso ?? (entry[LEGACY_MANIFEST_KEY] as VersoPackageManifest | undefined);
   return buildCatalogEntry({
     packageName: entry.name,
     packageVerso: manifest,

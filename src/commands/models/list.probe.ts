@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import type { VersoConfig } from "../../config/config.js";
 import { resolveVersoAgentDir } from "../../agents/agent-paths.js";
+import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../../agents/agent-scope.js";
 import {
   ensureAuthProfileStore,
   listProfilesForProvider,

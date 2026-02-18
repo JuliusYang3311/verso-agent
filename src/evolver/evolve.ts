@@ -47,7 +47,7 @@ try {
 }
 
 // Configuration from CLI flags or Env
-const ARGS: string[] = new Set(process.argv.slice(2));
+const ARGS: Set<string> = new Set(process.argv.slice(2));
 const IS_REVIEW_MODE: boolean = ARGS.has("--review");
 const IS_DRY_RUN: boolean = ARGS.has("--dry-run");
 const IS_RANDOM_DRIFT: boolean =

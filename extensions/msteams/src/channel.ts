@@ -222,10 +222,14 @@ export const msteamsPlugin: ChannelPlugin<ResolvedMSTeamsAccount> = {
         .slice(0, limit && limit > 0 ? limit : undefined)
         .map((id) => ({ kind: "group", id }) as const);
     },
-    listPeersLive: async ({ cfg, query, limit }) =>
-      listMSTeamsDirectoryPeersLive({ cfg, query, limit }),
-    listGroupsLive: async ({ cfg, query, limit }) =>
-      listMSTeamsDirectoryGroupsLive({ cfg, query, limit }),
+    listPeersLive: async ({ cfg, query, limit }) => {
+      const { listMSTeamsDirectoryPeersLive } = await import("./directory-live.js");
+      return listMSTeamsDirectoryPeersLive({ cfg, query, limit });
+    },
+    listGroupsLive: async ({ cfg, query, limit }) => {
+      const { listMSTeamsDirectoryGroupsLive } = await import("./directory-live.js");
+      return listMSTeamsDirectoryGroupsLive({ cfg, query, limit });
+    },
   },
   resolver: {
     resolveTargets: async ({ cfg, inputs, kind, runtime }) => {

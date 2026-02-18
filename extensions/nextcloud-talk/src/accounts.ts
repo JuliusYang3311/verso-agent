@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "verso/plugin-sdk";
-import type { CoreConfig, NextcloudTalkAccountConfig } from "./types.js";
+import type { VersoConfig, NextcloudTalkAccountConfig } from "./types.js";
 
 const TRUTHY_ENV = new Set(["true", "1", "yes", "on"]);
 
@@ -27,7 +27,7 @@ export type ResolvedNextcloudTalkAccount = {
   config: NextcloudTalkAccountConfig;
 };
 
-function listConfiguredAccountIds(cfg: CoreConfig): string[] {
+function listConfiguredAccountIds(cfg: VersoConfig): string[] {
   const accounts = cfg.channels?.["nextcloud-talk"]?.accounts;
   if (!accounts || typeof accounts !== "object") {
     return [];
@@ -42,7 +42,7 @@ function listConfiguredAccountIds(cfg: CoreConfig): string[] {
   return [...ids];
 }
 
-export function listNextcloudTalkAccountIds(cfg: CoreConfig): string[] {
+export function listNextcloudTalkAccountIds(cfg: VersoConfig): string[] {
   const ids = listConfiguredAccountIds(cfg);
   debugAccounts("listNextcloudTalkAccountIds", ids);
   if (ids.length === 0) {
@@ -51,7 +51,7 @@ export function listNextcloudTalkAccountIds(cfg: CoreConfig): string[] {
   return ids.toSorted((a, b) => a.localeCompare(b));
 }
 
-export function resolveDefaultNextcloudTalkAccountId(cfg: CoreConfig): string {
+export function resolveDefaultNextcloudTalkAccountId(cfg: VersoConfig): string {
   const ids = listNextcloudTalkAccountIds(cfg);
   if (ids.includes(DEFAULT_ACCOUNT_ID)) {
     return DEFAULT_ACCOUNT_ID;
@@ -60,7 +60,7 @@ export function resolveDefaultNextcloudTalkAccountId(cfg: CoreConfig): string {
 }
 
 function resolveAccountConfig(
-  cfg: CoreConfig,
+  cfg: VersoConfig,
   accountId: string,
 ): NextcloudTalkAccountConfig | undefined {
   const accounts = cfg.channels?.["nextcloud-talk"]?.accounts;
@@ -77,7 +77,7 @@ function resolveAccountConfig(
 }
 
 function mergeNextcloudTalkAccountConfig(
-  cfg: CoreConfig,
+  cfg: VersoConfig,
   accountId: string,
 ): NextcloudTalkAccountConfig {
   const { accounts: _ignored, ...base } = (cfg.channels?.["nextcloud-talk"] ??
@@ -87,7 +87,7 @@ function mergeNextcloudTalkAccountConfig(
 }
 
 function resolveNextcloudTalkSecret(
-  cfg: CoreConfig,
+  cfg: VersoConfig,
   opts: { accountId?: string },
 ): { secret: string; source: ResolvedNextcloudTalkAccount["secretSource"] } {
   const merged = mergeNextcloudTalkAccountConfig(cfg, opts.accountId ?? DEFAULT_ACCOUNT_ID);
@@ -116,7 +116,7 @@ function resolveNextcloudTalkSecret(
 }
 
 export function resolveNextcloudTalkAccount(params: {
-  cfg: CoreConfig;
+  cfg: VersoConfig;
   accountId?: string | null;
 }): ResolvedNextcloudTalkAccount {
   const hasExplicitAccountId = Boolean(params.accountId?.trim());
@@ -167,7 +167,7 @@ export function resolveNextcloudTalkAccount(params: {
   return fallback;
 }
 
-export function listEnabledNextcloudTalkAccounts(cfg: CoreConfig): ResolvedNextcloudTalkAccount[] {
+export function listEnabledNextcloudTalkAccounts(cfg: VersoConfig): ResolvedNextcloudTalkAccount[] {
   return listNextcloudTalkAccountIds(cfg)
     .map((accountId) => resolveNextcloudTalkAccount({ cfg, accountId }))
     .filter((account) => account.enabled);

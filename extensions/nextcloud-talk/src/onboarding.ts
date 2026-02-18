@@ -6,6 +6,7 @@ import {
   normalizeAccountId,
   type ChannelOnboardingAdapter,
   type ChannelOnboardingDmPolicy,
+  type DmPolicy,
   type VersoConfig,
   type WizardPrompter,
 } from "verso/plugin-sdk";
@@ -17,9 +18,11 @@ import {
 
 const channel = "nextcloud-talk" as const;
 
-function setNextcloudTalkDmPolicy(cfg: CoreConfig, dmPolicy: DmPolicy): CoreConfig {
+function setNextcloudTalkDmPolicy(cfg: VersoConfig, dmPolicy: DmPolicy): VersoConfig {
   const existingConfig = cfg.channels?.["nextcloud-talk"];
-  const existingAllowFrom: string[] = (existingConfig?.allowFrom ?? []).map((x) => String(x));
+  const existingAllowFrom: string[] = (existingConfig?.allowFrom ?? []).map((x: string | number) =>
+    String(x),
+  );
   const allowFrom: string[] =
     dmPolicy === "open" ? (addWildcardAllowFrom(existingAllowFrom) as string[]) : existingAllowFrom;
 
@@ -35,7 +38,7 @@ function setNextcloudTalkDmPolicy(cfg: CoreConfig, dmPolicy: DmPolicy): CoreConf
       ...cfg.channels,
       "nextcloud-talk": newNextcloudTalkConfig,
     },
-  } as CoreConfig;
+  } as VersoConfig;
 }
 
 async function noteNextcloudTalkSecretHelp(prompter: WizardPrompter): Promise<void> {
@@ -65,10 +68,10 @@ async function noteNextcloudTalkUserIdHelp(prompter: WizardPrompter): Promise<vo
 }
 
 async function promptNextcloudTalkAllowFrom(params: {
-  cfg: CoreConfig;
+  cfg: VersoConfig;
   prompter: WizardPrompter;
   accountId: string;
-}): Promise<CoreConfig> {
+}): Promise<VersoConfig> {
   const { cfg, prompter, accountId } = params;
   const resolved = resolveNextcloudTalkAccount({ cfg, accountId });
   const existingAllowFrom = resolved.config.allowFrom ?? [];
@@ -137,10 +140,10 @@ async function promptNextcloudTalkAllowFrom(params: {
 }
 
 async function promptNextcloudTalkAllowFromForAccount(params: {
-  cfg: CoreConfig;
+  cfg: VersoConfig;
   prompter: WizardPrompter;
   accountId?: string;
-}): Promise<CoreConfig> {
+}): Promise<VersoConfig> {
   const accountId =
     params.accountId && normalizeAccountId(params.accountId)
       ? (normalizeAccountId(params.accountId) ?? DEFAULT_ACCOUNT_ID)
@@ -158,7 +161,7 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
   policyKey: "channels.nextcloud-talk.dmPolicy",
   allowFromKey: "channels.nextcloud-talk.allowFrom",
   getCurrent: (cfg) => cfg.channels?.["nextcloud-talk"]?.dmPolicy ?? "pairing",
-  setPolicy: (cfg, policy) => setNextcloudTalkDmPolicy(cfg as CoreConfig, policy as DmPolicy),
+  setPolicy: (cfg, policy) => setNextcloudTalkDmPolicy(cfg as VersoConfig, policy as DmPolicy),
   promptAllowFrom: promptNextcloudTalkAllowFromForAccount as (params: {
     cfg: VersoConfig;
     prompter: WizardPrompter;
@@ -169,8 +172,8 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
 export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
   channel,
   getStatus: async ({ cfg }) => {
-    const configured = listNextcloudTalkAccountIds(cfg as CoreConfig).some((accountId) => {
-      const account = resolveNextcloudTalkAccount({ cfg: cfg as CoreConfig, accountId });
+    const configured = listNextcloudTalkAccountIds(cfg as VersoConfig).some((accountId) => {
+      const account = resolveNextcloudTalkAccount({ cfg: cfg as VersoConfig, accountId });
       return Boolean(account.secret && account.baseUrl);
     });
     return {
@@ -189,14 +192,14 @@ export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
     forceAllowFrom,
   }) => {
     const nextcloudTalkOverride = accountOverrides["nextcloud-talk"]?.trim();
-    const defaultAccountId = resolveDefaultNextcloudTalkAccountId(cfg as CoreConfig);
+    const defaultAccountId = resolveDefaultNextcloudTalkAccountId(cfg as VersoConfig);
     let accountId = nextcloudTalkOverride
       ? normalizeAccountId(nextcloudTalkOverride)
       : defaultAccountId;
 
     if (shouldPromptAccountIds && !nextcloudTalkOverride) {
       accountId = await promptAccountId({
-        cfg: cfg as CoreConfig,
+        cfg: cfg as VersoConfig,
         prompter,
         label: "Nextcloud Talk",
         currentId: accountId,
@@ -205,7 +208,7 @@ export const nextcloudTalkOnboardingAdapter: ChannelOnboardingAdapter = {
       });
     }
 
-    let next = cfg as CoreConfig;
+    let next = cfg as VersoConfig;
     const resolvedAccount = resolveNextcloudTalkAccount({
       cfg: next,
       accountId,

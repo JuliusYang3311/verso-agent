@@ -25,6 +25,7 @@ import {
   type ChannelPlugin,
   type VersoConfig,
   type ResolvedTelegramAccount,
+  type TelegramProbe,
 } from "verso/plugin-sdk";
 import { getTelegramRuntime } from "./runtime.js";
 
@@ -333,7 +334,10 @@ export const telegramPlugin: ChannelPlugin<ResolvedTelegramAccount, TelegramProb
       if (!groupIds.length && unresolvedGroups === 0 && !hasWildcardUnmentionedGroups) {
         return undefined;
       }
-      const botId = probe?.ok && probe.bot?.id != null ? probe.bot.id : null;
+      const botId =
+        (probe as TelegramProbe)?.ok && (probe as TelegramProbe).bot?.id != null
+          ? (probe as TelegramProbe).bot!.id
+          : null;
       if (!botId) {
         return {
           ok: unresolvedGroups === 0 && !hasWildcardUnmentionedGroups,

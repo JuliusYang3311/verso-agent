@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { VersoConfig } from "../config/config.js";
+import type { RuntimeEnv } from "../runtime.js";
+import type { DoctorOptions, DoctorPrompter } from "./doctor-prompter.js";
 import { resolveGatewayPort, resolveIsNixMode } from "../config/paths.js";
 import { findExtraGatewayServices, renderGatewayServiceCleanupHints } from "../daemon/inspect.js";
 import { renderSystemNodeWarning, resolveSystemNodeInfo } from "../daemon/runtime-paths.js";
@@ -14,7 +16,11 @@ import {
 import { resolveGatewayService } from "../daemon/service.js";
 import { note } from "../terminal/note.js";
 import { buildGatewayInstallPlan } from "./daemon-install-helpers.js";
-import { DEFAULT_GATEWAY_DAEMON_RUNTIME, type GatewayDaemonRuntime } from "./daemon-runtime.js";
+import {
+  DEFAULT_GATEWAY_DAEMON_RUNTIME,
+  GATEWAY_DAEMON_RUNTIME_OPTIONS,
+  type GatewayDaemonRuntime,
+} from "./daemon-runtime.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -47,25 +53,25 @@ function normalizeExecutablePath(value: string): string {
   return path.resolve(value);
 }
 
+function extractDetailPath(detail: string, prefix: string): string | null {
+  const idx = detail.indexOf(prefix);
+  if (idx < 0) {
+    return null;
+  }
+  return detail.slice(idx + prefix.length).trim() || null;
+}
+
 export async function maybeMigrateLegacyGatewayService(
-  _cfg: VersoConfig,
-  _mode: "local" | "remote",
+  cfg: VersoConfig,
+  mode: "local" | "remote",
   _runtime: RuntimeEnv,
-  _prompter: DoctorPrompter,
+  prompter: DoctorPrompter,
 ) {
-  const legacyServices = await findLegacyGatewayServices(process.env);
+  const extraServices = await findExtraGatewayServices(process.env, { deep: false });
+  const legacyServices = extraServices.filter((svc) => svc.legacy === true);
   if (legacyServices.length === 0) {
     return;
   }
-}
-
-async function cleanupLegacyLaunchdService(params: {
-  label: string;
-  plistPath: string;
-}): Promise<string | null> {
-  const domain = typeof process.getuid === "function" ? `gui/${process.getuid()}` : "gui/501";
-  await execFileAsync("launchctl", ["bootout", domain, params.plistPath]).catch(() => undefined);
-  await execFileAsync("launchctl", ["unload", params.plistPath]).catch(() => undefined);
 
   const migrate = await prompter.confirmSkipInNonInteractive({
     message: "Migrate legacy gateway services to Verso now?",
@@ -75,10 +81,15 @@ async function cleanupLegacyLaunchdService(params: {
     return;
   }
 
-  try {
-    await fs.access(params.plistPath);
-  } catch {
-    return null;
+  for (const svc of legacyServices) {
+    if (svc.platform !== "darwin" || svc.scope !== "user") {
+      continue;
+    }
+    const plistPath = extractDetailPath(svc.detail, "plist:");
+    if (!plistPath) {
+      continue;
+    }
+    await cleanupLegacyLaunchdService({ label: svc.label, plistPath });
   }
 
   if (resolveIsNixMode(process.env)) {
@@ -115,11 +126,7 @@ async function cleanupLegacyLaunchdService(params: {
     DEFAULT_GATEWAY_DAEMON_RUNTIME,
   );
   const port = resolveGatewayPort(cfg, process.env);
-  const {
-    programArguments: _programArguments,
-    workingDirectory: _workingDirectory,
-    environment: _environment,
-  } = await buildGatewayInstallPlan({
+  const { programArguments, workingDirectory, environment } = await buildGatewayInstallPlan({
     env: process.env,
     port,
     token: cfg.gateway?.auth?.token ?? process.env.VERSO_GATEWAY_TOKEN,
@@ -127,6 +134,34 @@ async function cleanupLegacyLaunchdService(params: {
     warn: (message, title) => note(message, title),
     config: cfg,
   });
+  try {
+    await service.install({
+      env: process.env,
+      stdout: process.stdout,
+      programArguments,
+      workingDirectory,
+      environment,
+    });
+  } catch (err) {
+    note(`Gateway service install failed: ${String(err)}`, "Gateway");
+  }
+}
+
+async function cleanupLegacyLaunchdService(params: {
+  label: string;
+  plistPath: string;
+}): Promise<string | null> {
+  const domain = typeof process.getuid === "function" ? `gui/${process.getuid()}` : "gui/501";
+  await execFileAsync("launchctl", ["bootout", domain, params.plistPath]).catch(() => undefined);
+  await execFileAsync("launchctl", ["unload", params.plistPath]).catch(() => undefined);
+
+  try {
+    await fs.access(params.plistPath);
+  } catch {
+    return null;
+  }
+
+  const dest = `${params.plistPath}.disabled`;
   try {
     await fs.rename(params.plistPath, dest);
     return dest;

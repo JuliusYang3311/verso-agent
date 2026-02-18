@@ -1,4 +1,5 @@
 import type { VersoConfig } from "../config/config.js";
+import type { RuntimeEnv } from "../runtime.js";
 import { resolveGatewayPort } from "../config/config.js";
 import { findTailscaleBinary } from "../infra/tailscale.js";
 import { note } from "../terminal/note.js";

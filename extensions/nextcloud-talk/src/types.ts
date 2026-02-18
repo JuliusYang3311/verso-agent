@@ -3,9 +3,10 @@ import type {
   DmConfig,
   DmPolicy,
   GroupPolicy,
+  VersoConfig,
 } from "verso/plugin-sdk";
 
-export type { DmPolicy, GroupPolicy };
+export type { DmPolicy, GroupPolicy, VersoConfig };
 
 export type NextcloudTalkRoomConfig = {
   requireMention?: boolean;
@@ -80,13 +81,6 @@ export type NextcloudTalkConfig = {
   /** Optional per-account Nextcloud Talk configuration (multi-account). */
   accounts?: Record<string, NextcloudTalkAccountConfig>;
 } & NextcloudTalkAccountConfig;
-
-export type CoreConfig = {
-  channels?: {
-    "nextcloud-talk"?: NextcloudTalkConfig;
-  };
-  [key: string]: unknown;
-};
 
 /**
  * Nextcloud Talk webhook payload types based on Activity Streams 2.0 format.

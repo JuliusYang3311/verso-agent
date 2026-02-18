@@ -1,3 +1,4 @@
+// @ts-expect-error optional dependency
 import { Urbit } from "@urbit/http-api";
 
 let patched = false;

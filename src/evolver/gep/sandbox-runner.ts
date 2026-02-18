@@ -264,7 +264,7 @@ function cleanupTmpdir(sandboxDir: string | null): void {
 export function runInSandbox(params?: RunInSandboxParams): SandboxRunResult {
   const {
     workspaceRoot = getWorkspaceRoot(),
-    commands = ["pnpm build", "pnpm lint", "pnpm test"],
+    commands = ["npx tsc --noEmit", "pnpm build", "pnpm lint", "pnpm test"],
     mode: requestedMode,
     timeoutMs = DEFAULT_TIMEOUT_MS,
   } = params || {};
@@ -365,11 +365,11 @@ function truncateOutput(text: string | undefined | null, maxLen: number): string
   return s.slice(0, maxLen) + `\n...[truncated, ${s.length - maxLen} chars omitted]`;
 }
 
-/** Convenience method: verify src/ changes by running build, lint, and test. */
+/** Convenience method: verify src/ changes by running tsc, build, lint, and test. */
 export function verifySrcChanges(params?: VerifySrcChangesParams): SandboxRunResult {
   const { workspaceRoot } = params || {};
   return runInSandbox({
     workspaceRoot,
-    commands: ["pnpm build", "pnpm lint", "pnpm test"],
+    commands: ["npx tsc --noEmit", "pnpm build", "pnpm lint", "pnpm test"],
   });
 }

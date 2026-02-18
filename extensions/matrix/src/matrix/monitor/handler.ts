@@ -8,8 +8,9 @@ import {
   resolveControlCommandGate,
   type PluginRuntime,
   type RuntimeEnv,
+  type RuntimeLogger,
 } from "verso/plugin-sdk";
-import type { CoreConfig, ReplyToMode } from "../../types.js";
+import type { CoreConfig, MatrixRoomConfig, ReplyToMode } from "../../types.js";
 import {
   formatPollAsText,
   isPollStartType,
@@ -33,35 +34,19 @@ import { resolveMentions } from "./mentions.js";
 import { deliverMatrixReplies } from "./replies.js";
 import { resolveMatrixRoomConfig } from "./rooms.js";
 import { resolveMatrixThreadRootId, resolveMatrixThreadTarget } from "./threads.js";
+import { type MatrixRawEvent, type RoomMessageEventContent } from "./types.js";
 import { EventType, RelationType } from "./types.js";
 
 export type MatrixMonitorHandlerParams = {
   client: MatrixClient;
-  core: {
-    logging: {
-      shouldLogVerbose: () => boolean;
-    };
-    channel: (typeof import("verso/plugin-sdk"))["channel"];
-    system: {
-      enqueueSystemEvent: (
-        text: string,
-        meta: { sessionKey?: string | null; contextKey?: string | null },
-      ) => void;
-    };
-  };
+  core: PluginRuntime;
   cfg: CoreConfig;
   runtime: RuntimeEnv;
   logger: RuntimeLogger;
   logVerboseMessage: (message: string) => void;
   allowFrom: string[];
-  roomsConfig: CoreConfig["channels"] extends { matrix?: infer MatrixConfig }
-    ? MatrixConfig extends { groups?: infer Groups }
-      ? Groups
-      : Record<string, unknown> | undefined
-    : Record<string, unknown> | undefined;
-  mentionRegexes: ReturnType<
-    (typeof import("verso/plugin-sdk"))["channel"]["mentions"]["buildMentionRegexes"]
-  >;
+  roomsConfig: Record<string, MatrixRoomConfig> | undefined;
+  mentionRegexes: RegExp[];
   groupPolicy: "open" | "allowlist" | "disabled";
   replyToMode: ReplyToMode;
   threadReplies: "off" | "inbound" | "always";
@@ -519,7 +504,7 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
               accountId: route.accountId,
             }
           : undefined,
-        onRecordError: (err) => {
+        onRecordError: (err: unknown) => {
           logger.warn("failed updating session meta", {
             error: String(err),
             storePath,
@@ -605,7 +590,12 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
         core.channel.reply.createReplyDispatcherWithTyping({
           ...prefixOptions,
           humanDelay: core.channel.reply.resolveHumanDelayConfig(cfg, route.agentId),
-          deliver: async (payload) => {
+          deliver: async (payload: {
+            text?: string;
+            mediaUrl?: string;
+            mediaUrls?: string[];
+            replyToId?: string;
+          }) => {
             await deliverMatrixReplies({
               replies: [payload],
               roomId,
@@ -619,7 +609,7 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
             });
             didSendReply = true;
           },
-          onError: (err, info) => {
+          onError: (err: unknown, info: { kind: string }) => {
             runtime.error?.(`matrix ${info.kind} reply failed: ${String(err)}`);
           },
           onReplyStart: typingCallbacks.onReplyStart,

@@ -52,7 +52,8 @@ export async function fetchRssFeed(feedName: string, url: string): Promise<World
       isAtom = true;
     }
 
-    const parsedSignals: WorldSignal[] = items.slice(0, 10).map((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parsedSignals: WorldSignal[] = items.slice(0, 10).map((item: any) => {
       const title = item.querySelector("title")?.textContent || "Untitled";
 
       let link = "";

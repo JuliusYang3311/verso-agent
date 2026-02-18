@@ -89,7 +89,7 @@ export async function applyAuthChoice(
                 ? "local"
                 : "text-embedding-3-small";
           result.config = applyEmbeddingModel(result.config, {
-            provider: target,
+            provider: target!,
             model: current.model || model,
             clearRemote: true,
           });

@@ -1,4 +1,8 @@
-import { emptyPluginConfigSchema } from "verso/plugin-sdk";
+import {
+  emptyPluginConfigSchema,
+  type VersoPluginApi,
+  type ProviderAuthContext,
+} from "verso/plugin-sdk";
 import { loginGeminiCliOAuth } from "./oauth.js";
 
 const PROVIDER_ID = "google-gemini-cli";

@@ -6,6 +6,7 @@
  */
 
 import type { ReplyPayload, VersoConfig } from "verso/plugin-sdk";
+import { createReplyPrefixOptions } from "verso/plugin-sdk";
 import type { TwitchAccountConfig, TwitchChatMessage } from "./types.js";
 import { checkTwitchAccessControl } from "./access-control.js";
 import { getOrCreateClientManager } from "./client-manager-registry.js";

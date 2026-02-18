@@ -30,8 +30,8 @@ export type EmbeddingProvider = {
 
 export type EmbeddingProviderResult = {
   provider: EmbeddingProvider;
-  requestedProvider: "openai" | "local" | "gemini" | "voyage" | "auto";
-  fallbackFrom?: "openai" | "local" | "gemini" | "voyage";
+  requestedProvider: "openai" | "local" | "gemini" | "anthropic" | "voyage" | "auto";
+  fallbackFrom?: "openai" | "local" | "gemini" | "anthropic" | "voyage";
   fallbackReason?: string;
   openAi?: OpenAiEmbeddingClient;
   gemini?: GeminiEmbeddingClient;
@@ -41,7 +41,7 @@ export type EmbeddingProviderResult = {
 export type EmbeddingProviderOptions = {
   config: VersoConfig;
   agentDir?: string;
-  provider: "openai" | "local" | "gemini" | "voyage" | "auto";
+  provider: "openai" | "local" | "gemini" | "anthropic" | "voyage" | "auto";
   remote?: {
     baseUrl?: string;
     apiKey?: string;
@@ -132,7 +132,7 @@ export async function createEmbeddingProvider(
   const requestedProvider = options.provider;
   const fallback = options.fallback;
 
-  const createProvider = async (id: "openai" | "local" | "gemini" | "voyage") => {
+  const createProvider = async (id: "openai" | "local" | "gemini" | "anthropic" | "voyage") => {
     if (id === "local") {
       const provider = await createLocalEmbeddingProvider(options);
       return { provider };
@@ -145,12 +145,15 @@ export async function createEmbeddingProvider(
       const { provider, client } = await createVoyageEmbeddingProvider(options);
       return { provider, voyage: client };
     }
+    // anthropic falls through to openai-compatible
     const { provider, client } = await createOpenAiEmbeddingProvider(options);
     return { provider, openAi: client };
   };
 
-  const formatPrimaryError = (err: unknown, provider: "openai" | "local" | "gemini" | "voyage") =>
-    provider === "local" ? formatLocalSetupError(err) : formatErrorMessage(err);
+  const formatPrimaryError = (
+    err: unknown,
+    provider: "openai" | "local" | "gemini" | "anthropic" | "voyage",
+  ) => (provider === "local" ? formatLocalSetupError(err) : formatErrorMessage(err));
 
   if (requestedProvider === "auto") {
     const missingKeyErrors: string[] = [];

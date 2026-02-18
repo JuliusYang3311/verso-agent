@@ -1,5 +1,7 @@
 import type { GatewayAuthChoice } from "../commands/onboard-types.js";
 import type { VersoConfig } from "../config/config.js";
+import type { GatewayBindMode } from "../config/types.gateway.js";
+import type { GatewayTailscaleMode } from "../config/types.gateway.js";
 import type { RuntimeEnv } from "../runtime.js";
 import type {
   GatewayWizardSettings,

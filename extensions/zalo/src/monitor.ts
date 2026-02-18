@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { VersoConfig, MarkdownTableMode } from "verso/plugin-sdk";
-import type { ResolvedZaloAccount } from "./accounts.js";
+import { createReplyPrefixOptions } from "verso/plugin-sdk";
+import type { ResolvedZaloAccount } from "./types.js";
 import {
   ZaloApiError,
   deleteWebhook,
@@ -437,7 +438,7 @@ async function processMessageWithPipeline(params: {
   const senderName = from.name;
 
   const dmPolicy = account.config.dmPolicy ?? "pairing";
-  const configAllowFrom = (account.config.allowFrom ?? []).map((v) => String(v));
+  const configAllowFrom = (account.config.allowFrom ?? []).map((v: string | number) => String(v));
   const rawBody = text?.trim() || (mediaPath ? "<media:image>" : "");
   const shouldComputeAuth = core.channel.commands.shouldComputeCommandAuthorized(rawBody, config);
   const storeAllowFrom =

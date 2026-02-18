@@ -1,3 +1,5 @@
+import type { GatewayRequestHandlers } from "./types.js";
+import { loadConfig } from "../../config/io.js";
 import {
   formatDoctorNonInteractiveHint,
   type RestartSentinelPayload,

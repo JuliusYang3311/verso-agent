@@ -11,8 +11,8 @@ export async function promptGhostConfig(
   const existingEntry = nextConfig.skills?.entries?.["ghost"] as
     | Record<string, unknown>
     | undefined;
-  const existingEnv = existingEntry?.env ?? {};
-  const existingConfig = existingEntry?.config ?? {}; // Fallback for old migration
+  const existingEnv = (existingEntry?.env ?? {}) as Record<string, string | undefined>;
+  const existingConfig = (existingEntry?.config ?? {}) as Record<string, string | undefined>; // Fallback for old migration
 
   note(
     [

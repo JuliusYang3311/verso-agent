@@ -8,6 +8,7 @@ import {
   PAIRING_APPROVED_MESSAGE,
   setAccountEnabledInConfigSection,
   type ChannelPlugin,
+  type VersoConfig,
 } from "verso/plugin-sdk";
 import { matrixMessageActions } from "./actions.js";
 import { MatrixConfigSchema } from "./config-schema.js";
@@ -55,7 +56,7 @@ function normalizeMatrixMessagingTarget(raw: string): string | undefined {
 }
 
 function buildMatrixConfigUpdate(
-  cfg: CoreConfig,
+  cfg: VersoConfig,
   input: {
     homeserver?: string;
     userId?: string;
@@ -64,7 +65,7 @@ function buildMatrixConfigUpdate(
     deviceName?: string;
     initialSyncLimit?: number;
   },
-): CoreConfig {
+): VersoConfig {
   const existing = cfg.channels?.matrix ?? {};
   return {
     ...cfg,
@@ -107,12 +108,13 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
   reload: { configPrefixes: ["channels.matrix"] },
   configSchema: buildChannelConfigSchema(MatrixConfigSchema),
   config: {
-    listAccountIds: (cfg) => listMatrixAccountIds(cfg as CoreConfig),
-    resolveAccount: (cfg, accountId) => resolveMatrixAccount({ cfg: cfg as CoreConfig, accountId }),
-    defaultAccountId: (cfg) => resolveDefaultMatrixAccountId(cfg as CoreConfig),
+    listAccountIds: (cfg) => listMatrixAccountIds(cfg as VersoConfig),
+    resolveAccount: (cfg, accountId) =>
+      resolveMatrixAccount({ cfg: cfg as VersoConfig, accountId }),
+    defaultAccountId: (cfg) => resolveDefaultMatrixAccountId(cfg as VersoConfig),
     setAccountEnabled: ({ cfg, accountId, enabled }) =>
       setAccountEnabledInConfigSection({
-        cfg: cfg as CoreConfig,
+        cfg: cfg as VersoConfig,
         sectionKey: "matrix",
         accountId,
         enabled,
@@ -120,7 +122,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
       }),
     deleteAccount: ({ cfg, accountId }) =>
       deleteAccountFromConfigSection({
-        cfg: cfg as CoreConfig,
+        cfg: cfg as VersoConfig,
         sectionKey: "matrix",
         accountId,
         clearBaseFields: [
@@ -142,7 +144,9 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
       baseUrl: account.homeserver,
     }),
     resolveAllowFrom: ({ cfg }) =>
-      ((cfg as CoreConfig).channels?.matrix?.dm?.allowFrom ?? []).map((entry) => String(entry)),
+      ((cfg as VersoConfig).channels?.matrix?.dm?.allowFrom ?? []).map((entry: string | number) =>
+        String(entry),
+      ),
     formatAllowFrom: ({ allowFrom }) => normalizeMatrixAllowList(allowFrom),
   },
   security: {
@@ -155,7 +159,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
       normalizeEntry: (raw) => normalizeMatrixUserId(raw),
     }),
     collectWarnings: ({ account, cfg }) => {
-      const defaultGroupPolicy = (cfg as CoreConfig).channels?.defaults?.groupPolicy;
+      const defaultGroupPolicy = (cfg as VersoConfig).channels?.defaults?.groupPolicy;
       const groupPolicy = account.config.groupPolicy ?? defaultGroupPolicy ?? "allowlist";
       if (groupPolicy !== "open") {
         return [];
@@ -170,7 +174,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
     resolveToolPolicy: resolveMatrixGroupToolPolicy,
   },
   threading: {
-    resolveReplyToMode: ({ cfg }) => (cfg as CoreConfig).channels?.matrix?.replyToMode ?? "off",
+    resolveReplyToMode: ({ cfg }) => (cfg as VersoConfig).channels?.matrix?.replyToMode ?? "off",
     buildToolContext: ({ context, hasRepliedRef }) => {
       const currentTarget = context.To;
       return {
@@ -200,7 +204,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
   directory: {
     self: async () => null,
     listPeers: async ({ cfg, accountId, query, limit }) => {
-      const account = resolveMatrixAccount({ cfg: cfg as CoreConfig, accountId });
+      const account = resolveMatrixAccount({ cfg: cfg as VersoConfig, accountId });
       const q = query?.trim().toLowerCase() || "";
       const ids = new Set<string>();
 
@@ -255,7 +259,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
         });
     },
     listGroups: async ({ cfg, accountId, query, limit }) => {
-      const account = resolveMatrixAccount({ cfg: cfg as CoreConfig, accountId });
+      const account = resolveMatrixAccount({ cfg: cfg as VersoConfig, accountId });
       const q = query?.trim().toLowerCase() || "";
       const groups = account.config.groups ?? account.config.rooms ?? {};
       const ids = Object.keys(groups)
@@ -291,7 +295,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
     resolveAccountId: ({ accountId }) => normalizeAccountId(accountId),
     applyAccountName: ({ cfg, accountId, name }) =>
       applyAccountNameToChannelSection({
-        cfg: cfg as CoreConfig,
+        cfg: cfg as VersoConfig,
         channelKey: "matrix",
         accountId,
         name,
@@ -321,7 +325,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
     },
     applyAccountConfig: ({ cfg, input }) => {
       const namedConfig = applyAccountNameToChannelSection({
-        cfg: cfg as CoreConfig,
+        cfg: cfg as VersoConfig,
         channelKey: "matrix",
         accountId: DEFAULT_ACCOUNT_ID,
         name: input.name,
@@ -336,9 +340,9 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
               enabled: true,
             },
           },
-        } as CoreConfig;
+        } as VersoConfig;
       }
-      return buildMatrixConfigUpdate(namedConfig as CoreConfig, {
+      return buildMatrixConfigUpdate(namedConfig as VersoConfig, {
         homeserver: input.homeserver?.trim(),
         userId: input.userId?.trim(),
         accessToken: input.accessToken?.trim(),
@@ -384,7 +388,7 @@ export const matrixPlugin: ChannelPlugin<ResolvedMatrixAccount> = {
     }),
     probeAccount: async ({ timeoutMs, cfg }) => {
       try {
-        const auth = await resolveMatrixAuth({ cfg: cfg as CoreConfig });
+        const auth = await resolveMatrixAuth({ cfg: cfg as VersoConfig });
         return await probeMatrix({
           homeserver: auth.homeserver,
           accessToken: auth.accessToken,

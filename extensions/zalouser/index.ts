@@ -1,4 +1,4 @@
-import type { VersoPluginApi } from "verso/plugin-sdk";
+import type { VersoPluginApi, AnyAgentTool } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
 import { zalouserDock, zalouserPlugin } from "./src/channel.js";
 import { setZalouserRuntime } from "./src/runtime.js";

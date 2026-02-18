@@ -86,7 +86,7 @@ export async function callTaskClassifier(
 
   // Force baseUrl on the model object because pi-ai openai-responses only looks at model.baseUrl
   if (auth.baseUrl) {
-    (modelObj as Record<string, unknown>).baseUrl = auth.baseUrl;
+    (modelObj as unknown as Record<string, unknown>).baseUrl = auth.baseUrl;
   }
 
   // INTERNAL RETRY LOOP

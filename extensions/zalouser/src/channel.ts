@@ -17,6 +17,7 @@ import {
   normalizeAccountId,
   setAccountEnabledInConfigSection,
 } from "verso/plugin-sdk";
+import type { ZcaUserInfo, ZcaFriend, ZcaGroup } from "./types.js";
 import {
   listZalouserAccountIds,
   resolveDefaultZalouserAccountId,

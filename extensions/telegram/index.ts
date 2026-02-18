@@ -1,4 +1,4 @@
-import type { VersoPluginApi } from "verso/plugin-sdk";
+import type { VersoPluginApi, ChannelPlugin } from "verso/plugin-sdk";
 import { emptyPluginConfigSchema } from "verso/plugin-sdk";
 import { telegramPlugin } from "./src/channel.js";
 import { setTelegramRuntime } from "./src/runtime.js";

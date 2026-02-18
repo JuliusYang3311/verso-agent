@@ -1,10 +1,11 @@
-import type { DmPolicy } from "verso/plugin-sdk";
 import {
   addWildcardAllowFrom,
   formatDocsLink,
   promptChannelAccessConfig,
   type ChannelOnboardingAdapter,
   type ChannelOnboardingDmPolicy,
+  type DmPolicy,
+  type VersoConfig,
   type WizardPrompter,
 } from "verso/plugin-sdk";
 import { listMatrixDirectoryGroupsLive } from "./directory-live.js";
@@ -14,7 +15,7 @@ import { resolveMatrixTargets } from "./resolve-targets.js";
 
 const channel = "matrix" as const;
 
-function setMatrixDmPolicy(cfg: CoreConfig, policy: DmPolicy) {
+function setMatrixDmPolicy(cfg: VersoConfig, policy: DmPolicy) {
   const allowFrom =
     policy === "open" ? addWildcardAllowFrom(cfg.channels?.matrix?.dm?.allowFrom) : undefined;
   return {
@@ -47,9 +48,9 @@ async function noteMatrixAuthHelp(prompter: WizardPrompter): Promise<void> {
 }
 
 async function promptMatrixAllowFrom(params: {
-  cfg: CoreConfig;
+  cfg: VersoConfig;
   prompter: WizardPrompter;
-}): Promise<CoreConfig> {
+}): Promise<VersoConfig> {
   const { cfg, prompter } = params;
   const existingAllowFrom = cfg.channels?.matrix?.dm?.allowFrom ?? [];
   const account = resolveMatrixAccount({ cfg });
@@ -119,7 +120,7 @@ async function promptMatrixAllowFrom(params: {
 
     const unique = [
       ...new Set([
-        ...existingAllowFrom.map((item) => String(item).trim()).filter(Boolean),
+        ...existingAllowFrom.map((item: string | number) => String(item).trim()).filter(Boolean),
         ...resolvedIds,
       ]),
     ];
@@ -141,7 +142,7 @@ async function promptMatrixAllowFrom(params: {
   }
 }
 
-function setMatrixGroupPolicy(cfg: CoreConfig, groupPolicy: "open" | "allowlist" | "disabled") {
+function setMatrixGroupPolicy(cfg: VersoConfig, groupPolicy: "open" | "allowlist" | "disabled") {
   return {
     ...cfg,
     channels: {
@@ -155,7 +156,7 @@ function setMatrixGroupPolicy(cfg: CoreConfig, groupPolicy: "open" | "allowlist"
   };
 }
 
-function setMatrixGroupRooms(cfg: CoreConfig, roomKeys: string[]) {
+function setMatrixGroupRooms(cfg: VersoConfig, roomKeys: string[]) {
   const groups = Object.fromEntries(roomKeys.map((key) => [key, { allow: true }]));
   return {
     ...cfg,
@@ -175,15 +176,15 @@ const dmPolicy: ChannelOnboardingDmPolicy = {
   channel,
   policyKey: "channels.matrix.dm.policy",
   allowFromKey: "channels.matrix.dm.allowFrom",
-  getCurrent: (cfg) => (cfg as CoreConfig).channels?.matrix?.dm?.policy ?? "pairing",
-  setPolicy: (cfg, policy) => setMatrixDmPolicy(cfg as CoreConfig, policy),
+  getCurrent: (cfg) => (cfg as VersoConfig).channels?.matrix?.dm?.policy ?? "pairing",
+  setPolicy: (cfg, policy) => setMatrixDmPolicy(cfg as VersoConfig, policy),
   promptAllowFrom: promptMatrixAllowFrom,
 };
 
 export const matrixOnboardingAdapter: ChannelOnboardingAdapter = {
   channel,
   getStatus: async ({ cfg }) => {
-    const account = resolveMatrixAccount({ cfg: cfg as CoreConfig });
+    const account = resolveMatrixAccount({ cfg: cfg as VersoConfig });
     const configured = account.configured;
     const sdkReady = isMatrixSdkAvailable();
     return {
@@ -200,7 +201,7 @@ export const matrixOnboardingAdapter: ChannelOnboardingAdapter = {
     };
   },
   configure: async ({ cfg, runtime, prompter, forceAllowFrom }) => {
-    let next = cfg as CoreConfig;
+    let next = cfg as VersoConfig;
     await ensureMatrixSdkInstalled({
       runtime,
       confirm: async (message) =>
@@ -440,10 +441,10 @@ export const matrixOnboardingAdapter: ChannelOnboardingAdapter = {
   },
   dmPolicy,
   disable: (cfg) => ({
-    ...(cfg as CoreConfig),
+    ...(cfg as VersoConfig),
     channels: {
-      ...(cfg as CoreConfig).channels,
-      matrix: { ...(cfg as CoreConfig).channels?.matrix, enabled: false },
+      ...(cfg as VersoConfig).channels,
+      matrix: { ...(cfg as VersoConfig).channels?.matrix, enabled: false },
     },
   }),
 };

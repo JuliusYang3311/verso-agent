@@ -36,7 +36,7 @@ export async function promptMoltbookConfig(
       message: "Moltbook API Key",
       placeholder: "moltbook_...",
       initialValue: currentConfig.apiKey,
-      validate: (value) => (value.trim().length > 0 ? undefined : "API Key is required"),
+      validate: (value) => ((value ?? "").trim().length > 0 ? undefined : "API Key is required"),
     }),
     runtime,
   )) as string;
@@ -45,7 +45,7 @@ export async function promptMoltbookConfig(
     text({
       message: "Agent Name",
       initialValue: currentConfig.agentName,
-      validate: (value) => (value.trim().length > 0 ? undefined : "Agent Name is required"),
+      validate: (value) => ((value ?? "").trim().length > 0 ? undefined : "Agent Name is required"),
     }),
     runtime,
   )) as string;

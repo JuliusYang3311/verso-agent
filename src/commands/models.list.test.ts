@@ -59,6 +59,18 @@ vi.mock("@mariozechner/pi-coding-agent", () => ({
   }),
 }));
 
+vi.mock("../agents/pi-model-discovery.js", () => ({
+  discoverAuthStorage: () => ({}),
+  discoverModels: () => ({
+    getAll() {
+      return modelRegistryState.models;
+    },
+    getAvailable() {
+      return modelRegistryState.available;
+    },
+  }),
+}));
+
 function makeRuntime() {
   return {
     log: vi.fn(),

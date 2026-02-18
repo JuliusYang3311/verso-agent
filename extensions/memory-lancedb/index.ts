@@ -10,6 +10,7 @@ import type * as LanceDB from "@lancedb/lancedb";
 import type { VersoPluginApi } from "verso/plugin-sdk";
 import { Type } from "@sinclair/typebox";
 import { randomUUID } from "node:crypto";
+import OpenAI from "openai";
 import { stringEnum } from "verso/plugin-sdk";
 import {
   MEMORY_CATEGORIES,

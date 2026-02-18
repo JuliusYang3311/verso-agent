@@ -1,6 +1,7 @@
 import type {
   ChannelOnboardingAdapter,
   ChannelOnboardingDmPolicy,
+  MSTeamsTeamConfig,
   VersoConfig,
   DmPolicy,
   WizardPrompter,

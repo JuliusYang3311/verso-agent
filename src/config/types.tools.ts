@@ -236,7 +236,7 @@ export type MemorySearchConfig = {
     l1LlmMode?: boolean;
   };
   /** Embedding provider mode. */
-  provider?: "openai" | "gemini" | "local" | "voyage";
+  provider?: "openai" | "gemini" | "anthropic" | "local" | "voyage";
   remote?: {
     baseUrl?: string;
     apiKey?: string;

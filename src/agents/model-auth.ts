@@ -127,6 +127,7 @@ function resolveAwsSdkAuthInfo(): { mode: "aws-sdk"; source: string } {
 
 export type ResolvedProviderAuth = {
   apiKey?: string;
+  baseUrl?: string;
   profileId?: string;
   source: string;
   mode: "api-key" | "oauth" | "token" | "aws-sdk";

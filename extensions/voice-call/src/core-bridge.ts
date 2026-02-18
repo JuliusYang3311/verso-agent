@@ -138,7 +138,7 @@ export async function loadCoreAgentDeps(): Promise<CoreAgentDeps> {
   }
 
   coreDepsPromise = (async () => {
-    return await importCoreExtensionAPI();
+    return await importCoreModule<CoreAgentDeps>("core-extension-api.js");
   })();
 
   return coreDepsPromise;

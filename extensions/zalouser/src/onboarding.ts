@@ -11,6 +11,7 @@ import {
   promptAccountId,
   promptChannelAccessConfig,
 } from "verso/plugin-sdk";
+import type { ZcaFriend, ZcaGroup } from "./types.js";
 import {
   listZalouserAccountIds,
   resolveDefaultZalouserAccountId,

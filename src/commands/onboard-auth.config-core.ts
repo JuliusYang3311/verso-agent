@@ -358,9 +358,9 @@ export function applyCloudflareAiGatewayConfig(
 
 export function applyKimiCodeProviderConfig(cfg: VersoConfig): VersoConfig {
   const models = { ...cfg.agents?.defaults?.models };
-  models[KIMI_CODE_MODEL_REF] = {
-    ...models[KIMI_CODE_MODEL_REF],
-    alias: models[KIMI_CODE_MODEL_REF]?.alias ?? "Kimi Code",
+  models[KIMI_CODING_MODEL_REF] = {
+    ...models[KIMI_CODING_MODEL_REF],
+    alias: models[KIMI_CODING_MODEL_REF]?.alias ?? "Kimi Code",
   };
   models[KIMI_CODING_MODEL_REF] = {
     ...models[KIMI_CODING_MODEL_REF],

@@ -1,5 +1,6 @@
 import type {
   ChannelAccountSnapshot,
+  ChatType,
   VersoConfig,
   ReplyPayload,
   RuntimeEnv,
@@ -907,7 +908,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
     opts.abortSignal?.addEventListener("abort", onAbort, { once: true });
 
     return await new Promise((resolve) => {
-      ws.on("open", () => {
+      (ws as any).on("open", () => {
         opts.statusSink?.({
           connected: true,
           lastConnectedAt: Date.now(),
@@ -922,7 +923,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
         );
       });
 
-      ws.on("message", async (data) => {
+      (ws as any).on("message", async (data: any) => {
         const raw = rawDataToString(data);
         let payload: MattermostEventPayload;
         try {
@@ -957,7 +958,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
         }
       });
 
-      ws.on("close", (code, reason) => {
+      (ws as any).on("close", (code: number, reason: any) => {
         const message = reason.length > 0 ? reason.toString("utf8") : "";
         opts.statusSink?.({
           connected: false,
@@ -971,7 +972,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
         resolve();
       });
 
-      ws.on("error", (err) => {
+      (ws as any).on("error", (err: any) => {
         runtime.error?.(`mattermost websocket error: ${String(err)}`);
         opts.statusSink?.({
           lastError: String(err),

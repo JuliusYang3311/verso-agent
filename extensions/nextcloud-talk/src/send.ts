@@ -1,4 +1,4 @@
-import type { CoreConfig, NextcloudTalkSendResult } from "./types.js";
+import type { VersoConfig, NextcloudTalkSendResult } from "./types.js";
 import { resolveNextcloudTalkAccount } from "./accounts.js";
 import { getNextcloudTalkRuntime } from "./runtime.js";
 import { generateNextcloudTalkSignature } from "./signature.js";
@@ -60,7 +60,7 @@ export async function sendMessageNextcloudTalk(
   text: string,
   opts: NextcloudTalkSendOpts = {},
 ): Promise<NextcloudTalkSendResult> {
-  const cfg = getNextcloudTalkRuntime().config.loadConfig() as CoreConfig;
+  const cfg = getNextcloudTalkRuntime().config.loadConfig() as VersoConfig;
   const account = resolveNextcloudTalkAccount({
     cfg,
     accountId: opts.accountId,
@@ -175,7 +175,7 @@ export async function sendReactionNextcloudTalk(
   reaction: string,
   opts: Omit<NextcloudTalkSendOpts, "replyTo"> = {},
 ): Promise<{ ok: true }> {
-  const cfg = getNextcloudTalkRuntime().config.loadConfig() as CoreConfig;
+  const cfg = getNextcloudTalkRuntime().config.loadConfig() as VersoConfig;
   const account = resolveNextcloudTalkAccount({
     cfg,
     accountId: opts.accountId,

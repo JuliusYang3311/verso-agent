@@ -41,18 +41,18 @@ export const LogLevel = {
 
 export class MatrixClient {
   constructor(..._args: unknown[]) {}
-  getUserId = vi.fn().mockResolvedValue("@mock:example.org");
-  start = vi.fn().mockResolvedValue(undefined);
-  stop = vi.fn();
-  on = vi.fn();
-  sendMessage = vi.fn().mockResolvedValue("mock-event-id");
-  sendEvent = vi.fn().mockResolvedValue("mock-event-id");
-  sendStateEvent = vi.fn().mockResolvedValue("mock-event-id");
-  sendReadReceipt = vi.fn().mockResolvedValue(undefined);
-  getJoinedRooms = vi.fn().mockResolvedValue([]);
-  joinRoom = vi.fn().mockResolvedValue("!mock:example.org");
-  resolveRoom = vi.fn().mockResolvedValue("!mock:example.org");
-  getRoomMembers = vi.fn().mockResolvedValue([]);
+  getUserId: any = vi.fn().mockResolvedValue("@mock:example.org");
+  start: any = vi.fn().mockResolvedValue(undefined);
+  stop: any = vi.fn();
+  on: any = vi.fn();
+  sendMessage: any = vi.fn().mockResolvedValue("mock-event-id");
+  sendEvent: any = vi.fn().mockResolvedValue("mock-event-id");
+  sendStateEvent: any = vi.fn().mockResolvedValue("mock-event-id");
+  sendReadReceipt: any = vi.fn().mockResolvedValue(undefined);
+  getJoinedRooms: any = vi.fn().mockResolvedValue([]);
+  joinRoom: any = vi.fn().mockResolvedValue("!mock:example.org");
+  resolveRoom: any = vi.fn().mockResolvedValue("!mock:example.org");
+  getRoomMembers: any = vi.fn().mockResolvedValue([]);
 }
 
 export class SimpleFsStorageProvider {
@@ -64,5 +64,5 @@ export class RustSdkCryptoStorageProvider {
 }
 
 export class AutojoinRoomsMixin {
-  static setupOnClient = vi.fn();
+  static setupOnClient: any = vi.fn();
 }

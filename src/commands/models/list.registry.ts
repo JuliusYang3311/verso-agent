@@ -1,5 +1,4 @@
 import type { Api, Model } from "@mariozechner/pi-ai";
-import { discoverAuthStorage, discoverModels } from "@mariozechner/pi-coding-agent";
 import type { AuthProfileStore } from "../../agents/auth-profiles.js";
 import type { VersoConfig } from "../../config/config.js";
 import type { ModelRow } from "./list.types.js";
@@ -11,6 +10,7 @@ import {
   resolveEnvApiKey,
 } from "../../agents/model-auth.js";
 import { ensureVersoModelsJson } from "../../agents/models-config.js";
+import { discoverAuthStorage, discoverModels } from "../../agents/pi-model-discovery.js";
 import { modelKey } from "./shared.js";
 
 const isLocalBaseUrl = (baseUrl: string) => {
@@ -52,7 +52,11 @@ export async function loadModelRegistry(cfg: VersoConfig) {
   const registry = discoverModels(authStorage, agentDir);
   const models = registry.getAll();
   const availableModels = registry.getAvailable();
-  const availableKeys = new Set(availableModels.map((model) => modelKey(model.provider, model.id)));
+  const availableKeys = new Set<string>(
+    availableModels.map((model: { provider: string; id: string }) =>
+      modelKey(model.provider, model.id),
+    ),
+  );
   return { registry, models, availableKeys };
 }
 

@@ -28,7 +28,7 @@ async function promptModel(): Promise<ModelDefinitionConfig | null> {
   const idInput = await text({
     message: stylePromptMessage("Model ID"),
     placeholder: "e.g. llama3, deepseek-coder, gpt-4o",
-    validate: (val: string) => (val.trim().length > 0 ? undefined : "Required"),
+    validate: (val: string | undefined) => (val?.trim()?.length ? undefined : "Required"),
   });
   if (isCancel(idInput)) {
     return null;
@@ -38,7 +38,7 @@ async function promptModel(): Promise<ModelDefinitionConfig | null> {
   const contextWindowInput = await text({
     message: stylePromptMessage(`Context window for ${id}`),
     initialValue: "128000",
-    validate: (val: string) =>
+    validate: (val: string | undefined) =>
       !isNaN(Number(val)) && Number(val) > 0 ? undefined : "Must be a positive number",
   });
   if (isCancel(contextWindowInput)) {
@@ -48,7 +48,7 @@ async function promptModel(): Promise<ModelDefinitionConfig | null> {
   const maxTokensInput = await text({
     message: stylePromptMessage(`Max output tokens for ${id}`),
     initialValue: "8192",
-    validate: (val: string) =>
+    validate: (val: string | undefined) =>
       !isNaN(Number(val)) && Number(val) > 0 ? undefined : "Must be a positive number",
   });
   if (isCancel(maxTokensInput)) {
@@ -124,8 +124,8 @@ export async function modelsProvidersAddCommand(runtime: RuntimeEnv) {
   const providerIdInput = await text({
     message: stylePromptMessage("Provider ID"),
     placeholder: "e.g. my-openai, deepseek, together",
-    validate: (val: string) => {
-      const trimmed = val.trim();
+    validate: (val: string | undefined) => {
+      const trimmed = (val ?? "").trim();
       if (trimmed.length === 0) {
         return "Required";
       }
@@ -144,8 +144,8 @@ export async function modelsProvidersAddCommand(runtime: RuntimeEnv) {
   const baseUrlInput = await text({
     message: stylePromptMessage("Base URL (API endpoint)"),
     placeholder: "https://api.example.com/v1",
-    validate: (val: string) =>
-      val.trim().startsWith("http") ? undefined : "Must start with http:// or https://",
+    validate: (val: string | undefined) =>
+      (val ?? "").trim().startsWith("http") ? undefined : "Must start with http:// or https://",
   });
   if (isCancel(baseUrlInput)) {
     cancel(stylePromptTitle("Cancelled.") ?? "Cancelled.");

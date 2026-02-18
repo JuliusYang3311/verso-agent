@@ -1,3 +1,4 @@
+// @ts-expect-error optional dependency
 import { scot, da } from "@urbit/aura";
 
 export type TlonPokeApi = {

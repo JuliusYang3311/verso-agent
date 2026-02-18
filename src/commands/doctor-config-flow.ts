@@ -165,9 +165,9 @@ function moveLegacyConfigFile(source: string, target: string) {
   }
 }
 
-async function autoMigrateLegacyConfigFile(params: { env: NodeJS.ProcessEnv }): Promise<string[]> {
+async function autoMigrateLegacyConfigFile(_params: { env: NodeJS.ProcessEnv }): Promise<string[]> {
   const changes: string[] = [];
-  const home = resolveHomeDir(params.env);
+  const home = resolveHomeDir();
   if (!home) {
     return changes;
   }

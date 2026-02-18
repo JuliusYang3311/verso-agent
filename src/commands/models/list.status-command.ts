@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { RuntimeEnv } from "../../runtime.js";
 import { resolveVersoAgentDir } from "../../agents/agent-paths.js";
 import {
   resolveAgentDir,

@@ -11,7 +11,8 @@ import { vi } from "vitest";
 // Each test file calls createBotTestSpies() in its own scope so the spies
 // are fresh and independent.
 
-export function createBotTestSpies() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createBotTestSpies(): Record<string, any> {
   const useSpy = vi.fn();
   const middlewareUseSpy = vi.fn();
   const onSpy = vi.fn();

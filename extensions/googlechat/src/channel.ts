@@ -15,6 +15,7 @@ import {
   type ChannelDock,
   type ChannelMessageActionAdapter,
   type ChannelPlugin,
+  type ChannelStatusIssue,
   type VersoConfig,
 } from "verso/plugin-sdk";
 import { GoogleChatConfigSchema } from "verso/plugin-sdk";

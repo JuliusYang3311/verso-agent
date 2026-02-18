@@ -39,7 +39,7 @@ function ensureExperimentalWarningSuppressed(): boolean {
     return false;
   }
   const nodeOptions = process.env.NODE_OPTIONS ?? "";
-  if (hasExperimentalWarningSuppressed(nodeOptions)) {
+  if (hasExperimentalWarningSuppressed()) {
     return false;
   }
 

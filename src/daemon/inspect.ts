@@ -5,7 +5,9 @@ import { promisify } from "node:util";
 import {
   GATEWAY_SERVICE_KIND,
   GATEWAY_SERVICE_MARKER,
+  LEGACY_GATEWAY_WINDOWS_TASK_NAMES,
   resolveGatewayLaunchAgentLabel,
+  resolveLegacyGatewayLaunchAgentLabels,
   resolveGatewaySystemdServiceName,
   resolveGatewayWindowsTaskName,
 } from "./constants.js";
@@ -168,7 +170,7 @@ async function scanLaunchdDir(params: {
     } catch {
       continue;
     }
-    const marker = detectMarker(contents);
+    const marker = detectMarker(contents) as ExtraGatewayService["marker"];
     const label = tryExtractPlistLabel(contents) ?? labelFromName;
     if (isIgnoredLaunchdLabel(label)) {
       continue;
@@ -216,19 +218,20 @@ async function scanSystemdDir(params: {
     } catch {
       continue;
     }
-    if (!containsMarker(contents)) {
+    if (!detectMarker(contents)) {
       continue;
     }
     if (isVersoGatewaySystemdService(name, contents)) {
       continue;
     }
+    const detectedMarker = detectMarker(contents) as ExtraGatewayService["marker"];
     results.push({
       platform: "linux",
       label: entry,
       detail: `unit: ${fullPath}`,
       scope: params.scope,
-      marker,
-      legacy: marker !== "openclaw",
+      marker: detectedMarker,
+      legacy: detectedMarker !== "openclaw",
     });
   }
 
@@ -424,7 +427,7 @@ export async function findExtraGatewayServices(
         label: name,
         detail: task.taskToRun ? `task: ${name}, run: ${task.taskToRun}` : name,
         scope: "system",
-        marker,
+        marker: marker as ExtraGatewayService["marker"],
         legacy: marker !== "openclaw",
       });
     }

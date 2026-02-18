@@ -23,6 +23,7 @@ type PackageManifest = {
   version?: string;
   dependencies?: Record<string, string>;
   verso?: { extensions?: string[] };
+  [key: string]: unknown;
 };
 
 export type InstallPluginResult =
@@ -57,7 +58,7 @@ function validatePluginId(pluginId: string): string | null {
 
 function isPathInside(basePath: string, candidatePath: string): boolean {
   const relative = path.relative(basePath, candidatePath);
-  return relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+  return !!relative && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 function extensionUsesSkippedScannerPath(entry: string): boolean {
@@ -86,7 +87,8 @@ function safeFileName(input: string): string {
 }
 
 async function ensureVersoExtensions(manifest: PackageManifest) {
-  const extensions = manifest.verso?.extensions ?? manifest[LEGACY_MANIFEST_KEY]?.extensions;
+  const legacy = manifest[LEGACY_MANIFEST_KEY] as { extensions?: string[] } | undefined;
+  const extensions = manifest.verso?.extensions ?? legacy?.extensions;
   if (!Array.isArray(extensions)) {
     throw new Error("package.json missing verso.extensions");
   }

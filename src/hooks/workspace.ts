@@ -22,6 +22,7 @@ import {
 type HookPackageManifest = {
   name?: string;
   verso?: { hooks?: string[] };
+  [key: string]: unknown;
 };
 
 function filterHookEntries(
@@ -46,7 +47,8 @@ function readHookPackageManifest(dir: string): HookPackageManifest | null {
 }
 
 function resolvePackageHooks(manifest: HookPackageManifest): string[] {
-  const raw = manifest.verso?.hooks ?? manifest[LEGACY_MANIFEST_KEY]?.hooks;
+  const legacy = manifest[LEGACY_MANIFEST_KEY] as { hooks?: string[] } | undefined;
+  const raw = manifest.verso?.hooks ?? legacy?.hooks;
   if (!Array.isArray(raw)) {
     return [];
   }

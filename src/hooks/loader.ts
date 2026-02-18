@@ -6,6 +6,7 @@
  */
 
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import type { VersoConfig } from "../config/config.js";
 import type { InternalHookHandler } from "./internal-hooks.js";
 import { resolveHookConfig } from "./config.js";

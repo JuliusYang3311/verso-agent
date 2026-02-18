@@ -4,7 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { loadConfig } from "../config/config.js";
 import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "../infra/tailnet.js";
-import { getWideAreaZonePath, resolveWideAreaDiscoveryDomain } from "../infra/widearea-dns.js";
+import {
+  getWideAreaZonePath,
+  resolveWideAreaDiscoveryDomain,
+  WIDE_AREA_DISCOVERY_DOMAIN,
+} from "../infra/widearea-dns.js";
 import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { renderTable } from "../terminal/table.js";
