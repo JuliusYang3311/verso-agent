@@ -210,6 +210,7 @@ export class MemoryIndexManager implements MemorySearchManager {
     if (INDEX_CACHE.size >= INDEX_CACHE_MAX) {
       const oldestKey = INDEX_CACHE.keys().next().value as string;
       const oldest = INDEX_CACHE.get(oldestKey);
+      INDEX_CACHE.delete(oldestKey);
       if (oldest) {
         log.warn("memory: INDEX_CACHE at limit, evicting oldest", { key: oldestKey });
         try {

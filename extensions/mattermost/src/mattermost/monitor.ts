@@ -343,6 +343,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value;
     }
+    if (cached) channelCache.delete(channelId);
     try {
       const info = await fetchMattermostChannel(client, channelId);
       channelCache.set(channelId, {
@@ -365,6 +366,7 @@ export async function monitorMattermostProvider(opts: MonitorMattermostOpts = {}
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value;
     }
+    if (cached) userCache.delete(userId);
     try {
       const info = await fetchMattermostUser(client, userId);
       userCache.set(userId, {

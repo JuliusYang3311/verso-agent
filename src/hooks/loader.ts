@@ -14,6 +14,10 @@ import { shouldIncludeHook } from "./config.js";
 import { registerInternalHook } from "./internal-hooks.js";
 import { loadWorkspaceHookEntries } from "./workspace.js";
 
+/** Monotonic generation counter – only bumps once per loadInternalHooks() call,
+ *  so repeated reloads don't leak unbounded V8 module-cache entries. */
+let hookLoadGeneration = 0;
+
 /**
  * Load and register all hook handlers
  *
@@ -39,6 +43,7 @@ export async function loadInternalHooks(cfg: VersoConfig, workspaceDir: string):
     return 0;
   }
 
+  const generation = ++hookLoadGeneration;
   let loadedCount = 0;
 
   // 1. Load hooks from directories (new system)
@@ -57,9 +62,9 @@ export async function loadInternalHooks(cfg: VersoConfig, workspaceDir: string):
       }
 
       try {
-        // Import handler module with cache-busting
+        // Import handler module with cache-busting per generation
         const url = pathToFileURL(entry.hook.handlerPath).href;
-        const cacheBustedUrl = `${url}?t=${Date.now()}`;
+        const cacheBustedUrl = `${url}?g=${generation}`;
         const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
 
         // Get handler function (default or named export)
@@ -111,9 +116,9 @@ export async function loadInternalHooks(cfg: VersoConfig, workspaceDir: string):
         ? handlerConfig.module
         : path.join(process.cwd(), handlerConfig.module);
 
-      // Import the module with cache-busting to ensure fresh reload
+      // Import the module with cache-busting per generation
       const url = pathToFileURL(modulePath).href;
-      const cacheBustedUrl = `${url}?t=${Date.now()}`;
+      const cacheBustedUrl = `${url}?g=${generation}`;
       const mod = (await import(cacheBustedUrl)) as Record<string, unknown>;
 
       // Get the handler function
