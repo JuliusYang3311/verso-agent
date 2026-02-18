@@ -890,6 +890,65 @@ export async function runEmbeddedAttempt(
           );
         }
 
+        // Repair empty assistant messages to prevent degenerate loops.
+        // When the LLM returns an empty response, it gets persisted to the transcript.
+        // On the next turn the LLM sees its own empty response in context and keeps
+        // producing empty responses. Injecting a placeholder breaks the loop.
+        {
+          let patchedEmpty = false;
+          for (const msg of activeSession.messages) {
+            if (msg.role !== "assistant") {
+              continue;
+            }
+            const content = Array.isArray(msg.content) ? msg.content : [];
+            const hasToolCall = content.some(
+              (b: unknown) =>
+                b &&
+                typeof b === "object" &&
+                ((b as Record<string, unknown>).type === "toolCall" ||
+                  (b as Record<string, unknown>).type === "tool_use"),
+            );
+            if (hasToolCall) {
+              continue;
+            }
+            const textContent = content
+              .filter(
+                (b: unknown): b is { type: "text"; text: string } =>
+                  b !== null &&
+                  typeof b === "object" &&
+                  (b as Record<string, unknown>).type === "text" &&
+                  typeof (b as Record<string, unknown>).text === "string",
+              )
+              .map((b) => b.text.trim())
+              .join("")
+              .trim();
+            if (!textContent) {
+              // Inject placeholder so the LLM sees a non-empty prior response.
+              if (content.length === 0) {
+                (msg as { content: unknown[] }).content = [
+                  { type: "text", text: "(empty response)" },
+                ];
+              } else {
+                for (const block of content) {
+                  const b = block as unknown as Record<string, unknown>;
+                  if (b.type === "text" && typeof b.text === "string" && !b.text.trim()) {
+                    b.text = "(empty response)";
+                    break;
+                  }
+                }
+              }
+              patchedEmpty = true;
+            }
+          }
+          if (patchedEmpty) {
+            activeSession.agent.replaceMessages(activeSession.messages);
+            log.warn(
+              `Patched empty assistant message(s) to prevent degenerate loop. ` +
+                `runId=${params.runId} sessionId=${params.sessionId}`,
+            );
+          }
+        }
+
         try {
           // Detect and load images referenced in the prompt for vision-capable models.
           // This eliminates the need for an explicit "view" tool call by injecting

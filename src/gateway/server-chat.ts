@@ -264,18 +264,21 @@ export function createAgentEventHandler({
     chatRunState.buffers.delete(clientRunId);
     chatRunState.deltaSentAt.delete(clientRunId);
     if (jobState === "done") {
+      // Skip broadcasting empty final states — the LLM produced no text.
+      // Broadcasting `message: undefined` causes the dashboard to render empty bubbles.
+      if (!text) {
+        return;
+      }
       const payload = {
         runId: clientRunId,
         sessionKey,
         seq,
         state: "final" as const,
-        message: text
-          ? {
-              role: "assistant",
-              content: [{ type: "text", text }],
-              timestamp: Date.now(),
-            }
-          : undefined,
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text }],
+          timestamp: Date.now(),
+        },
       };
       // Suppress webchat broadcast for heartbeat runs when showOk is false
       if (!shouldSuppressHeartbeatBroadcast(clientRunId)) {
