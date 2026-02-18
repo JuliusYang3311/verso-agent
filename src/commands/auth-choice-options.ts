@@ -55,7 +55,7 @@ const AUTH_CHOICE_GROUP_DEFS: {
     value: "minimax",
     label: "MiniMax",
     hint: "M2.1 (recommended)",
-    choices: ["minimax-portal", "minimax-api", "minimax-api-lightning"],
+    choices: ["minimax-portal", "minimax-api", "minimax-api-highspeed"],
   },
   {
     value: "moonshot",
@@ -233,8 +233,8 @@ export function buildAuthChoiceOptions(params: {
   });
   options.push({ value: "minimax-api", label: "MiniMax M2.1" });
   options.push({
-    value: "minimax-api-lightning",
-    label: "MiniMax M2.1 Lightning",
+    value: "minimax-api-highspeed",
+    label: "MiniMax M2.1 Highspeed",
     hint: "Faster, higher output cost",
   });
   if (params.includeSkip) {

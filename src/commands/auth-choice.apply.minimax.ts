@@ -52,10 +52,10 @@ export async function applyAuthChoiceMiniMax(
   if (
     params.authChoice === "minimax-cloud" ||
     params.authChoice === "minimax-api" ||
-    params.authChoice === "minimax-api-lightning"
+    params.authChoice === "minimax-api-highspeed"
   ) {
     const modelId =
-      params.authChoice === "minimax-api-lightning" ? "MiniMax-M2.1-lightning" : "MiniMax-M2.1";
+      params.authChoice === "minimax-api-highspeed" ? "MiniMax-M2.1-highspeed" : "MiniMax-M2.1";
     let hasCredential = false;
     const envKey = resolveEnvApiKey("minimax");
     if (envKey) {

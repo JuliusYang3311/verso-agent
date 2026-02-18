@@ -37,6 +37,7 @@ type ModelSelectionState = {
 
 const FUZZY_VARIANT_TOKENS = [
   "lightning",
+  "highspeed",
   "preview",
   "mini",
   "fast",

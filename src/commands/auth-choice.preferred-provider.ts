@@ -27,7 +27,7 @@ const PREFERRED_PROVIDER_BY_AUTH_CHOICE: Partial<Record<AuthChoice, string>> = {
   "copilot-proxy": "copilot-proxy",
   "minimax-cloud": "minimax",
   "minimax-api": "minimax",
-  "minimax-api-lightning": "minimax",
+  "minimax-api-highspeed": "minimax",
   minimax: "lmstudio",
   "opencode-zen": "opencode",
   "xai-api-key": "xai",

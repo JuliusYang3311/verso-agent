@@ -179,8 +179,8 @@ describe("applyMinimaxApiConfig", () => {
   });
 
   it("sets correct primary model", () => {
-    const cfg = applyMinimaxApiConfig({}, "MiniMax-M2.1-lightning");
-    expect(cfg.agents?.defaults?.model?.primary).toBe("minimax/MiniMax-M2.1-lightning");
+    const cfg = applyMinimaxApiConfig({}, "MiniMax-M2.1-highspeed");
+    expect(cfg.agents?.defaults?.model?.primary).toBe("minimax/MiniMax-M2.1-highspeed");
   });
 
   it("does not set reasoning for non-reasoning models", () => {

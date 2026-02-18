@@ -209,7 +209,7 @@ describe("directive behavior", () => {
               workspace: path.join(home, "verso"),
               models: {
                 "minimax/MiniMax-M2.1": {},
-                "minimax/MiniMax-M2.1-lightning": {},
+                "minimax/MiniMax-M2.1-highspeed": {},
                 "lmstudio/minimax-m2.1-gs32": {},
               },
             },
@@ -254,7 +254,7 @@ describe("directive behavior", () => {
               workspace: path.join(home, "verso"),
               models: {
                 "minimax/MiniMax-M2.1": {},
-                "minimax/MiniMax-M2.1-lightning": {},
+                "minimax/MiniMax-M2.1-highspeed": {},
               },
             },
           },
@@ -268,8 +268,8 @@ describe("directive behavior", () => {
                 models: [
                   { id: "MiniMax-M2.1", name: "MiniMax M2.1" },
                   {
-                    id: "MiniMax-M2.1-lightning",
-                    name: "MiniMax M2.1 Lightning",
+                    id: "MiniMax-M2.1-highspeed",
+                    name: "MiniMax M2.1 Highspeed",
                   },
                 ],
               },
