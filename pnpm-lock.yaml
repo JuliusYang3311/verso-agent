@@ -352,18 +352,6 @@ importers:
         specifier: workspace:*
         version: link:../..
 
-  extensions/imessage:
-    devDependencies:
-      verso-custom:
-        specifier: workspace:*
-        version: link:../..
-
-  extensions/line:
-    devDependencies:
-      verso-custom:
-        specifier: workspace:*
-        version: link:../..
-
   extensions/llm-task:
     devDependencies:
       verso-custom:
@@ -470,12 +458,6 @@ importers:
         version: link:../..
 
   extensions/open-prose:
-    devDependencies:
-      verso-custom:
-        specifier: workspace:*
-        version: link:../..
-
-  extensions/signal:
     devDependencies:
       verso-custom:
         specifier: workspace:*

@@ -460,4 +460,21 @@ export type ToolsConfig = {
       deny?: string[];
     };
   };
+  /** MCP (Model Context Protocol) server configuration. */
+  mcp?: {
+    /** Enable MCP tool (default: true when servers are configured). */
+    enabled?: boolean;
+    /** MCP server configurations keyed by server name. */
+    servers?: Record<
+      string,
+      {
+        /** Command to start the MCP server. */
+        command: string;
+        /** Optional command arguments. */
+        args?: string[];
+        /** Optional environment variables. */
+        env?: Record<string, string>;
+      }
+    >;
+  };
 };
