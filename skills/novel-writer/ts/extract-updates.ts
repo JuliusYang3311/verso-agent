@@ -2,28 +2,48 @@
 /**
  * extract-updates.ts
  * Use an LLM to extract continuity updates (patch JSON) from a chapter.
- * Replaces scripts/extract_updates.py.
+ * Resolves LLM provider/model/auth from verso config (agents.defaults.model).
  *
  * Usage:
  *   npx tsx skills/novel-writer/ts/extract-updates.ts \
  *     --project mynovel --chapter 8 --title "回响" --text chapter.txt
- *
- * Env vars:
- *   NOVEL_LLM_BASE_URL / OPENAI_BASE_URL  (default: https://api.openai.com/v1)
- *   NOVEL_LLM_API_KEY  / OPENAI_API_KEY
- *   NOVEL_LLM_MODEL    / OPENAI_MODEL     (default: gpt-4o-mini)
  */
 
 import fsSync from "node:fs";
 import { parseArgs } from "node:util";
+import type { ModelProviderConfig } from "../../../src/config/types.js";
+import { resolveApiKeyForProvider, requireApiKey } from "../../../src/agents/model-auth.js";
+import { resolveConfiguredModelRef } from "../../../src/agents/model-selection.js";
+import { loadConfig } from "../../../src/config/config.js";
 
-function llmEnv(): { baseUrl: string; apiKey: string; model: string } {
-  return {
-    baseUrl:
-      process.env.NOVEL_LLM_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-    apiKey: process.env.NOVEL_LLM_API_KEY ?? process.env.OPENAI_API_KEY ?? "",
-    model: process.env.NOVEL_LLM_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-  };
+function loadVersoConfig() {
+  try {
+    return loadConfig();
+  } catch {
+    return {} as any;
+  }
+}
+
+async function resolveLlm(): Promise<{ baseUrl: string; apiKey: string; model: string }> {
+  const cfg = loadVersoConfig();
+
+  // Resolve model ref from agents.defaults.model.primary
+  const ref = resolveConfiguredModelRef({
+    cfg,
+    defaultProvider: "anthropic",
+    defaultModel: "claude-sonnet-4-20250514",
+  });
+
+  // Resolve provider config for baseUrl
+  const providers = cfg?.models?.providers ?? {};
+  const providerCfg = providers[ref.provider] as ModelProviderConfig | undefined;
+  const baseUrl = providerCfg?.baseUrl ?? "https://api.openai.com/v1";
+
+  // Resolve auth (api-key, oauth, token, aws-sdk)
+  const auth = await resolveApiKeyForProvider({ provider: ref.provider, cfg });
+  const apiKey = requireApiKey(auth, ref.provider);
+
+  return { baseUrl, apiKey, model: ref.model };
 }
 
 async function callChat(
@@ -33,7 +53,6 @@ async function callChat(
   messages: { role: string; content: string }[],
   maxTokens = 1200,
 ): Promise<string> {
-  if (!apiKey) throw new Error("NOVEL_LLM_API_KEY/OPENAI_API_KEY is required");
   const url = baseUrl.replace(/\/+$/, "") + "/chat/completions";
   const resp = await fetch(url, {
     method: "POST",
@@ -108,7 +127,7 @@ async function main() {
     0,
   );
 
-  const { baseUrl, apiKey, model } = llmEnv();
+  const { baseUrl, apiKey, model } = await resolveLlm();
   const content = await callChat(
     baseUrl,
     apiKey,

@@ -187,11 +187,7 @@ npx tsx skills/novel-writer/ts/extract-updates.ts \
   --text chapters/chapter-08.txt > patch.json
 ```
 
-Env vars for LLM:
-
-- `NOVEL_LLM_BASE_URL` / `OPENAI_BASE_URL` (default: `https://api.openai.com/v1`)
-- `NOVEL_LLM_API_KEY` / `OPENAI_API_KEY`
-- `NOVEL_LLM_MODEL` / `OPENAI_MODEL` (default: `gpt-4o-mini`)
+LLM provider/model/auth are resolved automatically from verso config (`agents.defaults.model`).
 
 ### 7. Validate Patch
 
@@ -496,10 +492,7 @@ Embedding provider is resolved from verso config (`~/.verso/verso.json`). Suppor
 
 Embedding cache is per-DB — repeated ingests skip already-embedded chunks.
 
-For LLM-based extraction (`extract-updates.ts`), set:
-
-- `NOVEL_LLM_API_KEY` / `OPENAI_API_KEY`
-- `NOVEL_LLM_MODEL` (default: `gpt-4o-mini`)
+LLM-based extraction (`extract-updates.ts`) uses the same provider/model/auth as the main agent, resolved from `agents.defaults.model` in verso config.
 
 ## Multi-Project Example
 
