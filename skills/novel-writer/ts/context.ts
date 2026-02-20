@@ -12,10 +12,6 @@
  *     --outline "Chapter 5: The dark forest" \
  *     --style "gothic atmosphere" \
  *     --budget 8000
- *
- *   # Backwards-compat: fixed top-k mode
- *   npx tsx skills/novel-writer/ts/context.ts \
- *     --project mynovel --outline "..." --limit 5 --recent 5
  */
 
 import fsSync from "node:fs";
@@ -27,7 +23,7 @@ import { NovelMemoryStore } from "./novel-memory.js";
 const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
 const STYLE_DB_PATH = path.resolve(import.meta.dirname, "../style/style_memory.sqlite");
 
-/** Default total token budget for timeline recent in dynamic mode. */
+/** Default total token budget for timeline recent. */
 const DEFAULT_BUDGET_TOKENS = 8000;
 
 function projectDir(project: string): string {
@@ -99,10 +95,7 @@ async function main() {
       project: { type: "string" },
       outline: { type: "string", default: "" },
       style: { type: "string", default: "" },
-      recent: { type: "string", default: "" },
-      limit: { type: "string", default: "" },
       budget: { type: "string", default: "" },
-      "min-score": { type: "string", default: "" },
     },
     strict: true,
   });
@@ -113,10 +106,10 @@ async function main() {
     process.exit(1);
   }
 
-  // Determine mode: dynamic (default) or fixed top-k (backwards compat)
-  const hasLimit = values.limit !== "";
-  const hasRecent = values.recent !== "";
-  const useDynamic = !hasLimit && !hasRecent;
+  const budget = values.budget ? parseInt(values.budget, 10) : DEFAULT_BUDGET_TOKENS;
+  const contextParams = await loadContextParams();
+  const recentRatio = contextParams.recentRatioBase ?? DEFAULT_CONTEXT_PARAMS.recentRatioBase;
+  const timelineRecentBudget = Math.floor(budget * recentRatio);
 
   // Load flat JSON memory (always loaded in full)
   const characters = loadJson(memoryFilePath(project, "characters.json"), { characters: [] });
@@ -128,135 +121,71 @@ async function main() {
   const state = loadJson(path.join(projectDir(project), "state.json"), {});
   const defaultStyle = loadJson(path.join(projectDir(project), "style", "default_style.json"), {});
 
-  // Load full timeline
+  // Load full timeline + select recent by budget
   const fullTimeline = loadJsonl(memoryFilePath(project, "timeline.jsonl"));
+  const { selected: timelineRecent, count: timelineRecentCount } = selectRecentTimeline(
+    fullTimeline,
+    timelineRecentBudget,
+  );
 
   // Build search query from outline + style
   const query = (values.outline || values.style || "").trim();
 
   let styleSnippets: unknown[] = [];
   let timelineHits: unknown[] = [];
-  let timelineRecent: unknown[];
-  let meta: Record<string, unknown>;
 
-  if (useDynamic) {
-    // ---- Dynamic mode ----
-    // Timeline recent: use recentRatio from context params to allocate budget
-    const budget = values.budget ? parseInt(values.budget, 10) : DEFAULT_BUDGET_TOKENS;
-    const contextParams = await loadContextParams();
-    const recentRatio = contextParams.recentRatioBase ?? DEFAULT_CONTEXT_PARAMS.recentRatioBase;
-    const timelineRecentBudget = Math.floor(budget * recentRatio);
-
-    const { selected, count } = selectRecentTimeline(fullTimeline, timelineRecentBudget);
-    timelineRecent = selected;
-
-    // Style and timeline search: NovelMemoryStore.search() uses verso config
-    // settings internally (maxResults, minScore, hybrid weights, candidateMultiplier)
-    if (query) {
-      if (fsSync.existsSync(STYLE_DB_PATH)) {
-        try {
-          const styleStore = await NovelMemoryStore.open({
-            dbPath: STYLE_DB_PATH,
-            source: "style",
-          });
-          const results = await styleStore.search({ query });
-          styleSnippets = results.map((r) => ({
-            text: r.snippet,
-            score: Math.round(r.score * 1000) / 1000,
-            path: r.path,
-          }));
-          styleStore.close();
-        } catch (err) {
-          console.error(`style search failed: ${err}`);
-        }
-      }
-
-      const tlDbPath = timelineDbPath(project);
-      if (fsSync.existsSync(tlDbPath)) {
-        try {
-          const tlStore = await NovelMemoryStore.open({
-            dbPath: tlDbPath,
-            source: "timeline",
-          });
-          const results = await tlStore.search({ query });
-          timelineHits = results.map((r) => ({
-            text: r.snippet,
-            score: Math.round(r.score * 1000) / 1000,
-            path: r.path,
-          }));
-          tlStore.close();
-        } catch (err) {
-          console.error(`timeline search failed: ${err}`);
-        }
+  // Style and timeline search: NovelMemoryStore.search() uses verso config
+  // settings internally (maxResults, minScore, hybrid weights, candidateMultiplier)
+  if (query) {
+    if (fsSync.existsSync(STYLE_DB_PATH)) {
+      try {
+        const styleStore = await NovelMemoryStore.open({
+          dbPath: STYLE_DB_PATH,
+          source: "style",
+        });
+        const results = await styleStore.search({ query });
+        styleSnippets = results.map((r) => ({
+          text: r.snippet,
+          score: Math.round(r.score * 1000) / 1000,
+          path: r.path,
+        }));
+        styleStore.close();
+      } catch (err) {
+        console.error(`style search failed: ${err}`);
       }
     }
 
-    meta = {
-      mode: "dynamic",
-      budget,
-      recent_ratio: recentRatio,
-      timeline_recent_budget: timelineRecentBudget,
-      timeline_recent_count: count,
-      style_results: styleSnippets.length,
-      timeline_search_results: timelineHits.length,
-    };
-  } else {
-    // ---- Fixed top-k mode (backwards compat) ----
-    const limit = hasLimit ? parseInt(values.limit!, 10) : 5;
-    const recent = hasRecent ? parseInt(values.recent!, 10) : 5;
-    const minScore = values["min-score"] ? parseFloat(values["min-score"]!) : 0.2;
-
-    timelineRecent = fullTimeline.slice(-recent);
-
-    if (query) {
-      if (fsSync.existsSync(STYLE_DB_PATH)) {
-        try {
-          const styleStore = await NovelMemoryStore.open({
-            dbPath: STYLE_DB_PATH,
-            source: "style",
-          });
-          const results = await styleStore.search({ query, limit, minScore });
-          styleSnippets = results.map((r) => ({
-            text: r.snippet,
-            score: Math.round(r.score * 1000) / 1000,
-            path: r.path,
-          }));
-          styleStore.close();
-        } catch (err) {
-          console.error(`style search failed: ${err}`);
-        }
-      }
-
-      const tlDbPath = timelineDbPath(project);
-      if (fsSync.existsSync(tlDbPath)) {
-        try {
-          const tlStore = await NovelMemoryStore.open({
-            dbPath: tlDbPath,
-            source: "timeline",
-          });
-          const results = await tlStore.search({ query, limit, minScore });
-          timelineHits = results.map((r) => ({
-            text: r.snippet,
-            score: Math.round(r.score * 1000) / 1000,
-            path: r.path,
-          }));
-          tlStore.close();
-        } catch (err) {
-          console.error(`timeline search failed: ${err}`);
-        }
+    const tlDbPath = timelineDbPath(project);
+    if (fsSync.existsSync(tlDbPath)) {
+      try {
+        const tlStore = await NovelMemoryStore.open({
+          dbPath: tlDbPath,
+          source: "timeline",
+        });
+        const results = await tlStore.search({ query });
+        timelineHits = results.map((r) => ({
+          text: r.snippet,
+          score: Math.round(r.score * 1000) / 1000,
+          path: r.path,
+        }));
+        tlStore.close();
+      } catch (err) {
+        console.error(`timeline search failed: ${err}`);
       }
     }
-
-    meta = {
-      mode: "fixed",
-      timeline_recent_count: timelineRecent.length,
-    };
   }
 
   const output = {
     status: "ok",
     project,
-    meta,
+    meta: {
+      budget,
+      recent_ratio: recentRatio,
+      timeline_recent_budget: timelineRecentBudget,
+      timeline_recent_count: timelineRecentCount,
+      style_results: styleSnippets.length,
+      timeline_search_results: timelineHits.length,
+    },
     state,
     characters,
     world_bible: worldBible,

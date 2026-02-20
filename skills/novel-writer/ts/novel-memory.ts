@@ -371,24 +371,17 @@ export class NovelMemoryStore {
 
   /**
    * Search the index using hierarchical search with hybrid (vector + FTS).
-   * Uses verso config query settings as defaults (maxResults, minScore, hybrid weights).
+   * Query settings (maxResults, minScore, hybrid weights) come from verso config.
    */
-  async search(params: {
-    query: string;
-    limit?: number;
-    minScore?: number;
-    /** Over-fetch candidate count for dynamic filtering by the caller. */
-    candidates?: number;
-  }): Promise<SearchRowResult[]> {
+  async search(params: { query: string }): Promise<SearchRowResult[]> {
     const query = params.query.trim();
     if (!query) return [];
     const qs = this.querySettings;
-    const maxResults = params.limit ?? qs.maxResults;
-    const candidates = params.candidates
-      ? params.candidates
-      : Math.min(200, Math.max(1, Math.floor(maxResults * qs.hybrid.candidateMultiplier)));
-    const limit = params.candidates ? params.candidates : maxResults;
-    const minScore = params.minScore ?? qs.minScore;
+    const candidates = Math.min(
+      200,
+      Math.max(1, Math.floor(qs.maxResults * qs.hybrid.candidateMultiplier)),
+    );
+    const minScore = qs.minScore;
 
     const ctx = this.buildEmbeddingContext();
     const queryVec = await embedQueryWithTimeout(ctx, query);
@@ -425,7 +418,7 @@ export class NovelMemoryStore {
           sourceFilterChunks: sourceFilter,
         });
 
-        return results.filter((r) => r.score >= minScore).slice(0, limit);
+        return results.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
       } catch {
         // Fall through to flat search
       }
@@ -447,7 +440,7 @@ export class NovelMemoryStore {
       : [];
 
     if (!this.fts.available) {
-      return vectorResults.filter((r) => r.score >= minScore).slice(0, limit);
+      return vectorResults.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
     }
 
     const keywordResults = await searchKeyword({
@@ -463,7 +456,7 @@ export class NovelMemoryStore {
     }).catch(() => []);
 
     if (keywordResults.length === 0) {
-      return vectorResults.filter((r) => r.score >= minScore).slice(0, limit);
+      return vectorResults.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
     }
 
     const merged = mergeHybridResults({
@@ -490,7 +483,7 @@ export class NovelMemoryStore {
       textWeight: qs.hybrid.textWeight,
     });
 
-    return merged.filter((r) => r.score >= minScore).slice(0, limit);
+    return merged.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
   }
 
   /** Get stats about the index. */

@@ -117,15 +117,16 @@ These tags are automatically applied as filters during context retrieval.
 
 ### 4. Retrieve Context Before Writing
 
-Load full context (4-layer memory + style snippets + timeline hits) for the agent:
+Load full context (4-layer memory + style snippets + timeline hits) for the agent.
+
+Style and timeline search use the same query settings as verso's main memory (maxResults, minScore, hybrid weights, candidateMultiplier — all read from `~/.verso/verso.json`). Timeline recent entries are selected by a ratio-based token budget (`recentRatio` from dynamic context params) instead of a fixed count.
 
 ```bash
 npx tsx skills/novel-writer/ts/context.ts \
   --project my_novel \
   --outline "第8章：林澈在旧港码头发现暗门" \
   --style "noir 悬疑 紧张氛围" \
-  --recent 5 \
-  --limit 5
+  --budget 8000
 ```
 
 Returns:
@@ -134,21 +135,34 @@ Returns:
 {
   "status": "ok",
   "project": "my_novel",
-  "state": { "last_chapter": 7, ... },
-  "characters": { "characters": [...] },
-  "world_bible": { "world": {...}, "protected_keys": [...] },
-  "plot_threads": { "threads": [...] },
-  "timeline_recent": [ /* last N timeline entries */ ],
-  "timeline_hits": [ /* semantic search results from timeline DB */ ],
-  "style_snippets": [ /* semantic search results from style DB */ ],
-  "default_style": { "tags": [...] }
+  "meta": {
+    "budget": 8000,
+    "recent_ratio": 0.4,
+    "timeline_recent_budget": 3200,
+    "timeline_recent_count": 12,
+    "style_results": 4,
+    "timeline_search_results": 3
+  },
+  "state": { "last_chapter": 7 },
+  "characters": { "characters": [] },
+  "world_bible": { "world": {}, "protected_keys": [] },
+  "plot_threads": { "threads": [] },
+  "timeline_recent": [
+    /* budget-selected recent entries */
+  ],
+  "timeline_hits": [
+    /* search results from timeline DB */
+  ],
+  "style_snippets": [
+    /* search results from style DB */
+  ],
+  "default_style": { "tags": [] }
 }
 ```
 
 - `--outline` drives semantic retrieval for both style and timeline
 - `--style` adds additional search terms for style retrieval
-- `--recent N` returns the last N timeline entries (tail read, no search)
-- `--limit N` controls max search results per DB
+- `--budget N` total token budget for timeline recent (default: 8000)
 
 ### 5. Write Chapter
 
@@ -229,21 +243,19 @@ Use `--force` to re-index all entries even if hashes match.
 
 ### 10. Search Style or Timeline
 
-Standalone search for debugging or exploration:
+Standalone search for debugging or exploration (uses verso config query settings):
 
 ```bash
 # Search style library
 npx tsx skills/novel-writer/ts/search.ts \
   --db style \
-  --query "dark gothic atmosphere" \
-  --limit 5
+  --query "dark gothic atmosphere"
 
 # Search project timeline
 npx tsx skills/novel-writer/ts/search.ts \
   --db timeline \
   --project my_novel \
-  --query "betrayal scene" \
-  --limit 5
+  --query "betrayal scene"
 ```
 
 ### 11. Check Progress
@@ -261,11 +273,10 @@ PROJECT="my_novel"
 CHAPTER=8
 TITLE="回响"
 
-# 1. Get context for writing
+# 1. Get context for writing (dynamic mode — uses verso config settings)
 npx tsx skills/novel-writer/ts/context.ts \
   --project $PROJECT \
-  --outline "林澈在旧港码头发现暗门，苏宁被跟踪" \
-  --recent 5 > context.json
+  --outline "林澈在旧港码头发现暗门，苏宁被跟踪" > context.json
 
 # 2. Agent writes chapter using context → saves to chapter.txt
 
@@ -494,11 +505,11 @@ For LLM-based extraction (`extract-updates.ts`), set:
 
 ```bash
 # Project A: 悬疑小说
-npx tsx skills/novel-writer/ts/context.ts --project suspense_novel --outline "第3章大纲" --recent 5
+npx tsx skills/novel-writer/ts/context.ts --project suspense_novel --outline "第3章大纲"
 npx tsx skills/novel-writer/ts/apply-patch.ts --project suspense_novel --patch patch_a.json --chapter 3 --title "暗流"
 
 # Project B: 科幻小说 (completely isolated memory)
-npx tsx skills/novel-writer/ts/context.ts --project scifi_novel --outline "第12章大纲" --recent 5
+npx tsx skills/novel-writer/ts/context.ts --project scifi_novel --outline "第12章大纲"
 npx tsx skills/novel-writer/ts/apply-patch.ts --project scifi_novel --patch patch_b.json --chapter 12 --title "星际"
 
 # Both projects share the same style library

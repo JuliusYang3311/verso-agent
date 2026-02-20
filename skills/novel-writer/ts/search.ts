@@ -2,13 +2,13 @@
 /**
  * search.ts
  * Unified search CLI for novel-writer style and timeline DBs.
- * Replaces scripts/retrieve_style.py and timeline search in context.py.
+ * Uses verso config query settings (maxResults, minScore, hybrid weights).
  *
  * Usage:
  *   npx tsx skills/novel-writer/ts/search.ts \
- *     --db style --query "dark gothic atmosphere" --limit 5
+ *     --db style --query "dark gothic atmosphere"
  *   npx tsx skills/novel-writer/ts/search.ts \
- *     --db timeline --project mynovel --query "betrayal scene" --limit 5
+ *     --db timeline --project mynovel --query "betrayal scene"
  */
 
 import fsSync from "node:fs";
@@ -29,8 +29,6 @@ async function main() {
       db: { type: "string" },
       project: { type: "string", default: "" },
       query: { type: "string" },
-      limit: { type: "string", default: "5" },
-      "min-score": { type: "string", default: "0.2" },
     },
     strict: true,
   });
@@ -64,15 +62,12 @@ async function main() {
     process.exit(1);
   }
 
-  const limit = parseInt(values.limit!, 10);
-  const minScore = parseFloat(values["min-score"]!);
-
   const store = await NovelMemoryStore.open({
     dbPath,
     source: dbType,
   });
 
-  const results = await store.search({ query, limit, minScore });
+  const results = await store.search({ query });
   store.close();
 
   const output = {
