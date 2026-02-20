@@ -72,6 +72,29 @@ export type NovelMemoryConfig = {
   cacheEnabled?: boolean;
 };
 
+/** Query settings resolved from verso config, matching main memory's defaults. */
+export type NovelQuerySettings = {
+  maxResults: number;
+  minScore: number;
+  hybrid: {
+    enabled: boolean;
+    vectorWeight: number;
+    textWeight: number;
+    candidateMultiplier: number;
+  };
+};
+
+const DEFAULT_QUERY_SETTINGS: NovelQuerySettings = {
+  maxResults: 6,
+  minScore: 0.35,
+  hybrid: {
+    enabled: true,
+    vectorWeight: 0.7,
+    textWeight: 0.3,
+    candidateMultiplier: 4,
+  },
+};
+
 export class NovelMemoryStore {
   private db: DatabaseSync;
   private provider: EmbeddingProvider;
@@ -86,6 +109,7 @@ export class NovelMemoryStore {
   private source: string;
   private chunking: { tokens: number; overlap: number };
   private batchFailureTracker;
+  private querySettings: NovelQuerySettings;
 
   private constructor(params: {
     db: DatabaseSync;
@@ -93,6 +117,7 @@ export class NovelMemoryStore {
     config: NovelMemoryConfig;
     ftsAvailable: boolean;
     filesFtsAvailable: boolean;
+    querySettings: NovelQuerySettings;
   }) {
     this.db = params.db;
     this.providerResult = params.providerResult;
@@ -116,6 +141,7 @@ export class NovelMemoryStore {
       extensionPath: params.config.vectorExtensionPath,
     };
     this.batchFailureTracker = createBatchFailureTracker(false);
+    this.querySettings = params.querySettings;
   }
 
   static async open(config: NovelMemoryConfig): Promise<NovelMemoryStore> {
@@ -135,6 +161,7 @@ export class NovelMemoryStore {
     });
 
     const providerResult = await resolveEmbeddingProvider();
+    const querySettings = resolveQuerySettings();
 
     const store = new NovelMemoryStore({
       db,
@@ -142,6 +169,7 @@ export class NovelMemoryStore {
       config,
       ftsAvailable,
       filesFtsAvailable,
+      querySettings,
     });
 
     // Read existing meta for vector dims
@@ -343,16 +371,24 @@ export class NovelMemoryStore {
 
   /**
    * Search the index using hierarchical search with hybrid (vector + FTS).
+   * Uses verso config query settings as defaults (maxResults, minScore, hybrid weights).
    */
   async search(params: {
     query: string;
     limit?: number;
     minScore?: number;
+    /** Over-fetch candidate count for dynamic filtering by the caller. */
+    candidates?: number;
   }): Promise<SearchRowResult[]> {
     const query = params.query.trim();
     if (!query) return [];
-    const limit = params.limit ?? 6;
-    const minScore = params.minScore ?? 0.3;
+    const qs = this.querySettings;
+    const maxResults = params.limit ?? qs.maxResults;
+    const candidates = params.candidates
+      ? params.candidates
+      : Math.min(200, Math.max(1, Math.floor(maxResults * qs.hybrid.candidateMultiplier)));
+    const limit = params.candidates ? params.candidates : maxResults;
+    const minScore = params.minScore ?? qs.minScore;
 
     const ctx = this.buildEmbeddingContext();
     const queryVec = await embedQueryWithTimeout(ctx, query);
@@ -368,7 +404,7 @@ export class NovelMemoryStore {
           db: this.db,
           queryVec,
           query,
-          limit: Math.min(200, limit * 4),
+          limit: Math.min(200, candidates),
           snippetMaxChars: SNIPPET_MAX_CHARS,
           providerModel: this.provider.model,
           vectorTable: VECTOR_TABLE,
@@ -402,7 +438,7 @@ export class NovelMemoryStore {
           vectorTable: VECTOR_TABLE,
           providerModel: this.provider.model,
           queryVec,
-          limit: limit * 4,
+          limit: candidates,
           snippetMaxChars: SNIPPET_MAX_CHARS,
           ensureVectorReady: async (dims) => this.ensureVectorReady(dims),
           sourceFilterVec: sourceFilterAliased,
@@ -419,7 +455,7 @@ export class NovelMemoryStore {
       ftsTable: FTS_TABLE,
       providerModel: this.provider.model,
       query,
-      limit: limit * 4,
+      limit: candidates,
       snippetMaxChars: SNIPPET_MAX_CHARS,
       sourceFilter,
       buildFtsQuery: (raw) => buildFtsQuery(raw),
@@ -450,8 +486,8 @@ export class NovelMemoryStore {
         snippet: r.snippet,
         textScore: r.textScore,
       })),
-      vectorWeight: 0.7,
-      textWeight: 0.3,
+      vectorWeight: qs.hybrid.vectorWeight,
+      textWeight: qs.hybrid.textWeight,
     });
 
     return merged.filter((r) => r.score >= minScore).slice(0, limit);
@@ -586,12 +622,7 @@ export class NovelMemoryStore {
 // --- Embedding provider resolution ---
 
 async function resolveEmbeddingProvider(): Promise<EmbeddingProviderResult> {
-  let cfg;
-  try {
-    cfg = loadConfig();
-  } catch {
-    cfg = {} as any;
-  }
+  const cfg = loadVersoConfig();
 
   // Try to get provider settings from verso config
   const memSearch = cfg?.agents?.defaults?.memorySearch;
@@ -609,4 +640,29 @@ async function resolveEmbeddingProvider(): Promise<EmbeddingProviderResult> {
     remote,
     local,
   });
+}
+
+function resolveQuerySettings(): NovelQuerySettings {
+  const cfg = loadVersoConfig();
+  const q = cfg?.agents?.defaults?.memorySearch?.query;
+  const h = q?.hybrid;
+  return {
+    maxResults: q?.maxResults ?? DEFAULT_QUERY_SETTINGS.maxResults,
+    minScore: q?.minScore ?? DEFAULT_QUERY_SETTINGS.minScore,
+    hybrid: {
+      enabled: h?.enabled ?? DEFAULT_QUERY_SETTINGS.hybrid.enabled,
+      vectorWeight: h?.vectorWeight ?? DEFAULT_QUERY_SETTINGS.hybrid.vectorWeight,
+      textWeight: h?.textWeight ?? DEFAULT_QUERY_SETTINGS.hybrid.textWeight,
+      candidateMultiplier:
+        h?.candidateMultiplier ?? DEFAULT_QUERY_SETTINGS.hybrid.candidateMultiplier,
+    },
+  };
+}
+
+function loadVersoConfig() {
+  try {
+    return loadConfig();
+  } catch {
+    return {} as any;
+  }
 }

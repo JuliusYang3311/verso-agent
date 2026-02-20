@@ -2,24 +2,33 @@
 /**
  * context.ts
  * Full context assembler for novel-writer.
- * Replaces scripts/context.py — loads JSON memory files + searches
- * style and timeline DBs via verso's memory infrastructure.
+ * Style and timeline search delegate to NovelMemoryStore.search() which
+ * reads query settings (maxResults, minScore, hybrid weights) from verso config.
+ * Timeline recent uses ratio-based token budget from dynamic context params.
  *
  * Usage:
  *   npx tsx skills/novel-writer/ts/context.ts \
  *     --project mynovel \
  *     --outline "Chapter 5: The dark forest" \
  *     --style "gothic atmosphere" \
- *     --recent 5 --limit 5
+ *     --budget 8000
+ *
+ *   # Backwards-compat: fixed top-k mode
+ *   npx tsx skills/novel-writer/ts/context.ts \
+ *     --project mynovel --outline "..." --limit 5 --recent 5
  */
 
 import fsSync from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { DEFAULT_CONTEXT_PARAMS, loadContextParams } from "../../../src/agents/dynamic-context.js";
 import { NovelMemoryStore } from "./novel-memory.js";
 
 const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
 const STYLE_DB_PATH = path.resolve(import.meta.dirname, "../style/style_memory.sqlite");
+
+/** Default total token budget for timeline recent in dynamic mode. */
+const DEFAULT_BUDGET_TOKENS = 8000;
 
 function projectDir(project: string): string {
   return path.join(PROJECTS_DIR, project);
@@ -55,15 +64,45 @@ function loadJsonl(filePath: string): unknown[] {
   }
 }
 
+/** Rough token estimate: ~4 chars per token. */
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Select recent timeline entries by walking backwards until token budget is exhausted.
+ */
+function selectRecentTimeline(
+  entries: unknown[],
+  budgetTokens: number,
+): { selected: unknown[]; count: number } {
+  if (entries.length === 0 || budgetTokens <= 0) {
+    return { selected: [], count: 0 };
+  }
+  const selected: unknown[] = [];
+  let tokensUsed = 0;
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const text = JSON.stringify(entries[i]);
+    const tokens = estimateTokens(text);
+    if (tokensUsed + tokens > budgetTokens && selected.length > 0) {
+      break;
+    }
+    selected.unshift(entries[i]);
+    tokensUsed += tokens;
+  }
+  return { selected, count: selected.length };
+}
+
 async function main() {
   const { values } = parseArgs({
     options: {
       project: { type: "string" },
       outline: { type: "string", default: "" },
       style: { type: "string", default: "" },
-      recent: { type: "string", default: "5" },
-      limit: { type: "string", default: "5" },
-      "min-score": { type: "string", default: "0.2" },
+      recent: { type: "string", default: "" },
+      limit: { type: "string", default: "" },
+      budget: { type: "string", default: "" },
+      "min-score": { type: "string", default: "" },
     },
     strict: true,
   });
@@ -74,9 +113,10 @@ async function main() {
     process.exit(1);
   }
 
-  const recent = parseInt(values.recent!, 10);
-  const limit = parseInt(values.limit!, 10);
-  const minScore = parseFloat(values["min-score"]!);
+  // Determine mode: dynamic (default) or fixed top-k (backwards compat)
+  const hasLimit = values.limit !== "";
+  const hasRecent = values.recent !== "";
+  const useDynamic = !hasLimit && !hasRecent;
 
   // Load flat JSON memory (always loaded in full)
   const characters = loadJson(memoryFilePath(project, "characters.json"), { characters: [] });
@@ -85,67 +125,138 @@ async function main() {
     protected_keys: [],
   });
   const plotThreads = loadJson(memoryFilePath(project, "plot_threads.json"), { threads: [] });
-
-  // Load state
   const state = loadJson(path.join(projectDir(project), "state.json"), {});
-
-  // Load default style
   const defaultStyle = loadJson(path.join(projectDir(project), "style", "default_style.json"), {});
 
-  // Recent timeline entries (tail read from JSONL)
+  // Load full timeline
   const fullTimeline = loadJsonl(memoryFilePath(project, "timeline.jsonl"));
-  const timelineRecent = fullTimeline.slice(-recent);
 
   // Build search query from outline + style
   const query = (values.outline || values.style || "").trim();
 
   let styleSnippets: unknown[] = [];
   let timelineHits: unknown[] = [];
+  let timelineRecent: unknown[];
+  let meta: Record<string, unknown>;
 
-  if (query) {
-    // Search style DB
-    if (fsSync.existsSync(STYLE_DB_PATH)) {
-      try {
-        const styleStore = await NovelMemoryStore.open({
-          dbPath: STYLE_DB_PATH,
-          source: "style",
-        });
-        const results = await styleStore.search({ query, limit, minScore });
-        styleSnippets = results.map((r) => ({
-          text: r.snippet,
-          score: Math.round(r.score * 1000) / 1000,
-          path: r.path,
-        }));
-        styleStore.close();
-      } catch (err) {
-        console.error(`style search failed: ${err}`);
+  if (useDynamic) {
+    // ---- Dynamic mode ----
+    // Timeline recent: use recentRatio from context params to allocate budget
+    const budget = values.budget ? parseInt(values.budget, 10) : DEFAULT_BUDGET_TOKENS;
+    const contextParams = await loadContextParams();
+    const recentRatio = contextParams.recentRatioBase ?? DEFAULT_CONTEXT_PARAMS.recentRatioBase;
+    const timelineRecentBudget = Math.floor(budget * recentRatio);
+
+    const { selected, count } = selectRecentTimeline(fullTimeline, timelineRecentBudget);
+    timelineRecent = selected;
+
+    // Style and timeline search: NovelMemoryStore.search() uses verso config
+    // settings internally (maxResults, minScore, hybrid weights, candidateMultiplier)
+    if (query) {
+      if (fsSync.existsSync(STYLE_DB_PATH)) {
+        try {
+          const styleStore = await NovelMemoryStore.open({
+            dbPath: STYLE_DB_PATH,
+            source: "style",
+          });
+          const results = await styleStore.search({ query });
+          styleSnippets = results.map((r) => ({
+            text: r.snippet,
+            score: Math.round(r.score * 1000) / 1000,
+            path: r.path,
+          }));
+          styleStore.close();
+        } catch (err) {
+          console.error(`style search failed: ${err}`);
+        }
+      }
+
+      const tlDbPath = timelineDbPath(project);
+      if (fsSync.existsSync(tlDbPath)) {
+        try {
+          const tlStore = await NovelMemoryStore.open({
+            dbPath: tlDbPath,
+            source: "timeline",
+          });
+          const results = await tlStore.search({ query });
+          timelineHits = results.map((r) => ({
+            text: r.snippet,
+            score: Math.round(r.score * 1000) / 1000,
+            path: r.path,
+          }));
+          tlStore.close();
+        } catch (err) {
+          console.error(`timeline search failed: ${err}`);
+        }
       }
     }
 
-    // Search timeline DB
-    const tlDbPath = timelineDbPath(project);
-    if (fsSync.existsSync(tlDbPath)) {
-      try {
-        const tlStore = await NovelMemoryStore.open({
-          dbPath: tlDbPath,
-          source: "timeline",
-        });
-        const results = await tlStore.search({ query, limit, minScore });
-        timelineHits = results.map((r) => ({
-          text: r.snippet,
-          score: Math.round(r.score * 1000) / 1000,
-          path: r.path,
-        }));
-        tlStore.close();
-      } catch (err) {
-        console.error(`timeline search failed: ${err}`);
+    meta = {
+      mode: "dynamic",
+      budget,
+      recent_ratio: recentRatio,
+      timeline_recent_budget: timelineRecentBudget,
+      timeline_recent_count: count,
+      style_results: styleSnippets.length,
+      timeline_search_results: timelineHits.length,
+    };
+  } else {
+    // ---- Fixed top-k mode (backwards compat) ----
+    const limit = hasLimit ? parseInt(values.limit!, 10) : 5;
+    const recent = hasRecent ? parseInt(values.recent!, 10) : 5;
+    const minScore = values["min-score"] ? parseFloat(values["min-score"]!) : 0.2;
+
+    timelineRecent = fullTimeline.slice(-recent);
+
+    if (query) {
+      if (fsSync.existsSync(STYLE_DB_PATH)) {
+        try {
+          const styleStore = await NovelMemoryStore.open({
+            dbPath: STYLE_DB_PATH,
+            source: "style",
+          });
+          const results = await styleStore.search({ query, limit, minScore });
+          styleSnippets = results.map((r) => ({
+            text: r.snippet,
+            score: Math.round(r.score * 1000) / 1000,
+            path: r.path,
+          }));
+          styleStore.close();
+        } catch (err) {
+          console.error(`style search failed: ${err}`);
+        }
+      }
+
+      const tlDbPath = timelineDbPath(project);
+      if (fsSync.existsSync(tlDbPath)) {
+        try {
+          const tlStore = await NovelMemoryStore.open({
+            dbPath: tlDbPath,
+            source: "timeline",
+          });
+          const results = await tlStore.search({ query, limit, minScore });
+          timelineHits = results.map((r) => ({
+            text: r.snippet,
+            score: Math.round(r.score * 1000) / 1000,
+            path: r.path,
+          }));
+          tlStore.close();
+        } catch (err) {
+          console.error(`timeline search failed: ${err}`);
+        }
       }
     }
+
+    meta = {
+      mode: "fixed",
+      timeline_recent_count: timelineRecent.length,
+    };
   }
 
   const output = {
     status: "ok",
     project,
+    meta,
     state,
     characters,
     world_bible: worldBible,
