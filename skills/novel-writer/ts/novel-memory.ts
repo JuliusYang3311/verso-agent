@@ -8,34 +8,34 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import path from "node:path";
-import type { EmbeddingProvider, EmbeddingProviderResult } from "../../src/memory/embeddings.js";
-import type { MemoryChunk } from "../../src/memory/internal.js";
-import type { EmbeddingContext } from "../../src/memory/manager-embeddings.js";
-import type { SearchRowResult } from "../../src/memory/manager-search.js";
-import type { VectorState } from "../../src/memory/manager-vectors.js";
-import { DEFAULT_CONTEXT_PARAMS } from "../../src/agents/dynamic-context.js";
-import { loadConfig } from "../../src/config/io.js";
-import { createEmbeddingProvider } from "../../src/memory/embeddings.js";
-import { bm25RankToScore, buildFtsQuery, mergeHybridResults } from "../../src/memory/hybrid.js";
+import type { EmbeddingProvider, EmbeddingProviderResult } from "../../../src/memory/embeddings.js";
+import type { MemoryChunk } from "../../../src/memory/internal.js";
+import type { EmbeddingContext } from "../../../src/memory/manager-embeddings.js";
+import type { SearchRowResult } from "../../../src/memory/manager-search.js";
+import type { VectorState } from "../../../src/memory/manager-vectors.js";
+import { DEFAULT_CONTEXT_PARAMS } from "../../../src/agents/dynamic-context.js";
+import { loadConfig } from "../../../src/config/io.js";
+import { createEmbeddingProvider } from "../../../src/memory/embeddings.js";
+import { bm25RankToScore, buildFtsQuery, mergeHybridResults } from "../../../src/memory/hybrid.js";
 import {
   chunkMarkdown,
   generateL0Abstract,
   generateFileL0,
   hashText,
   ensureDir,
-} from "../../src/memory/internal.js";
+} from "../../../src/memory/internal.js";
 import {
   createBatchFailureTracker,
   runBatchWithFallback,
-} from "../../src/memory/manager-batch-failure.js";
+} from "../../../src/memory/manager-batch-failure.js";
 import {
   embedChunksInBatches,
   embedQueryWithTimeout,
   computeProviderKey,
   withTimeout,
-} from "../../src/memory/manager-embeddings.js";
-import { searchHierarchical } from "../../src/memory/manager-hierarchical-search.js";
-import { searchVector, searchKeyword } from "../../src/memory/manager-search.js";
+} from "../../../src/memory/manager-embeddings.js";
+import { searchHierarchical } from "../../../src/memory/manager-hierarchical-search.js";
+import { searchVector, searchKeyword } from "../../../src/memory/manager-search.js";
 import {
   VECTOR_TABLE,
   FILES_VECTOR_TABLE,
@@ -43,9 +43,9 @@ import {
   ensureVectorTable,
   ensureFileVectorTable,
   vectorToBlob,
-} from "../../src/memory/manager-vectors.js";
-import { ensureMemoryIndexSchema } from "../../src/memory/memory-schema.js";
-import { requireNodeSqlite } from "../../src/memory/sqlite.js";
+} from "../../../src/memory/manager-vectors.js";
+import { ensureMemoryIndexSchema } from "../../../src/memory/memory-schema.js";
+import { requireNodeSqlite } from "../../../src/memory/sqlite.js";
 
 const FTS_TABLE = "chunks_fts";
 const EMBEDDING_CACHE_TABLE = "embedding_cache";
