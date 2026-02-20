@@ -163,86 +163,185 @@ export async function buildFileEntry(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Smart Chunking — break-point scoring (ported from QMD)
+// ---------------------------------------------------------------------------
+
+export interface BreakPoint {
+  pos: number;
+  score: number;
+  type: string;
+}
+
+export interface CodeFenceRegion {
+  start: number;
+  end: number;
+}
+
+/**
+ * Patterns for detecting break points in markdown.
+ * Higher scores = better places to split.
+ */
+const BREAK_PATTERNS: [RegExp, number, string][] = [
+  [/\n#{1}(?!#)/g, 100, "h1"],
+  [/\n#{2}(?!#)/g, 90, "h2"],
+  [/\n#{3}(?!#)/g, 80, "h3"],
+  [/\n#{4}(?!#)/g, 70, "h4"],
+  [/\n#{5}(?!#)/g, 60, "h5"],
+  [/\n#{6}(?!#)/g, 50, "h6"],
+  [/\n```/g, 80, "codeblock"],
+  [/\n(?:---|\*\*\*|___)\s*\n/g, 60, "hr"],
+  [/\n\n+/g, 20, "blank"],
+  [/\n[-*]\s/g, 5, "list"],
+  [/\n\d+\.\s/g, 5, "numlist"],
+  [/\n/g, 1, "newline"],
+];
+
+const CHUNK_WINDOW_CHARS = 800; // ~200 tokens × 4 chars/token
+
+export function scanBreakPoints(text: string): BreakPoint[] {
+  const seen = new Map<number, BreakPoint>();
+  for (const [pattern, score, type] of BREAK_PATTERNS) {
+    for (const match of text.matchAll(pattern)) {
+      const pos = match.index!;
+      const existing = seen.get(pos);
+      if (!existing || score > existing.score) {
+        seen.set(pos, { pos, score, type });
+      }
+    }
+  }
+  return Array.from(seen.values()).toSorted((a, b) => a.pos - b.pos);
+}
+
+export function findCodeFences(text: string): CodeFenceRegion[] {
+  const regions: CodeFenceRegion[] = [];
+  const fencePattern = /\n```/g;
+  let inFence = false;
+  let fenceStart = 0;
+  for (const match of text.matchAll(fencePattern)) {
+    if (!inFence) {
+      fenceStart = match.index!;
+      inFence = true;
+    } else {
+      regions.push({ start: fenceStart, end: match.index! + match[0].length });
+      inFence = false;
+    }
+  }
+  if (inFence) {
+    regions.push({ start: fenceStart, end: text.length });
+  }
+  return regions;
+}
+
+function isInsideCodeFence(pos: number, fences: CodeFenceRegion[]): boolean {
+  return fences.some((f) => pos > f.start && pos < f.end);
+}
+
+/**
+ * Find the best cut position using scored break points with distance decay.
+ * Squared distance decay: headings far back still beat low-quality breaks near target.
+ */
+export function findBestCutoff(
+  breakPoints: BreakPoint[],
+  targetCharPos: number,
+  windowChars: number = CHUNK_WINDOW_CHARS,
+  decayFactor: number = 0.7,
+  codeFences: CodeFenceRegion[] = [],
+): number {
+  const windowStart = targetCharPos - windowChars;
+  let bestScore = -1;
+  let bestPos = targetCharPos;
+  for (const bp of breakPoints) {
+    if (bp.pos < windowStart) {
+      continue;
+    }
+    if (bp.pos > targetCharPos) {
+      break;
+    }
+    if (isInsideCodeFence(bp.pos, codeFences)) {
+      continue;
+    }
+    const distance = targetCharPos - bp.pos;
+    const normalizedDist = distance / windowChars;
+    const multiplier = 1.0 - normalizedDist * normalizedDist * decayFactor;
+    const finalScore = bp.score * multiplier;
+    if (finalScore > bestScore) {
+      bestScore = finalScore;
+      bestPos = bp.pos;
+    }
+  }
+  return bestPos;
+}
+
+// ---------------------------------------------------------------------------
+// chunkMarkdown — smart chunking with break-point scoring
+// ---------------------------------------------------------------------------
+
+/** Count newlines in text up to (but not including) `pos`. Returns 1-based line number. */
+function lineAt(text: string, pos: number): number {
+  let line = 1;
+  for (let i = 0; i < pos && i < text.length; i++) {
+    if (text[i] === "\n") {
+      line++;
+    }
+  }
+  return line;
+}
+
 export function chunkMarkdown(
   content: string,
   chunking: { tokens: number; overlap: number },
 ): MemoryChunk[] {
-  const lines = content.split("\n");
-  if (lines.length === 0) {
+  if (!content || content.length === 0) {
     return [];
   }
   const maxChars = Math.max(32, chunking.tokens * 4);
   const overlapChars = Math.max(0, chunking.overlap * 4);
-  const chunks: MemoryChunk[] = [];
 
-  let current: Array<{ line: string; lineNo: number }> = [];
-  let currentChars = 0;
-
-  const flush = () => {
-    if (current.length === 0) {
-      return;
-    }
-    const firstEntry = current[0];
-    const lastEntry = current[current.length - 1];
-    if (!firstEntry || !lastEntry) {
-      return;
-    }
-    const text = current.map((entry) => entry.line).join("\n");
-    const startLine = firstEntry.lineNo;
-    const endLine = lastEntry.lineNo;
-    chunks.push({
-      startLine,
-      endLine,
-      text,
-      hash: hashText(text),
-    });
-  };
-
-  const carryOverlap = () => {
-    if (overlapChars <= 0 || current.length === 0) {
-      current = [];
-      currentChars = 0;
-      return;
-    }
-    let acc = 0;
-    const kept: Array<{ line: string; lineNo: number }> = [];
-    for (let i = current.length - 1; i >= 0; i -= 1) {
-      const entry = current[i];
-      if (!entry) {
-        continue;
-      }
-      acc += entry.line.length + 1;
-      kept.unshift(entry);
-      if (acc >= overlapChars) {
-        break;
-      }
-    }
-    current = kept;
-    currentChars = kept.reduce((sum, entry) => sum + entry.line.length + 1, 0);
-  };
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i] ?? "";
-    const lineNo = i + 1;
-    const segments: string[] = [];
-    if (line.length === 0) {
-      segments.push("");
-    } else {
-      for (let start = 0; start < line.length; start += maxChars) {
-        segments.push(line.slice(start, start + maxChars));
-      }
-    }
-    for (const segment of segments) {
-      const lineSize = segment.length + 1;
-      if (currentChars + lineSize > maxChars && current.length > 0) {
-        flush();
-        carryOverlap();
-      }
-      current.push({ line: segment, lineNo });
-      currentChars += lineSize;
-    }
+  if (content.length <= maxChars) {
+    const endLine = content.split("\n").length;
+    return [{ startLine: 1, endLine, text: content, hash: hashText(content) }];
   }
-  flush();
+
+  const breakPoints = scanBreakPoints(content);
+  const codeFences = findCodeFences(content);
+  const chunks: MemoryChunk[] = [];
+  let charPos = 0;
+
+  while (charPos < content.length) {
+    const targetEndPos = Math.min(charPos + maxChars, content.length);
+    let endPos = targetEndPos;
+
+    if (endPos < content.length) {
+      const bestCutoff = findBestCutoff(
+        breakPoints,
+        targetEndPos,
+        CHUNK_WINDOW_CHARS,
+        0.7,
+        codeFences,
+      );
+      if (bestCutoff > charPos && bestCutoff <= targetEndPos) {
+        endPos = bestCutoff;
+      }
+    }
+
+    // Ensure progress
+    if (endPos <= charPos) {
+      endPos = Math.min(charPos + maxChars, content.length);
+    }
+
+    const text = content.slice(charPos, endPos);
+    const startLine = lineAt(content, charPos);
+    const endLine = lineAt(content, endPos - 1);
+    chunks.push({ startLine, endLine, text, hash: hashText(text) });
+
+    if (endPos >= content.length) {
+      break;
+    }
+    const nextPos = endPos - overlapChars;
+    charPos = nextPos <= charPos ? endPos : nextPos;
+  }
+
   return chunks;
 }
 
