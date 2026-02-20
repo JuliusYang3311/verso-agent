@@ -1,6 +1,7 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { describe, expect, it } from "vitest";
 import {
+  condenseToolInteractions,
   estimateMessagesTokens,
   pruneHistoryForContextShare,
   splitMessagesByTokenShare,
@@ -289,5 +290,68 @@ describe("pruneHistoryForContextShare", () => {
     // droppedMessages = 1 (assistant) + 2 (orphaned tool_results) = 3
     // droppedMessagesList only has the assistant message
     expect(pruned.droppedMessages).toBe(pruned.droppedMessagesList.length + 2);
+  });
+});
+
+describe("condenseToolInteractions", () => {
+  it("replaces toolUse blocks with short notes", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "assistant",
+        content: [
+          { type: "text", text: "Let me read the file." },
+          { type: "toolUse", id: "call_1", name: "Read", input: { path: "/foo.ts" } },
+        ],
+        timestamp: 1,
+      },
+    ];
+    const condensed = condenseToolInteractions(messages);
+    expect(condensed).toHaveLength(1);
+    const content = (condensed[0] as { content: { type: string; text: string }[] }).content;
+    expect(content[0].text).toBe("Let me read the file.");
+    expect(content[1].text).toBe("[Used tool: Read]");
+    expect(content[1].type).toBe("text");
+  });
+
+  it("truncates large toolResult text content", () => {
+    const largeText = "x".repeat(2000);
+    const messages: AgentMessage[] = [
+      {
+        role: "toolResult",
+        toolCallId: "call_1",
+        toolName: "Read",
+        content: [{ type: "text", text: largeText }],
+        timestamp: 2,
+      } as AgentMessage,
+    ];
+    const condensed = condenseToolInteractions(messages);
+    const content = (condensed[0] as { content: { type: string; text: string }[] }).content;
+    expect(content[0].text).toContain("[Tool result for: Read]");
+    expect(content[0].text).toContain("truncated, was 2000 chars");
+    expect(content[0].text.length).toBeLessThan(largeText.length);
+  });
+
+  it("passes through small toolResult content with header", () => {
+    const messages: AgentMessage[] = [
+      {
+        role: "toolResult",
+        toolCallId: "call_1",
+        toolName: "Grep",
+        content: [{ type: "text", text: "found 3 matches" }],
+        timestamp: 2,
+      } as AgentMessage,
+    ];
+    const condensed = condenseToolInteractions(messages);
+    const content = (condensed[0] as { content: { type: string; text: string }[] }).content;
+    expect(content[0].text).toBe("[Tool result for: Grep]\nfound 3 matches");
+  });
+
+  it("passes through user and plain assistant messages unchanged", () => {
+    const messages: AgentMessage[] = [
+      { role: "user", content: "hello", timestamp: 1 },
+      { role: "assistant", content: "hi there", timestamp: 2 },
+    ];
+    const condensed = condenseToolInteractions(messages);
+    expect(condensed).toEqual(messages);
   });
 });

@@ -13,6 +13,101 @@ const MERGE_SUMMARIES_INSTRUCTIONS =
   "Merge these partial summaries into a single cohesive summary. Preserve decisions," +
   " TODOs, open questions, and any constraints.";
 
+/**
+ * Maximum characters to keep from a tool result text block when condensing
+ * tool interactions for summarization. Keeps enough for the model to
+ * understand what the tool returned without blowing up the context.
+ */
+const TOOL_RESULT_CONDENSED_MAX_CHARS = 500;
+
+interface ContentBlock {
+  type?: string;
+  text?: string;
+  name?: string;
+  id?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Condense tool use/result messages for summarization.
+ *
+ * - assistant messages with toolUse blocks: replace toolUse blocks with a
+ *   short "[Used tool: <name>]" note, keep text blocks intact.
+ * - toolResult messages: truncate text content to TOOL_RESULT_CONDENSED_MAX_CHARS
+ *   and prepend a "[Tool result for: <toolName>]" header.
+ * - All other messages pass through unchanged.
+ *
+ * This dramatically reduces token count for summarization without losing
+ * the semantic signal of what tools were called and roughly what they returned.
+ */
+export function condenseToolInteractions(messages: AgentMessage[]): AgentMessage[] {
+  const out: AgentMessage[] = [];
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object") {
+      out.push(msg);
+      continue;
+    }
+
+    const role = (msg as { role?: string }).role;
+
+    // Condense assistant messages: replace toolUse blocks with short notes
+    if (role === "assistant") {
+      const content = (msg as { content?: unknown }).content;
+      if (Array.isArray(content)) {
+        const hasToolUse = content.some(
+          (b: ContentBlock) => b && typeof b === "object" && b.type === "toolUse",
+        );
+        if (hasToolUse) {
+          const condensed: ContentBlock[] = [];
+          for (const block of content as ContentBlock[]) {
+            if (block?.type === "toolUse") {
+              const name = block.name ?? "unknown";
+              condensed.push({ type: "text", text: `[Used tool: ${name}]` });
+            } else {
+              condensed.push(block);
+            }
+          }
+          out.push({ ...msg, content: condensed } as AgentMessage);
+          continue;
+        }
+      }
+      out.push(msg);
+      continue;
+    }
+
+    // Condense toolResult messages: truncate text content
+    if (role === "toolResult") {
+      const toolName = (msg as { toolName?: string }).toolName ?? "unknown";
+      const content = (msg as { content?: unknown }).content;
+      if (Array.isArray(content)) {
+        const condensed: ContentBlock[] = [];
+        for (const block of content as ContentBlock[]) {
+          if (block?.type === "text" && typeof block.text === "string") {
+            let text = block.text;
+            if (text.length > TOOL_RESULT_CONDENSED_MAX_CHARS) {
+              text =
+                text.slice(0, TOOL_RESULT_CONDENSED_MAX_CHARS) +
+                `\n… [truncated, was ${text.length} chars]`;
+            }
+            condensed.push({ type: "text", text: `[Tool result for: ${toolName}]\n${text}` });
+          } else {
+            condensed.push(block);
+          }
+        }
+        out.push({ ...msg, content: condensed } as AgentMessage);
+      } else {
+        out.push(msg);
+      }
+      continue;
+    }
+
+    out.push(msg);
+  }
+
+  return out;
+}
+
 function stripToolResultDetails(messages: AgentMessage[]): AgentMessage[] {
   let touched = false;
   const out: AgentMessage[] = [];
@@ -174,7 +269,11 @@ async function summarizeChunks(params: {
 
   // SECURITY: never feed toolResult.details into summarization prompts.
   const safeMessages = stripToolResultDetails(params.messages);
-  const chunks = chunkMessagesByMaxTokens(safeMessages, params.maxChunkTokens);
+  // Condense tool use/result pairs to reduce token count for summarization.
+  // Tool results (e.g. file reads) can be very large and are not needed in full
+  // for generating a conversation summary.
+  const condensedMessages = condenseToolInteractions(safeMessages);
+  const chunks = chunkMessagesByMaxTokens(condensedMessages, params.maxChunkTokens);
   let summary = params.previousSummary;
 
   for (const chunk of chunks) {

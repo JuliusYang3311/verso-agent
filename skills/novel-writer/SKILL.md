@@ -7,10 +7,9 @@ description: Create and maintain long-form serialized fiction with a shared styl
 
 1. **Each chapter must be 5000+ words.** No short chapters.
 2. **Write to file, NEVER to chat.** Save chapter text directly to `chapters/chapter-XX.txt`. Only output a one-line confirmation in the conversation. Outputting full chapter text to chat will cause context overflow.
-3. **NEVER read chapter files into context.** Do not use Read/cat on chapter .txt files — each chapter is ~8k tokens and will bloat the context window. Use `wc -w` to check word count. For continuity, rely on `context.ts` output (memory summaries + RAG), not raw chapter text. Only read a chapter file if explicitly asked to review or edit a specific passage, and limit to one chapter at a time.
-4. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
-5. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
-6. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
+3. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
+4. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
+5. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
 
 # Novel Writer
 
