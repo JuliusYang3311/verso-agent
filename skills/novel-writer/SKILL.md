@@ -6,9 +6,10 @@ description: Create and maintain long-form serialized fiction with a shared styl
 ## ⚠️ Mandatory Rules (must follow before writing any chapter)
 
 1. **Each chapter must be 5000+ words.** No short chapters.
-2. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
-3. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
-4. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
+2. **Write to file, NEVER to chat.** Save chapter text directly to `chapters/chapter-XX.txt`. Only output a one-line confirmation in the conversation. Outputting full chapter text to chat will cause context overflow.
+3. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
+4. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
+5. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
 
 # Novel Writer
 
@@ -151,9 +152,14 @@ Returns:
 
 ### 5. Write Chapter
 
-The agent writes the chapter using the retrieved context. Save the chapter text to a file.
+The agent writes the chapter using the retrieved context. **Write directly to file, never to the conversation.**
 
-**Minimum length: 5000 words per chapter.** This is a hard requirement — every chapter must be at least 5000 words. If the draft is shorter, continue writing until the minimum is met before proceeding to memory extraction.
+**Critical rules:**
+
+- **Minimum length: 5000 words per chapter.** This is a hard requirement.
+- **Write to file, not to chat.** Save the chapter text directly to `projects/<project>/chapters/chapter-XX.txt` using a file write tool. Do NOT output the full chapter text in the conversation — this bloats the context window and causes compaction failures after a few chapters.
+- **Confirm in chat with a one-line summary only:** e.g. "第8章《回响》已保存到 chapters/chapter-08.txt，共 5230 字。"
+- If the draft is shorter than 5000 words, continue writing until the minimum is met before proceeding to memory extraction.
 
 ### 6. Extract Memory Updates from Chapter
 
