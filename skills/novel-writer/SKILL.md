@@ -3,6 +3,13 @@ name: novel-writer
 description: Create and maintain long-form serialized fiction with a shared style library and per-project four-layer continuity memory. Ingest authorized corpora for style indexing, generate chapters from outlines, auto-update character/world/timeline/plot-thread memory after each chapter, and optionally save to Google Docs.
 ---
 
+## ⚠️ Mandatory Rules (must follow before writing any chapter)
+
+1. **Each chapter must be 5000+ words.** No short chapters.
+2. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
+3. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
+4. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
+
 # Novel Writer
 
 ## Overview
