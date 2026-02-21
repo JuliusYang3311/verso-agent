@@ -27,6 +27,8 @@ export type SandboxAgentResult = {
  */
 async function resolveAgentModel(): Promise<{
   model: import("@mariozechner/pi-ai").Model<import("@mariozechner/pi-ai").Api>;
+  authStorage: import("@mariozechner/pi-coding-agent").AuthStorage;
+  modelRegistry: import("@mariozechner/pi-coding-agent").ModelRegistry;
 }> {
   const { loadConfig } = await import("../config/config.js");
   const { resolveConfiguredModelRef } = await import("../agents/model-selection.js");
@@ -52,12 +54,17 @@ async function resolveAgentModel(): Promise<{
   }
 
   const agentDir = process.env.EVOLVER_AGENT_DIR || undefined;
-  const { model, error } = resolveModel(provider, modelId, agentDir, cfg);
+  const { model, error, authStorage, modelRegistry } = resolveModel(
+    provider,
+    modelId,
+    agentDir,
+    cfg,
+  );
   if (!model || error) {
     throw new Error(`Failed to resolve model ${provider}/${modelId}: ${error ?? "unknown"}`);
   }
 
-  return { model };
+  return { model, authStorage, modelRegistry };
 }
 
 /**
@@ -114,8 +121,8 @@ export async function runCodingAgentInSandbox(params: {
   const t0 = Date.now();
 
   try {
-    // Resolve model
-    const { model } = await resolveAgentModel();
+    // Resolve model + auth from verso config
+    const { model, authStorage, modelRegistry } = await resolveAgentModel();
 
     // Resolve agent dir for auth
     const agentDir = process.env.EVOLVER_AGENT_DIR || resolveOpenClawAgentDir();
@@ -130,6 +137,8 @@ export async function runCodingAgentInSandbox(params: {
     const { session } = await createAgentSession({
       cwd: sandboxDir,
       agentDir,
+      authStorage,
+      modelRegistry,
       model,
       tools: codingTools,
       sessionManager: SessionManager.inMemory(sandboxDir),
