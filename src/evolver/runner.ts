@@ -371,6 +371,22 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
       continue;
     }
 
+    // Gate: in review mode, skip cycle if workspace has uncommitted changes awaiting review
+    if (reviewMode) {
+      const status = spawnSync("git", ["status", "--porcelain"], {
+        cwd: workspace,
+        encoding: "utf-8",
+      });
+      const uncommitted = (status.stdout ?? "").trim();
+      if (uncommitted) {
+        logger.info("evolver-runner: skipping cycle, uncommitted changes awaiting review", {
+          fileCount: uncommitted.split("\n").length,
+        });
+        await sleepMs(Math.max(pendingSleepMs, minSleepMs));
+        continue;
+      }
+    }
+
     const result = await runEvolutionCycle(options);
 
     if (result.ok) {
