@@ -28,8 +28,8 @@ const LOG_FILENAME = "evolver-daemon.log";
 const PID_FILENAME = "evolver-daemon.pid";
 const ROLLBACK_FILENAME = "evolver-daemon.rollback.json";
 
-/** Full verification command: lint + build + test. */
-const VERIFY_CMD = "pnpm lint && pnpm build && pnpm vitest run";
+/** Full verification command: typecheck + lint + build + test. */
+const VERIFY_CMD = "npx tsc --noEmit && pnpm lint && pnpm build && pnpm vitest run";
 
 function ensureLogsDir(): string {
   const stateDir = resolveStateDir();
