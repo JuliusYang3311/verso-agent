@@ -117,7 +117,11 @@ export const handleEvolverCommand: CommandHandler = async (params) => {
     return { shouldContinue: false, reply: { text: reply } };
   }
 
-  const start = await startEvolverDaemon(params.cfg);
+  const start = await startEvolverDaemon({
+    cfg: params.cfg,
+    provider: params.provider,
+    model: params.model,
+  });
   if (!start.started) {
     const error = start.error ? ` ${start.error}` : "";
     return {

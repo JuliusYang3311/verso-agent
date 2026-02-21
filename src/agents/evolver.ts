@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { VersoConfig } from "../config/types.js";
 import { resolveStateDir } from "../config/paths.js";
+import { resolveOpenClawAgentDir } from "./agent-paths.js";
 
 type EvolverStartResult = {
   started: boolean;
@@ -82,7 +83,16 @@ function resolveMemoryDir(workspace: string): string {
   return path.join(workspace, "memory");
 }
 
-export async function startEvolverDaemon(cfg?: VersoConfig): Promise<EvolverStartResult> {
+export type EvolverDaemonOptions = {
+  cfg?: VersoConfig;
+  /** Main session's current provider, e.g. "anthropic". */
+  provider?: string;
+  /** Main session's current model ID, e.g. "claude-sonnet-4-20250514". */
+  model?: string;
+};
+
+export async function startEvolverDaemon(opts?: EvolverDaemonOptions): Promise<EvolverStartResult> {
+  const cfg = opts?.cfg;
   const { logPath, pidPath } = resolveLogPaths();
   const existingPid = readPid(pidPath);
   if (existingPid && isPidAlive(existingPid)) {
@@ -92,6 +102,10 @@ export async function startEvolverDaemon(cfg?: VersoConfig): Promise<EvolverStar
   const workspace = resolveWorkspace(cfg);
   const memoryDir = resolveMemoryDir(workspace);
   const review = cfg?.evolver?.review ?? false;
+  const agentDir = resolveOpenClawAgentDir();
+
+  // Build model slug from main session's provider/model
+  const modelSlug = opts?.provider && opts?.model ? `${opts.provider}/${opts.model}` : undefined;
 
   const scriptPath = path.join(process.cwd(), "dist", "evolver", "daemon-entry.js");
   const child = spawn(process.execPath, [scriptPath], {
@@ -105,6 +119,8 @@ export async function startEvolverDaemon(cfg?: VersoConfig): Promise<EvolverStar
       EVOLVER_REVIEW: review ? "true" : "false",
       EVOLVER_VERIFY_CMD: VERIFY_CMD,
       EVOLVER_LOG_PATH: logPath,
+      ...(modelSlug ? { EVOLVER_MODEL: modelSlug } : {}),
+      EVOLVER_AGENT_DIR: agentDir,
     },
   });
   child.unref();

@@ -43,7 +43,14 @@ export default defineConfig([
     platform: "node",
   },
   {
-    entry: "src/evolver/daemon-entry.ts",
+    entry: [
+      "src/evolver/daemon-entry.ts",
+      "src/evolver/sandbox-agent.ts",
+      "src/evolver/evolve.ts",
+      "src/evolver/evolver-review.ts",
+      "src/evolver/gep/sandbox-runner.ts",
+      "src/evolver/gep/solidify.ts",
+    ],
     outDir: "dist/evolver",
     env,
     fixedExtension: false,
