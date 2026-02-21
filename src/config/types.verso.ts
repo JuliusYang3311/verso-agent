@@ -119,6 +119,8 @@ export type MoltbookConfig = {
 export type EvolverConfig = {
   /** Use evolver review mode (run --review). */
   review?: boolean;
+  /** Model string to use for evolution (e.g. "anthropic/claude-opus-4-6"). */
+  model?: string;
 };
 
 export type ConfigValidationIssue = {

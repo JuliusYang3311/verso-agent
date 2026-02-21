@@ -170,6 +170,7 @@ const EvolverSchema = z
     verifyCmd: z.string().optional(),
     rollback: z.boolean().optional(),
     clean: z.boolean().optional(),
+    model: z.string().optional(),
   })
   .strict()
   .optional();
