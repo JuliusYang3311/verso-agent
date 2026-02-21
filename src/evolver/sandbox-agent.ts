@@ -167,7 +167,7 @@ export async function runCodingAgentInSandbox(params: {
       "Instructions:",
       "1. Read the GEP prompt carefully to understand what changes are needed.",
       "2. Make the minimal, focused code changes described.",
-      "3. After making changes, run validation: npx tsc --noEmit && pnpm lint && pnpm vitest run",
+      "3. After making changes, run validation: npx tsc --noEmit && pnpm lint && pnpm build && pnpm vitest run",
       "4. If validation fails, fix the issues and re-run until all checks pass.",
       "5. When all checks pass, output exactly: EVOLUTION_COMPLETE",
       "",
