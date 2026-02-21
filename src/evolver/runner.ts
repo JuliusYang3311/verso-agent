@@ -101,6 +101,29 @@ function isPendingSolidify(state: unknown): boolean {
   return String(lastSolid.run_id) !== String(lastRun.run_id);
 }
 
+/**
+ * Sync last_solidify.run_id to match last_run.run_id so the daemon
+ * doesn't get stuck in the pending-solidify sleep loop after a failed cycle.
+ */
+function clearPendingSolidify(solidifyStatePath: string): void {
+  try {
+    const state = readJsonSafe(solidifyStatePath) as {
+      last_run?: { run_id?: string };
+      last_solidify?: { run_id?: string };
+    } | null;
+    if (!state?.last_run?.run_id) {
+      return;
+    }
+    if (!state.last_solidify) {
+      state.last_solidify = {};
+    }
+    state.last_solidify.run_id = state.last_run.run_id;
+    fs.writeFileSync(solidifyStatePath, JSON.stringify(state, null, 2) + "\n");
+  } catch {
+    // best-effort
+  }
+}
+
 function parseMs(v: string | number | undefined | null, fallback: number): number {
   const n = parseInt(String(v == null ? "" : v), 10);
   if (Number.isFinite(n)) {
@@ -415,14 +438,21 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
       } else if (rollbackEnabled) {
         // Sandbox passed but real workspace verify failed — rollback
         rollbackChanges(workspace, cleanEnabled);
+        clearPendingSolidify(solidifyStatePath);
         appendErrorRecord(workspace, "post_deploy_verify_failed", {
           stdout: verify.stdout.slice(0, 2000),
           stderr: verify.stderr.slice(0, 2000),
         });
       }
-    } else if (result.error && rollbackEnabled) {
-      rollbackChanges(workspace, cleanEnabled);
-      appendErrorRecord(workspace, "run_failed", { error: result.error });
+    } else {
+      // Cycle failed — clear pending solidify so daemon doesn't get stuck
+      if (rollbackEnabled) {
+        rollbackChanges(workspace, cleanEnabled);
+      }
+      clearPendingSolidify(solidifyStatePath);
+      if (result.error) {
+        appendErrorRecord(workspace, "run_failed", { error: result.error });
+      }
     }
 
     // Adaptive sleep
