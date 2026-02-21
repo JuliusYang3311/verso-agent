@@ -395,9 +395,6 @@ const FIELD_LABELS: Record<string, string> = {
   "plugins.installs.*.installPath": "Plugin Install Path",
   "plugins.installs.*.version": "Plugin Install Version",
   "plugins.installs.*.installedAt": "Plugin Install Time",
-  "skills.entries.ghost.config.apiUrl": "Ghost API URL",
-  "skills.entries.ghost.config.contentApiKey": "Ghost Content API Key",
-  "skills.entries.ghost.config.adminApiKey": "Ghost Admin API Key",
 };
 
 const FIELD_HELP: Record<string, string> = {
@@ -763,11 +760,6 @@ const FIELD_HELP: Record<string, string> = {
     "Optional PluralKit token for resolving private systems or members.",
   "channels.slack.dm.policy":
     'Direct message access control ("pairing" recommended). "open" requires channels.slack.dm.allowFrom=["*"].',
-  "skills.entries.ghost.config.apiUrl":
-    "The base URL of your Ghost site (e.g., https://my-blog.ghost.io).",
-  "skills.entries.ghost.config.contentApiKey": "Ghost Content API Key for read-only access.",
-  "skills.entries.ghost.config.adminApiKey":
-    "Ghost Admin API Key for administrative actions and posting.",
 };
 
 const FIELD_PLACEHOLDERS: Record<string, string> = {

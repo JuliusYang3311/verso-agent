@@ -5,7 +5,6 @@ import { installSkill } from "../agents/skills-install.js";
 import { buildWorkspaceSkillStatus } from "../agents/skills-status.js";
 import { formatCliCommand } from "../cli/command-format.js";
 import { normalizeSecretInput } from "../utils/normalize-secret-input.js";
-import { promptGhostConfig } from "./configure.ghost.js";
 import { detectBinary, resolveNodeManagerOptions } from "./onboard-helpers.js";
 
 function summarizeInstallFailure(message: string): string | undefined {
@@ -225,17 +224,6 @@ export async function setupSkills(
   }
 
   for (const skill of missing) {
-    if (skill.skillKey === "ghost") {
-      const wantsGhost = await prompter.confirm({
-        message: `Configure Ghost.io API now?`,
-        initialValue: true,
-      });
-      if (wantsGhost) {
-        next = await promptGhostConfig(next, runtime);
-      }
-      continue;
-    }
-
     if (!skill.primaryEnv || skill.missing.env.length === 0) {
       continue;
     }

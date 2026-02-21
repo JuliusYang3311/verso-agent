@@ -22,7 +22,6 @@ import { maybeInstallDaemon } from "./configure.daemon.js";
 import { promptEvolverConfig } from "./configure.evolver.js";
 import { promptAuthConfig } from "./configure.gateway-auth.js";
 import { promptGatewayConfig } from "./configure.gateway.js";
-import { promptGhostConfig } from "./configure.ghost.js";
 import { promptGoogleConfig } from "./configure.google.js";
 import { promptMoltbookConfig } from "./configure.moltbook.js";
 import { promptNodeHostConfig } from "./configure.nodehost.js";
@@ -358,10 +357,6 @@ export async function runConfigureWizard(
         nextConfig = await promptGoogleConfig(nextConfig, runtime);
       }
 
-      if (selected.includes("ghost")) {
-        nextConfig = await promptGhostConfig(nextConfig, runtime);
-      }
-
       if (selected.includes("gateway")) {
         const gateway = await promptGatewayConfig(nextConfig, runtime);
         nextConfig = gateway.config;
@@ -526,11 +521,6 @@ export async function runConfigureWizard(
 
         if (choice === "google") {
           nextConfig = await promptGoogleConfig(nextConfig, runtime);
-          await persistConfig();
-        }
-
-        if (choice === "ghost") {
-          nextConfig = await promptGhostConfig(nextConfig, runtime);
           await persistConfig();
         }
 
