@@ -64,6 +64,21 @@ async function resolveAgentModel(): Promise<{
     throw new Error(`Failed to resolve model ${provider}/${modelId}: ${error ?? "unknown"}`);
   }
 
+  // Bridge verso's auth into pi-coding-agent's AuthStorage so custom providers
+  // (e.g. "newapi") are recognized. resolveApiKeyForProvider walks verso's full
+  // auth chain (profiles → env → config apiKey) and we inject the result as a
+  // runtime override — no disk writes, no side effects.
+  const { resolveApiKeyForProvider } = await import("../agents/model-auth.js");
+  try {
+    const auth = await resolveApiKeyForProvider({ provider, cfg, agentDir });
+    if (auth.apiKey) {
+      authStorage.setRuntimeApiKey(provider, auth.apiKey);
+    }
+  } catch {
+    // best-effort: if verso can't resolve the key either, let pi-coding-agent
+    // try its own fallbacks (env vars, auth.json, etc.)
+  }
+
   return { model, authStorage, modelRegistry };
 }
 
