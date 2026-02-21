@@ -51,7 +51,8 @@ async function resolveAgentModel(): Promise<{
     modelId = ref.model;
   }
 
-  const { model, error } = resolveModel(provider, modelId, undefined, cfg);
+  const agentDir = process.env.EVOLVER_AGENT_DIR || undefined;
+  const { model, error } = resolveModel(provider, modelId, agentDir, cfg);
   if (!model || error) {
     throw new Error(`Failed to resolve model ${provider}/${modelId}: ${error ?? "unknown"}`);
   }
