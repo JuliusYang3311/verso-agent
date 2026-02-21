@@ -41,6 +41,7 @@ export type RunCycleResult = {
   ok: boolean;
   error?: string;
   elapsed?: number;
+  filesChanged?: string[];
 };
 
 // ---------- Helpers ----------
@@ -188,7 +189,7 @@ export async function runEvolutionCycle(options: EvolverRunOptions): Promise<Run
       }
 
       logger.info("evolver-runner: cycle completed", { elapsed_ms: elapsed });
-      return { ok: true, elapsed };
+      return { ok: true, elapsed, filesChanged: agentResult.filesChanged };
     } finally {
       cleanupTmpdir(sandbox.sandboxDir);
     }
@@ -371,22 +372,6 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
       continue;
     }
 
-    // Gate: in review mode, skip cycle if workspace has uncommitted changes awaiting review
-    if (reviewMode) {
-      const status = spawnSync("git", ["status", "--porcelain"], {
-        cwd: workspace,
-        encoding: "utf-8",
-      });
-      const uncommitted = (status.stdout ?? "").trim();
-      if (uncommitted) {
-        logger.info("evolver-runner: skipping cycle, uncommitted changes awaiting review", {
-          fileCount: uncommitted.split("\n").length,
-        });
-        await sleepMs(Math.max(pendingSleepMs, minSleepMs));
-        continue;
-      }
-    }
-
     const result = await runEvolutionCycle(options);
 
     if (result.ok) {
@@ -396,7 +381,33 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
         if (!reviewMode) {
           autoCommitChanges(workspace);
         } else {
-          logger.info("evolver-runner: verification passed, awaiting review (review mode on)");
+          // Write pending review and wait for user decision
+          const { writePendingReview, readPendingReview, clearPendingReview } =
+            await import("./evolver-review.js");
+          writePendingReview({
+            createdAt: new Date().toISOString(),
+            cycleId: `cycle_${cycleCount}`,
+            filesChanged: result.filesChanged ?? [],
+            summary: `Evolution cycle ${cycleCount} completed. ${(result.filesChanged ?? []).length} file(s) changed.`,
+          });
+          logger.info("evolver-runner: pending review written, waiting for user decision");
+
+          // Poll until user decides
+          while (true) {
+            await sleepMs(5000);
+            const review = readPendingReview();
+            if (!review || review.decision) {
+              if (review?.decision === "approve") {
+                autoCommitChanges(workspace);
+                logger.info("evolver-runner: review approved, changes committed");
+              } else {
+                rollbackChanges(workspace, cleanEnabled);
+                logger.info("evolver-runner: review rejected, changes rolled back");
+              }
+              clearPendingReview();
+              break;
+            }
+          }
         }
       } else if (rollbackEnabled) {
         // Sandbox passed but real workspace verify failed — rollback

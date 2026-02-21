@@ -5,13 +5,14 @@ import {
   startEvolverDaemon,
   stopEvolverDaemon,
 } from "../../agents/evolver.js";
+import { readPendingReview, decidePendingReview } from "../../evolver/evolver-review.js";
 import { logVerbose } from "../../globals.js";
 
 function shouldHandle(command: string, prefix: string) {
   return command === prefix || command.startsWith(`${prefix} `);
 }
 
-function parseEvolveMode(body: string): "on" | "off" | "status" {
+function parseEvolveMode(body: string): "on" | "off" | "status" | "approve" | "reject" {
   const trimmed = body.trim();
   if (trimmed === "/evolve") {
     return "on";
@@ -28,6 +29,12 @@ function parseEvolveMode(body: string): "on" | "off" | "status" {
   }
   if (rest === "on") {
     return "on";
+  }
+  if (rest === "approve" || rest === "yes" || rest === "y") {
+    return "approve";
+  }
+  if (rest === "reject" || rest === "no" || rest === "n") {
+    return "reject";
   }
   return "status";
 }
@@ -53,16 +60,52 @@ export const handleEvolverCommand: CommandHandler = async (params) => {
   }
 
   const mode = parseEvolveMode(body);
+
+  if (mode === "approve") {
+    const review = readPendingReview();
+    if (!review || review.decision) {
+      return { shouldContinue: false, reply: { text: "🧬 No pending review to approve." } };
+    }
+    decidePendingReview("approve");
+    return {
+      shouldContinue: false,
+      reply: {
+        text: `🧬 Review approved. Deploying ${review.filesChanged.length} file(s):\n${review.filesChanged.join("\n")}`,
+      },
+    };
+  }
+
+  if (mode === "reject") {
+    const review = readPendingReview();
+    if (!review || review.decision) {
+      return { shouldContinue: false, reply: { text: "🧬 No pending review to reject." } };
+    }
+    decidePendingReview("reject");
+    return {
+      shouldContinue: false,
+      reply: { text: "🧬 Review rejected. Changes will be rolled back." },
+    };
+  }
+
   if (mode === "status") {
     const status = await getEvolverStatus();
     const rollbackInfo = await readEvolverRollbackInfo();
+    const review = readPendingReview();
     const lines = [
       status.running
         ? `🧬 Evolver running (pid ${status.pid ?? "unknown"}).`
         : "🧬 Evolver is not running.",
       `Log: ${status.logPath}`,
-      rollbackInfo ? `Last rollback:\n${rollbackInfo}` : "Last rollback: (none)",
     ];
+    if (review && !review.decision) {
+      lines.push(
+        `\n⏳ Pending review (${review.cycleId}):`,
+        `  Files: ${review.filesChanged.join(", ")}`,
+        `  Summary: ${review.summary}`,
+        `  Use /evolve approve or /evolve reject to decide.`,
+      );
+    }
+    lines.push(rollbackInfo ? `Last rollback:\n${rollbackInfo}` : "Last rollback: (none)");
     return { shouldContinue: false, reply: { text: lines.join("\n") } };
   }
 

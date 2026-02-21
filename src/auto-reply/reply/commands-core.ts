@@ -3,6 +3,7 @@ import type {
   CommandHandlerResult,
   HandleCommandsParams,
 } from "./commands-types.js";
+import { readPendingReview } from "../../evolver/evolver-review.js";
 import { logVerbose } from "../../globals.js";
 import { createInternalHookEvent, triggerInternalHook } from "../../hooks/internal-hooks.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
@@ -111,6 +112,40 @@ export async function handleCommands(params: HandleCommandsParams): Promise<Comm
     surface: params.command.surface,
     commandSource: params.ctx.CommandSource,
   });
+
+  // Side-channel: notify user once about pending evolver review (non-blocking)
+  try {
+    const review = readPendingReview();
+    if (review && !review.decision && !review.notified) {
+      const fs = await import("node:fs");
+      const { resolveStateDir } = await import("../../config/paths.js");
+      const path = await import("node:path");
+      const reviewPath = path.join(resolveStateDir(), "logs", "evolver-pending-review.json");
+      review.notified = true;
+      fs.writeFileSync(reviewPath, JSON.stringify(review, null, 2) + "\n");
+
+      const channel = params.ctx.OriginatingChannel || params.command.channel;
+      const to = params.ctx.OriginatingTo || params.command.from || params.command.to;
+      if (channel && to) {
+        const fileList = review.filesChanged.slice(0, 5).join(", ");
+        const more =
+          review.filesChanged.length > 5 ? ` and ${review.filesChanged.length - 5} more` : "";
+        await routeReply({
+          payload: {
+            text: `🧬 Evolver review ready (${review.cycleId}): ${review.filesChanged.length} file(s) changed (${fileList}${more}). Use /evolve approve or /evolve reject.`,
+          },
+          channel,
+          to,
+          sessionKey: params.sessionKey,
+          accountId: params.ctx.AccountId,
+          threadId: params.ctx.MessageThreadId,
+          cfg: params.cfg,
+        });
+      }
+    }
+  } catch {
+    // Non-critical: don't break command processing if review check fails
+  }
 
   for (const handler of HANDLERS) {
     const result = await handler(params, allowTextCommands);
