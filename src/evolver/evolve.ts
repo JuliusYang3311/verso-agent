@@ -16,7 +16,7 @@ import {
   readRecentCandidates,
   readRecentExternalCandidates,
 } from "./gep/assetStore.js";
-import { clip, writePromptArtifact, renderSessionsSpawnCall } from "./gep/bridge.js";
+import { writePromptArtifact } from "./gep/bridge.js";
 import { extractCapabilityCandidates, renderCandidatesPreview } from "./gep/candidates.js";
 import {
   getMemoryAdvice,
@@ -572,7 +572,17 @@ interface SkillPkg {
   description?: string;
 }
 
-async function run(): Promise<void> {
+export type EvolveResult = {
+  prompt: string;
+  meta: {
+    cycleId: string;
+    signals: string[];
+    gene: string | null;
+    mutation: string | null;
+  };
+};
+
+async function run(): Promise<EvolveResult | null> {
   const bridgeEnabled = String(process.env.EVOLVE_BRIDGE || "").toLowerCase() !== "false";
   const loopMode =
     ARGS.has("--loop") ||
@@ -596,7 +606,7 @@ async function run(): Promise<void> {
           const n = parseInt(String(raw), 10);
           const waitMs = Number.isFinite(n) ? Math.max(0, n) : 120000;
           await sleepMs(waitMs);
-          return;
+          return null;
         }
       }
     } catch {
@@ -1266,12 +1276,16 @@ ${mutationDirective}
     console.log(`[THOUGHT_PROCESS]\n${thought}\n[/THOUGHT_PROCESS]`);
   }
 
-  const printPrompt = String(process.env.EVOLVE_PRINT_PROMPT || "").toLowerCase() === "true";
+  // Build result meta for the caller (runner.ts).
+  const resultMeta = {
+    cycleId,
+    signals: Array.isArray(signals) ? signals : [],
+    gene: selectedGene && selectedGene.id ? String(selectedGene.id) : null,
+    mutation: mutation && mutation.id ? String(mutation.id) : null,
+  };
 
-  // Default behavior (v1.4.1+): "execute-by-default" by bridging prompt -> sub-agent via sessions_spawn.
-  // This project is the Brain; the Hand is a spawned executor agent. Wrappers can disable bridging with EVOLVE_BRIDGE=false.
+  // Write prompt artifact to disk for debugging/auditing.
   if (bridgeEnabled) {
-    // Reuse the run_id stored in the solidify state when possible.
     let runId = `run_${Date.now()}`;
     try {
       const st = readStateForSolidify();
@@ -1281,9 +1295,8 @@ ${mutationDirective}
     } catch {
       // ignored
     }
-    let artifact: { promptPath: string; metaPath: string } | null = null;
     try {
-      artifact = writePromptArtifact({
+      writePromptArtifact({
         memoryDir: getEvolutionDir(),
         cycleId,
         runId,
@@ -1301,46 +1314,18 @@ ${mutationDirective}
         },
       });
     } catch {
-      artifact = null;
+      // ignored
     }
-
-    const executorTask = [
-      "You are the executor (the Hand).",
-      "Your job is to apply a safe, minimal patch in this repo following the attached GEP protocol prompt.",
-      artifact && artifact.promptPath
-        ? `Prompt file: ${artifact.promptPath}`
-        : "Prompt file: (unavailable)",
-      "",
-      "After applying changes and validations, you MUST run:",
-      "  pnpm evolve solidify",
-      "",
-      "Loop chaining (only if you are running in loop mode): after solidify succeeds, print a sessions_spawn call to start the next loop run with a short delay.",
-      "Example:",
-      'sessions_spawn({ task: "exec: sleep 3 && pnpm evolve --loop", agentId: "main", cleanup: "delete", label: "gep_loop_next" })',
-      "",
-      "GEP protocol prompt (may be truncated here; prefer the prompt file if provided):",
-      clip(prompt, 24000),
-    ].join("\n");
-
-    const spawn = renderSessionsSpawnCall({
-      task: executorTask,
-      agentId: AGENT_NAME,
-      cleanup: "delete",
-      label: `gep_bridge_${cycleNum}`,
-    });
-
-    console.log("\n[BRIDGE ENABLED] Spawning executor agent via sessions_spawn.");
-    console.log(spawn);
-    if (printPrompt) {
-      console.log("\n[PROMPT OUTPUT] (EVOLVE_PRINT_PROMPT=true)");
-      console.log(prompt);
-    }
-  } else {
-    console.log(prompt);
-    console.log(
-      "\n[SOLIDIFY REQUIRED] After applying the patch and validations, run: pnpm evolve solidify",
-    );
   }
+
+  const printPrompt = String(process.env.EVOLVE_PRINT_PROMPT || "").toLowerCase() === "true";
+  if (printPrompt) {
+    console.log("\n[PROMPT OUTPUT] (EVOLVE_PRINT_PROMPT=true)");
+    console.log(prompt);
+  }
+
+  // Return the prompt for the caller (daemon runner) to execute via coding agent.
+  return { prompt, meta: resultMeta };
 }
 
 export { run };

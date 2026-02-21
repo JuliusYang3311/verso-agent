@@ -127,9 +127,9 @@ describe("chunkMarkdown", () => {
   it("returns single chunk for short content", () => {
     const chunks = chunkMarkdown("Hello world", { tokens: 400, overlap: 0 });
     expect(chunks).toHaveLength(1);
-    expect(chunks[0]!.text).toBe("Hello world");
-    expect(chunks[0]!.startLine).toBe(1);
-    expect(chunks[0]!.endLine).toBe(1);
+    expect(chunks[0].text).toBe("Hello world");
+    expect(chunks[0].startLine).toBe(1);
+    expect(chunks[0].endLine).toBe(1);
   });
 
   it("returns empty array for empty content", () => {
@@ -145,7 +145,7 @@ describe("chunkMarkdown", () => {
     const chunks = chunkMarkdown(content, { tokens: chunkTokens, overlap: 0 });
     expect(chunks.length).toBeGreaterThanOrEqual(2);
     // First chunk should end before or at the heading
-    expect(chunks[0]!.text).not.toContain("## Section Two");
+    expect(chunks[0].text).not.toContain("## Section Two");
   });
 
   it("does not split inside code fences", () => {
@@ -172,8 +172,8 @@ describe("chunkMarkdown", () => {
     expect(chunks.length).toBeGreaterThan(1);
     // Check that consecutive chunks share some text
     for (let i = 1; i < chunks.length; i++) {
-      const prevEnd = chunks[i - 1]!.text;
-      const currStart = chunks[i]!.text;
+      const prevEnd = chunks[i - 1].text;
+      const currStart = chunks[i].text;
       const prevTail = prevEnd.slice(-80);
       // The start of the current chunk should overlap with the end of the previous
       expect(currStart.includes(prevTail) || prevEnd.slice(-40) === currStart.slice(0, 40)).toBe(
@@ -186,8 +186,8 @@ describe("chunkMarkdown", () => {
     const content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5";
     const chunks = chunkMarkdown(content, { tokens: 400, overlap: 0 });
     expect(chunks).toHaveLength(1);
-    expect(chunks[0]!.startLine).toBe(1);
-    expect(chunks[0]!.endLine).toBe(5);
+    expect(chunks[0].startLine).toBe(1);
+    expect(chunks[0].endLine).toBe(5);
   });
 });
 
@@ -219,14 +219,14 @@ describe("findCodeFences", () => {
     const text = "before\n```ts\ncode\n```\nafter";
     const fences = findCodeFences(text);
     expect(fences).toHaveLength(1);
-    expect(fences[0]!.start).toBeLessThan(fences[0]!.end);
+    expect(fences[0].start).toBeLessThan(fences[0].end);
   });
 
   it("handles unclosed fence", () => {
     const text = "before\n```ts\ncode without closing";
     const fences = findCodeFences(text);
     expect(fences).toHaveLength(1);
-    expect(fences[0]!.end).toBe(text.length);
+    expect(fences[0].end).toBe(text.length);
   });
 });
 

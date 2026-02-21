@@ -203,7 +203,7 @@ export function scanBreakPoints(text: string): BreakPoint[] {
   const seen = new Map<number, BreakPoint>();
   for (const [pattern, score, type] of BREAK_PATTERNS) {
     for (const match of text.matchAll(pattern)) {
-      const pos = match.index!;
+      const pos = match.index;
       const existing = seen.get(pos);
       if (!existing || score > existing.score) {
         seen.set(pos, { pos, score, type });
@@ -220,10 +220,10 @@ export function findCodeFences(text: string): CodeFenceRegion[] {
   let fenceStart = 0;
   for (const match of text.matchAll(fencePattern)) {
     if (!inFence) {
-      fenceStart = match.index!;
+      fenceStart = match.index;
       inFence = true;
     } else {
-      regions.push({ start: fenceStart, end: match.index! + match[0].length });
+      regions.push({ start: fenceStart, end: match.index + match[0].length });
       inFence = false;
     }
   }

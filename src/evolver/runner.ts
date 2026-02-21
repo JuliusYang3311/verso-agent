@@ -29,8 +29,6 @@ export type EvolverRunOptions = {
   model?: string;
   /** Agent dir path for auth store access (resolves auth on demand, not snapshotted). */
   agentDir?: string;
-  /** Code agent function for making code modifications. */
-  codeAgent?: (params: { prompt: string; workspace: string }) => Promise<CodeAgentResult>;
 };
 
 export type CodeAgentResult = {
@@ -111,10 +109,10 @@ function parseMs(v: string | number | undefined | null, fallback: number): numbe
 
 /**
  * Run a single evolution cycle using the integrated evolve.js module.
+ * Generates a GEP prompt, then runs a coding agent in a sandbox to execute it.
  */
 export async function runEvolutionCycle(options: EvolverRunOptions): Promise<RunCycleResult> {
   const workspace = getWorkspaceRoot(options.workspace);
-  const _evolverRoot = getEvolverRoot();
   const t0 = Date.now();
 
   try {
@@ -132,19 +130,68 @@ export async function runEvolutionCycle(options: EvolverRunOptions): Promise<Run
       process.env.EVOLVER_AGENT_DIR = options.agentDir;
     }
 
-    // Import and run the evolve module
-    const evolve = (await import("./evolve.js")) as { run: () => Promise<void> };
-    await evolve.run();
+    // 1. Generate GEP prompt
+    const evolve = (await import("./evolve.js")) as {
+      run: () => Promise<{ prompt: string; meta: Record<string, unknown> } | null>;
+    };
+    const evolveResult = await evolve.run();
 
-    const elapsed = Date.now() - t0;
-    logger.info("evolver-runner: cycle completed", { elapsed_ms: elapsed });
-
-    // After evolution, if code agent is available and there are pending changes, use it
-    if (options.codeAgent) {
-      await applyCodeAgentChanges(options);
+    if (!evolveResult) {
+      const elapsed = Date.now() - t0;
+      logger.info("evolver-runner: cycle skipped (no prompt generated)", { elapsed_ms: elapsed });
+      return { ok: true, elapsed };
     }
 
-    return { ok: true, elapsed };
+    // 2. Create sandbox and run coding agent
+    const { createTmpdirSandbox, cleanupTmpdir } = await import("./gep/sandbox-runner.js");
+    const { runCodingAgentInSandbox } = await import("./sandbox-agent.js");
+
+    const sandbox = createTmpdirSandbox(workspace);
+    if (!sandbox.ok || !sandbox.sandboxDir) {
+      const elapsed = Date.now() - t0;
+      logger.warn("evolver-runner: sandbox creation failed", { error: sandbox.error });
+      return { ok: false, error: `Sandbox creation failed: ${sandbox.error}`, elapsed };
+    }
+
+    try {
+      const agentResult = await runCodingAgentInSandbox({
+        prompt: evolveResult.prompt,
+        sandboxDir: sandbox.sandboxDir,
+      });
+
+      const elapsed = Date.now() - t0;
+
+      if (!agentResult.ok) {
+        logger.warn("evolver-runner: sandbox agent failed", {
+          error: agentResult.error,
+          elapsed_ms: elapsed,
+        });
+        return { ok: false, error: agentResult.error, elapsed };
+      }
+
+      // 3. Copy changed files from sandbox to real workspace
+      if (agentResult.filesChanged.length > 0) {
+        for (const file of agentResult.filesChanged) {
+          const src = path.join(sandbox.sandboxDir, file);
+          const dst = path.join(workspace, file);
+          if (fs.existsSync(src)) {
+            const dir = path.dirname(dst);
+            if (!fs.existsSync(dir)) {
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            fs.copyFileSync(src, dst);
+          }
+        }
+        logger.info("evolver-runner: deployed sandbox changes to workspace", {
+          fileCount: agentResult.filesChanged.length,
+        });
+      }
+
+      logger.info("evolver-runner: cycle completed", { elapsed_ms: elapsed });
+      return { ok: true, elapsed };
+    } finally {
+      cleanupTmpdir(sandbox.sandboxDir);
+    }
   } catch (error) {
     const elapsed = Date.now() - t0;
     const msg = error instanceof Error ? error.message : String(error);
@@ -181,49 +228,6 @@ export async function runSolidify(options: {
   } catch (error) {
     logger.warn("evolver-runner: solidify failed", { error: String(error) });
     return { ok: false };
-  }
-}
-
-// ---------- Code Agent Integration ----------
-
-async function applyCodeAgentChanges(options: EvolverRunOptions): Promise<void> {
-  if (!options.codeAgent) {
-    return;
-  }
-
-  const workspace = getWorkspaceRoot(options.workspace);
-
-  // Check if there are uncommitted changes from the evolution cycle
-  const statusResult = spawnSync("git", ["status", "--porcelain"], {
-    cwd: workspace,
-    encoding: "utf-8",
-  });
-
-  const changedFiles = (statusResult.stdout ?? "").trim().split("\n").filter(Boolean);
-
-  if (changedFiles.length === 0) {
-    return;
-  }
-
-  // If src/ files were changed, use code agent for validation/enhancement
-  const srcChanges = changedFiles.filter((line) => line.includes("src/"));
-  if (srcChanges.length === 0) {
-    return;
-  }
-
-  logger.info("evolver-runner: src/ changes detected, invoking code agent", {
-    fileCount: srcChanges.length,
-  });
-
-  const prompt = `The evolver has made changes to the following src/ files:\n${srcChanges.join("\n")}\n\nPlease review these changes, fix any TypeScript errors, ensure the code compiles, and run basic validation.`;
-
-  try {
-    const result = await options.codeAgent({ prompt, workspace });
-    if (!result.ok) {
-      logger.warn("evolver-runner: code agent reported issues", { error: result.error });
-    }
-  } catch (error) {
-    logger.warn("evolver-runner: code agent failed", { error: String(error) });
   }
 }
 
@@ -370,23 +374,23 @@ export async function runDaemonLoop(options: EvolverRunOptions): Promise<never> 
     const result = await runEvolutionCycle(options);
 
     if (result.ok) {
-      // Verify build after successful evolution
+      // Sandbox agent already validated changes. Run a final verify on the real workspace as safety net.
       const verify = runVerify(workspace, verifyCmd);
       if (verify.ok) {
-        // Verification passed — auto-deploy locally (git commit) unless review mode
         if (!reviewMode) {
           autoCommitChanges(workspace);
         } else {
           logger.info("evolver-runner: verification passed, awaiting review (review mode on)");
         }
       } else if (rollbackEnabled) {
+        // Sandbox passed but real workspace verify failed — rollback
         rollbackChanges(workspace, cleanEnabled);
-        appendErrorRecord(workspace, "verify_failed", {
+        appendErrorRecord(workspace, "post_deploy_verify_failed", {
           stdout: verify.stdout.slice(0, 2000),
           stderr: verify.stderr.slice(0, 2000),
         });
       }
-    } else if (rollbackEnabled) {
+    } else if (result.error && rollbackEnabled) {
       rollbackChanges(workspace, cleanEnabled);
       appendErrorRecord(workspace, "run_failed", { error: result.error });
     }

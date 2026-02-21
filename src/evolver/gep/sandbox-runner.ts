@@ -155,7 +155,7 @@ function cleanupDocker(containerName: string | null): void {
 
 // ---------- tmpdir sandbox ----------
 
-function createTmpdirSandbox(workspaceRoot: string): TmpdirSandboxResult {
+export function createTmpdirSandbox(workspaceRoot: string): TmpdirSandboxResult {
   const sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), "evolver-sandbox-"));
 
   // Copy project using rsync or cp (excluding node_modules, .git, dist)
@@ -247,7 +247,7 @@ function runInTmpdir(sandboxDir: string, cmd: string, timeout?: number): ExecRes
   return tryExec(cmd, { cwd: sandboxDir, timeout: timeout || DEFAULT_TIMEOUT_MS });
 }
 
-function cleanupTmpdir(sandboxDir: string | null): void {
+export function cleanupTmpdir(sandboxDir: string | null): void {
   if (!sandboxDir) {
     return;
   }
