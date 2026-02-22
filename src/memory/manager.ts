@@ -1536,6 +1536,48 @@ export class MemoryIndexManager implements MemorySearchManager {
       chunkL0s.push(generateL0Abstract(chunk));
     }
 
+    // Information gain filter: skip chunks that are near-duplicates of existing chunks
+    // in the same source (cross-file dedup). Only when sqlite-vec is available.
+    const redundancyThreshold = 0.95;
+    const distanceThreshold = 1 - redundancyThreshold; // cosine distance
+    const nonRedundantIndices: number[] = [];
+    if (vectorReady) {
+      for (let i = 0; i < chunks.length; i++) {
+        const embedding = embeddings[i];
+        if (!embedding || embedding.length === 0) {
+          nonRedundantIndices.push(i);
+          continue;
+        }
+        try {
+          const nearest = this.db
+            .prepare(
+              `SELECT vec_distance_cosine(v.embedding, ?) AS dist` +
+                ` FROM ${VECTOR_TABLE} v` +
+                ` JOIN chunks c ON c.id = v.id` +
+                ` WHERE c.source = ? AND c.path != ?` +
+                ` ORDER BY dist ASC LIMIT 1`,
+            )
+            .get(vectorToBlob(embedding), options.source, entry.path) as
+            | { dist: number }
+            | undefined;
+          if (!nearest || nearest.dist >= distanceThreshold) {
+            nonRedundantIndices.push(i);
+          }
+          // else: redundant chunk, skip
+        } catch {
+          nonRedundantIndices.push(i); // ANN failure → conservatively keep
+        }
+      }
+    } else {
+      for (let i = 0; i < chunks.length; i++) {
+        nonRedundantIndices.push(i);
+      }
+    }
+
+    const igChunks = nonRedundantIndices.map((i) => chunks[i]);
+    const igEmbeddings = nonRedundantIndices.map((i) => embeddings[i]);
+    const igL0s = nonRedundantIndices.map((i) => chunkL0s[i]);
+
     if (vectorReady) {
       try {
         this.db
@@ -1555,10 +1597,10 @@ export class MemoryIndexManager implements MemorySearchManager {
     this.db
       .prepare(`DELETE FROM chunks WHERE path = ? AND source = ?`)
       .run(entry.path, options.source);
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const embedding = embeddings[i] ?? [];
-      const l0 = chunkL0s[i] ?? "";
+    for (let i = 0; i < igChunks.length; i++) {
+      const chunk = igChunks[i];
+      const embedding = igEmbeddings[i] ?? [];
+      const l0 = igL0s[i] ?? "";
       const id = hashText(
         `${options.source}:${entry.path}:${chunk.startLine}:${chunk.endLine}:${chunk.hash}:${this.provider.model}`,
       );
@@ -1613,8 +1655,8 @@ export class MemoryIndexManager implements MemorySearchManager {
       }
     }
 
-    // Generate file-level L0 abstract
-    const fileL0 = generateFileL0(chunkL0s);
+    // Generate file-level L0 abstract (from non-redundant chunks only)
+    const fileL0 = generateFileL0(igL0s);
 
     // Embed file-level L0 and write to files_vec
     let fileL0Embedding: number[] = [];

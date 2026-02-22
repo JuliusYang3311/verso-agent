@@ -658,11 +658,28 @@ export async function runEmbeddedAttempt(
             // Use the dynamically selected recent messages
             finalMessages = dynamicResult.recentMessages;
 
+            // Inject retrieved memory chunks as a synthetic context message
+            if (dynamicResult.retrievedChunks.length > 0) {
+              const memorySnippets = dynamicResult.retrievedChunks
+                .map(
+                  (c) =>
+                    `[${c.path}:${c.startLine}-${c.endLine}] (score=${c.score.toFixed(2)})\n${c.snippet}`,
+                )
+                .join("\n---\n");
+              const memoryMessage: AgentMessage = {
+                role: "user",
+                content: `<memory-context>\nThe following are relevant memory snippets retrieved for this conversation:\n\n${memorySnippets}\n</memory-context>`,
+                timestamp: Date.now(),
+              };
+              finalMessages = [memoryMessage, ...finalMessages];
+            }
+
             log.debug(
               `dynamic context applied: runId=${params.runId} sessionId=${params.sessionId} ` +
                 `recentRatio=${dynamicResult.recentRatioUsed.toFixed(2)} ` +
                 `recentTokens=${dynamicResult.recentTokens} ` +
                 `retrievalTokens=${dynamicResult.retrievalTokens} ` +
+                `retrievedChunks=${dynamicResult.retrievedChunks.length} ` +
                 `totalTokens=${dynamicResult.totalTokens} ` +
                 `originalMessages=${limited.length} selectedMessages=${finalMessages.length}`,
             );

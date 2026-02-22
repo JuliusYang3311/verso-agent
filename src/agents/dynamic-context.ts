@@ -44,6 +44,10 @@ export type ContextParams = {
   // Progressive loading params
   progressiveLoadingEnabled?: boolean;
   progressiveL2MaxChunks?: number;
+  // MMR diversity params
+  mmrLambda?: number;
+  // Write-side dedup params
+  redundancyThreshold?: number;
 };
 
 export type RetrievedChunk = {
@@ -83,6 +87,8 @@ export const DEFAULT_CONTEXT_PARAMS: ContextParams = {
   hybridBm25Weight: 0.3,
   compactSafetyMargin: 1.2,
   flushSoftThreshold: 4000,
+  mmrLambda: 0.6,
+  redundancyThreshold: 0.95,
 };
 
 // ---------- Load params from evolver assets ----------
@@ -202,10 +208,85 @@ export function selectRecentMessages(
 // ---------- Dynamic vector retrieval filtering ----------
 
 /**
+ * Bigram Jaccard similarity between two text snippets.
+ * Used as a proxy for semantic similarity in MMR selection
+ * (avoids needing embedding vectors at this layer).
+ */
+function bigramJaccard(a: string, b: string): number {
+  if (a.length < 2 || b.length < 2) {
+    return 0;
+  }
+  const bigrams = (s: string): Set<string> => {
+    const set = new Set<string>();
+    const lower = s.toLowerCase();
+    for (let i = 0; i < lower.length - 1; i++) {
+      set.add(lower.slice(i, i + 2));
+    }
+    return set;
+  };
+  const setA = bigrams(a);
+  const setB = bigrams(b);
+  let intersection = 0;
+  for (const bg of setA) {
+    if (setB.has(bg)) {
+      intersection++;
+    }
+  }
+  const union = setA.size + setB.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/**
+ * MMR (Maximal Marginal Relevance) greedy selection.
+ * Selects chunks that maximize: λ * relevance - (1-λ) * max_similarity_to_selected.
+ * This maximizes marginal information gain within the token budget.
+ */
+function mmrSelect(
+  candidates: RetrievedChunk[],
+  budgetTokens: number,
+  mmrLambda: number,
+): { chunks: RetrievedChunk[]; tokensUsed: number } {
+  const selected: RetrievedChunk[] = [];
+  let tokensUsed = 0;
+  const remaining = [...candidates];
+
+  while (remaining.length > 0) {
+    let bestIdx = -1;
+    let bestMmr = -Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const relevance = remaining[i].score;
+      const maxSim =
+        selected.length === 0
+          ? 0
+          : Math.max(...selected.map((s) => bigramJaccard(remaining[i].snippet, s.snippet)));
+      const mmr = mmrLambda * relevance - (1 - mmrLambda) * maxSim;
+      if (mmr > bestMmr) {
+        bestMmr = mmr;
+        bestIdx = i;
+      }
+    }
+
+    if (bestIdx === -1) {
+      break;
+    }
+    const [chunk] = remaining.splice(bestIdx, 1);
+    const chunkTokens = estimateSnippetTokens(chunk.snippet);
+    if (tokensUsed + chunkTokens > budgetTokens && selected.length > 0) {
+      break;
+    }
+    selected.push(chunk);
+    tokensUsed += chunkTokens;
+  }
+
+  return { chunks: selected, tokensUsed };
+}
+
+/**
  * Dynamically filter retrieval results based on similarity threshold.
  * Does not use fixed top-k, instead returns all results above threshold.
  * If results are empty, lower threshold and retry.
- * Applies time decay.
+ * Applies time decay, then MMR diversity selection.
  */
 export function filterRetrievedChunks(
   chunks: RetrievedChunk[],
@@ -233,18 +314,9 @@ export function filterRetrievedChunks(
     filtered = decayed.filter((c) => c.score >= params.thresholdFloor);
   }
 
-  // Truncate within budget
-  const selected: RetrievedChunk[] = [];
-  let tokensUsed = 0;
-
-  for (const chunk of filtered) {
-    const chunkTokens = estimateSnippetTokens(chunk.snippet);
-    if (tokensUsed + chunkTokens > budgetTokens && selected.length > 0) {
-      break;
-    }
-    selected.push(chunk);
-    tokensUsed += chunkTokens;
-  }
+  // MMR diversity selection within budget
+  const mmrLambda = params.mmrLambda ?? 0.6;
+  const { chunks: selected, tokensUsed } = mmrSelect(filtered, budgetTokens, mmrLambda);
 
   const thresholdUsed =
     selected.length > 0 ? selected[selected.length - 1].score : params.baseThreshold;
@@ -412,7 +484,7 @@ export function buildDynamicContext(options: {
     thresholdUsed,
   } = params.progressiveLoadingEnabled
     ? (() => {
-        // Apply time decay + threshold filter first, then progressive loading
+        // Apply time decay + threshold filter first, then MMR reorder, then progressive loading
         const decayed = nonDuplicateChunks.map((chunk) => {
           const decay = chunk.timestamp
             ? timeDecayFactor(chunk.timestamp, params.timeDecayLambda)
@@ -424,7 +496,10 @@ export function buildDynamicContext(options: {
         if (filtered.length === 0) {
           filtered = decayed.filter((c) => c.score >= params.thresholdFloor);
         }
-        const result = progressiveLoadChunks(filtered, params, retrievalBudget);
+        // MMR reorder before progressive loading
+        const mmrLambda = params.mmrLambda ?? 0.6;
+        const mmrResult = mmrSelect(filtered, retrievalBudget, mmrLambda);
+        const result = progressiveLoadChunks(mmrResult.chunks, params, retrievalBudget);
         const threshold =
           result.chunks.length > 0
             ? result.chunks[result.chunks.length - 1].score

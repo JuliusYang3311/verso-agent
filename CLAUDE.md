@@ -146,11 +146,15 @@ web-search, brave-search, novel-writer
 
 - ✅ `buildDynamicContext()` — 主入口，动态合并近期消息 + 向量检索
 - ✅ `selectRecentMessages()` — 基于 token 预算动态保留近期消息
-- ✅ `filterRetrievedChunks()` — 基于相似度阈值动态过滤（非固定 top-k）
+- ✅ `filterRetrievedChunks()` — 基于相似度阈值动态过滤 + MMR 多样性选择
+- ✅ `mmrSelect()` — MMR 贪心选择，最大化边际信息量（λ _ relevance - (1-λ) _ max_sim）
+- ✅ `bigramJaccard()` — bigram Jaccard 相似度，作为 MMR 中 chunk 间相似度代理
 - ✅ `computeDynamicRecentRatio()` — 根据对话节奏动态调整比例
 - ✅ `timeDecayFactor()` — 时间衰减：exp(-λ \* hoursAgo)
 - ✅ `loadContextParams()` — 从 evolver assets 加载可调超参数
 - ✅ 集成到 `pi-embedded-runner/run/attempt.ts`（feature-gated: `dynamicContext !== false`）
+- ✅ retrievedChunks 注入：检索到的记忆片段作为 `<memory-context>` 合成消息注入 finalMessages
+- ✅ 写入端信息增益过滤：`indexFile` 中跨文件去重（同 source），cosine distance < 0.05 的冗余 chunk 跳过写入
 - ✅ 新增 cache trace stage: `session:dynamic-context`
 - ✅ 配置类型扩展: `types.agent-defaults.ts` 增加 `dynamicContext?: boolean`
 
@@ -184,6 +188,10 @@ web-search, brave-search, novel-writer
 | L2   | 完整原文          | 无限  | 已有（chunk text）           | 按需加载高价值片段      |
 
 - 不使用固定 top-k，基于**相似度阈值**动态返回（保留原有阈值机制）
+- 检索结果经 **MMR（Maximal Marginal Relevance）** 多样性重排序，最大化边际信息量：
+  - `MMR(cᵢ) = λ * relevance(cᵢ) - (1-λ) * max_{cⱼ ∈ selected} sim(cᵢ, cⱼ)`
+  - 使用 bigram Jaccard 作为 chunk 间相似度代理（无需 embedding 向量）
+  - λ = `mmrLambda`（默认 0.6），可由 evolver 调优
 - 检索采用**分层算法**（可选，`hierarchicalSearch` flag 控制）：
 
   ```
@@ -210,16 +218,17 @@ retrievalBudget = totalBudget - recentBudget
 
 渐进式加载（progressiveLoadingEnabled = true 时启用）：
   1. 所有候选先通过阈值过滤 + 时间衰减
-  2. 按 score 排序，逐个装入 retrievalBudget：
+  2. MMR 多样性重排序（最大化边际信息量，消除冗余）
+  3. 按 MMR 排序，逐个装入 retrievalBudget：
      - 优先 L2（全文 snippet），放得下则用
      - 放不下 → L1（概览），可用且放得下
      - 放不下 → L0（摘要），一定放得下
-  3. 最大化 budget 内的信息密度
+  4. 最大化 budget 内的信息密度和多样性
 
 context = [
   ...systemPrompt,
   ...compactionSummary (if exists),
-  ...retrievedChunks (L0/L1/L2 混合，渐进式装入 retrievalBudget),
+  <memory-context>retrievedChunks</memory-context> (合成 user message，L0/L1/L2 混合),
   ...recentMessages (动态保留的近期消息),
   currentUserMessage
 ]
@@ -230,19 +239,23 @@ context = [
 - `src/agents/dynamic-context.ts` — 上下文构建器 + 渐进式加载 ✅
 - `src/agents/pi-embedded-runner/run/attempt.ts` — 集成动态上下文 ✅
 - `src/evolver/assets/gep/context_params.json` — 超参数配置 ✅
-- `src/memory/manager.ts` — 索引流程（L0 生成 + 文件级向量）+ 搜索分层调度
+- `src/memory/manager.ts` — 索引流程（L0 生成 + 文件级向量 + 信息增益过滤）+ 搜索分层调度
 - `src/memory/manager-search.ts` — chunk 级 + 文件级检索
 - `src/memory/manager-hierarchical-search.ts` — 分层检索（Phase 1 + Phase 2 + 分数传播）
 - `src/memory/manager-l1-generator.ts` — L1 后台生成器（启发式 + 可选 LLM）
 - `src/memory/internal.ts` — L0 生成函数（`generateL0Abstract`, `generateFileL0`）
 
-#### 3.2.2 实时向量化
+#### 3.2.2 实时向量化 + 信息增益过滤
 
 **修改**: `src/memory/manager.ts`
 
 - 每轮对话结束后，立即将新消息向量化存入 sqlite-vec
 - 使用现有 hybrid search 架构（Vector 0.7 + BM25 0.3）
 - 利用现有 embedding provider（OpenAI/Gemini/Voyage/Local）
+- **写入端信息增益过滤**：`indexFile` 在写入前检查每个新 chunk 是否与同 source 已有 chunk 冗余
+  - 用 sqlite-vec ANN 搜索最近邻，cosine distance < `1 - redundancyThreshold`（默认 0.05）→ 跳过写入
+  - 排除同文件（同文件内 chunk 更新是正常的），只跨文件去重
+  - sqlite-vec 不可用时跳过去重，保持原有行为
 
 #### 3.2.3 Compact/Flush 角色调整
 
@@ -292,7 +305,11 @@ context_params.json:
 
   // 渐进式加载参数
   "progressiveLoadingEnabled": true,    // 启用 L0/L1/L2 渐进式加载
-  "progressiveL2MaxChunks": 5          // L2 全文加载的最大 chunk 数
+  "progressiveL2MaxChunks": 5,         // L2 全文加载的最大 chunk 数
+
+  // 信息论优化参数
+  "mmrLambda": 0.6,                    // MMR 多样性权重（0=纯多样性, 1=纯相关性）
+  "redundancyThreshold": 0.95          // 写入端去重阈值（cosine similarity > 此值视为冗余）
 }
 ```
 
@@ -628,8 +645,8 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ---
 
-**计划版本**: 4.3
+**计划版本**: 4.4
 **创建日期**: 2026-02-14
-**最后更新**: 2026-02-16
-**当前状态**: 阶段 1-5 全部完成。架构改造（动态上下文 + 异步执行 + 单 session）、代码瘦身（Signal/iMessage/Line 移除）、结构性重构（大文件分解 ✅、infra 拆分 ✅、GEP TS 转换 ✅、dedupe 统一 ✅）均已实施。
-**测试基线**: 998 files, 6768 tests, 0 failures
+**最后更新**: 2026-02-17
+**当前状态**: 阶段 1-5 全部完成。信息论优化已实施：写入端信息增益过滤（跨文件去重）、检索端 MMR 多样性选择、retrievedChunks 注入修复。
+**测试基线**: 998 files, 6785 tests, 0 failures
