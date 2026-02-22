@@ -17,6 +17,7 @@ import type {
   MemorySyncProgressUpdate,
 } from "./types.js";
 import { resolveAgentDir, resolveAgentWorkspaceDir } from "../agents/agent-scope.js";
+import { loadContextParams } from "../agents/dynamic-context.js";
 import { resolveMemorySearchConfig } from "../agents/memory-search.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { onSessionTranscriptUpdate } from "../sessions/transcript-events.js";
@@ -1538,7 +1539,8 @@ export class MemoryIndexManager implements MemorySearchManager {
 
     // Information gain filter: skip chunks that are near-duplicates of existing chunks
     // in the same source (cross-file dedup). Only when sqlite-vec is available.
-    const redundancyThreshold = 0.95;
+    const contextParams = await loadContextParams();
+    const redundancyThreshold = contextParams.redundancyThreshold ?? 0.95;
     const distanceThreshold = 1 - redundancyThreshold; // cosine distance
     const nonRedundantIndices: number[] = [];
     if (vectorReady) {
