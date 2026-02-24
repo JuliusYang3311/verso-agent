@@ -13,6 +13,12 @@ import { estimateTokens } from "@mariozechner/pi-coding-agent";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  applyDiversityPipeline,
+  deduplicateChunks,
+  mmrSelectChunks,
+  type DiverseChunk,
+} from "../memory/chunk-diversity.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,7 +37,8 @@ export type ContextParams = {
   flushSoftThreshold: number;
   // Hierarchical search params
   hierarchicalSearch?: boolean;
-  hierarchicalFileLimit?: number;
+  hierarchicalFileThreshold?: number;
+  hierarchicalFileThresholdFloor?: number;
   hierarchicalAlpha?: number;
   hierarchicalConvergenceRounds?: number;
   fileVectorWeight?: number;
@@ -48,6 +55,18 @@ export type ContextParams = {
   mmrLambda?: number;
   // Write-side dedup params
   redundancyThreshold?: number;
+  // Latent factor multi-dimensional query params
+  latentFactorEnabled?: boolean;
+  factorActivationThreshold?: number;
+  factorTopK?: number;
+  factorMmrLambda?: number;
+  dimensionWeights?: {
+    rel: number;
+    div: number;
+    time: number;
+    source: number;
+    level: number;
+  };
 };
 
 export type RetrievedChunk = {
@@ -61,6 +80,9 @@ export type RetrievedChunk = {
   l0Abstract?: string;
   l1Overview?: string;
   level?: "l0" | "l1" | "l2";
+  // Latent factor metadata (populated when latentFactorEnabled = true)
+  factorsUsed?: Array<{ id: string; score: number }>;
+  latentProjection?: { factorIds: string[]; scores: number[] };
 };
 
 export type DynamicContextResult = {
@@ -208,85 +230,47 @@ export function selectRecentMessages(
 // ---------- Dynamic vector retrieval filtering ----------
 
 /**
- * Bigram Jaccard similarity between two text snippets.
- * Used as a proxy for semantic similarity in MMR selection
- * (avoids needing embedding vectors at this layer).
+ * Convert RetrievedChunk to DiverseChunk for the diversity pipeline.
  */
-function bigramJaccard(a: string, b: string): number {
-  if (a.length < 2 || b.length < 2) {
-    return 0;
-  }
-  const bigrams = (s: string): Set<string> => {
-    const set = new Set<string>();
-    const lower = s.toLowerCase();
-    for (let i = 0; i < lower.length - 1; i++) {
-      set.add(lower.slice(i, i + 2));
-    }
-    return set;
+function toDiverseChunk(chunk: RetrievedChunk): DiverseChunk {
+  return {
+    key: `${chunk.path}:${chunk.startLine}`,
+    path: chunk.path,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+    snippet: chunk.snippet,
+    score: chunk.score,
+    source: chunk.source,
+    timestamp: chunk.timestamp,
+    l0Abstract: chunk.l0Abstract,
+    l1Overview: chunk.l1Overview,
+    level: chunk.level,
+    factorsUsed: chunk.factorsUsed,
+    latentProjection: chunk.latentProjection,
   };
-  const setA = bigrams(a);
-  const setB = bigrams(b);
-  let intersection = 0;
-  for (const bg of setA) {
-    if (setB.has(bg)) {
-      intersection++;
-    }
-  }
-  const union = setA.size + setB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
 }
 
-/**
- * MMR (Maximal Marginal Relevance) greedy selection.
- * Selects chunks that maximize: λ * relevance - (1-λ) * max_similarity_to_selected.
- * This maximizes marginal information gain within the token budget.
- */
-function mmrSelect(
-  candidates: RetrievedChunk[],
-  budgetTokens: number,
-  mmrLambda: number,
-): { chunks: RetrievedChunk[]; tokensUsed: number } {
-  const selected: RetrievedChunk[] = [];
-  let tokensUsed = 0;
-  const remaining = [...candidates];
-
-  while (remaining.length > 0) {
-    let bestIdx = -1;
-    let bestMmr = -Infinity;
-
-    for (let i = 0; i < remaining.length; i++) {
-      const relevance = remaining[i].score;
-      const maxSim =
-        selected.length === 0
-          ? 0
-          : Math.max(...selected.map((s) => bigramJaccard(remaining[i].snippet, s.snippet)));
-      const mmr = mmrLambda * relevance - (1 - mmrLambda) * maxSim;
-      if (mmr > bestMmr) {
-        bestMmr = mmr;
-        bestIdx = i;
-      }
-    }
-
-    if (bestIdx === -1) {
-      break;
-    }
-    const [chunk] = remaining.splice(bestIdx, 1);
-    const chunkTokens = estimateSnippetTokens(chunk.snippet);
-    if (tokensUsed + chunkTokens > budgetTokens && selected.length > 0) {
-      break;
-    }
-    selected.push(chunk);
-    tokensUsed += chunkTokens;
-  }
-
-  return { chunks: selected, tokensUsed };
+function fromDiverseChunk(chunk: DiverseChunk): RetrievedChunk {
+  return {
+    path: chunk.path,
+    startLine: chunk.startLine,
+    endLine: chunk.endLine,
+    snippet: chunk.snippet,
+    score: chunk.score,
+    source: chunk.source,
+    timestamp: chunk.timestamp,
+    l0Abstract: chunk.l0Abstract,
+    l1Overview: chunk.l1Overview,
+    level: chunk.level,
+    factorsUsed: chunk.factorsUsed,
+    latentProjection: chunk.latentProjection,
+  };
 }
 
 /**
  * Dynamically filter retrieval results based on similarity threshold.
- * Does not use fixed top-k, instead returns all results above threshold.
- * If results are empty, lower threshold and retry.
- * Applies time decay, then MMR diversity selection.
+ * Applies time decay, exact deduplication, threshold filtering, then
+ * MMR diversity selection — delegating to chunk-diversity.ts.
  */
 export function filterRetrievedChunks(
   chunks: RetrievedChunk[],
@@ -297,31 +281,25 @@ export function filterRetrievedChunks(
     return { chunks: [], tokensUsed: 0, thresholdUsed: params.baseThreshold };
   }
 
-  // Apply time decay
+  // Apply time decay before handing off to the diversity pipeline
   const decayed = chunks.map((chunk) => {
     const decay = chunk.timestamp ? timeDecayFactor(chunk.timestamp, params.timeDecayLambda) : 1;
-    return { ...chunk, score: chunk.score * decay };
+    return toDiverseChunk({ ...chunk, score: chunk.score * decay });
   });
 
-  // Sort by score in descending order
-  decayed.sort((a, b) => b.score - a.score);
+  const {
+    chunks: selected,
+    tokensUsed,
+    thresholdUsed,
+  } = applyDiversityPipeline({
+    chunks: decayed,
+    budgetTokens,
+    threshold: params.baseThreshold,
+    thresholdFloor: params.thresholdFloor,
+    mmrLambda: params.mmrLambda ?? 0.6,
+  });
 
-  // Try filtering with baseThreshold
-  let filtered = decayed.filter((c) => c.score >= params.baseThreshold);
-
-  // If no results, lower threshold and retry
-  if (filtered.length === 0) {
-    filtered = decayed.filter((c) => c.score >= params.thresholdFloor);
-  }
-
-  // MMR diversity selection within budget
-  const mmrLambda = params.mmrLambda ?? 0.6;
-  const { chunks: selected, tokensUsed } = mmrSelect(filtered, budgetTokens, mmrLambda);
-
-  const thresholdUsed =
-    selected.length > 0 ? selected[selected.length - 1].score : params.baseThreshold;
-
-  return { chunks: selected, tokensUsed, thresholdUsed };
+  return { chunks: selected.map(fromDiverseChunk), tokensUsed, thresholdUsed };
 }
 
 function estimateSnippetTokens(text: string): number {
@@ -333,8 +311,9 @@ function estimateSnippetTokens(text: string): number {
 
 /**
  * Progressively load chunks into the token budget.
- * Priority: L2 (full text) > L1 (overview) > L0 (abstract).
- * Maximizes information density within the budget.
+ * Loads all qualifying chunks until budget is exhausted.
+ * Per chunk: tries L2 (full text) → L1 (overview) → L0 (abstract).
+ * Never stops early due to a count limit — only the token budget decides.
  */
 export function progressiveLoadChunks(
   chunks: RetrievedChunk[],
@@ -345,10 +324,8 @@ export function progressiveLoadChunks(
     return { chunks: [], tokensUsed: 0 };
   }
 
-  const l2MaxChunks = params.progressiveL2MaxChunks ?? 5;
   const selected: RetrievedChunk[] = [];
   let tokensUsed = 0;
-  let l2Count = 0;
 
   for (const chunk of chunks) {
     if (tokensUsed >= budgetTokens) {
@@ -361,40 +338,17 @@ export function progressiveLoadChunks(
     const l0Text = chunk.l0Abstract || "";
     const l0Tokens = l0Text ? estimateSnippetTokens(l0Text) : 0;
 
-    // Try L2 (full snippet) first
-    if (tokensUsed + l2Tokens <= budgetTokens && l2Count < l2MaxChunks) {
+    if (tokensUsed + l2Tokens <= budgetTokens) {
       selected.push({ ...chunk, level: "l2" });
       tokensUsed += l2Tokens;
-      l2Count++;
-      continue;
-    }
-
-    // Try L1 (overview) if available
-    if (l1Text && tokensUsed + l1Tokens <= budgetTokens) {
-      selected.push({
-        ...chunk,
-        snippet: l1Text,
-        level: "l1",
-      });
+    } else if (l1Text && tokensUsed + l1Tokens <= budgetTokens) {
+      selected.push({ ...chunk, snippet: l1Text, level: "l1" });
       tokensUsed += l1Tokens;
-      continue;
-    }
-
-    // Try L0 (abstract) — always fits if short enough
-    if (l0Text && tokensUsed + l0Tokens <= budgetTokens) {
-      selected.push({
-        ...chunk,
-        snippet: l0Text,
-        level: "l0",
-      });
+    } else if (l0Text && tokensUsed + l0Tokens <= budgetTokens) {
+      selected.push({ ...chunk, snippet: l0Text, level: "l0" });
       tokensUsed += l0Tokens;
-      continue;
     }
-
-    // Nothing fits, stop
-    if (selected.length > 0) {
-      break;
-    }
+    // If nothing fits for this chunk, skip it and try the next one
   }
 
   return { chunks: selected, tokensUsed };
@@ -484,22 +438,27 @@ export function buildDynamicContext(options: {
     thresholdUsed,
   } = params.progressiveLoadingEnabled
     ? (() => {
-        // Apply time decay + threshold filter first, then MMR reorder, then progressive loading
+        // Apply time decay + dedup + threshold filter, then MMR reorder, then progressive loading
         const decayed = nonDuplicateChunks.map((chunk) => {
           const decay = chunk.timestamp
             ? timeDecayFactor(chunk.timestamp, params.timeDecayLambda)
             : 1;
-          return { ...chunk, score: chunk.score * decay };
+          return toDiverseChunk({ ...chunk, score: chunk.score * decay });
         });
-        decayed.sort((a, b) => b.score - a.score);
-        let filtered = decayed.filter((c) => c.score >= params.baseThreshold);
+        const deduped = deduplicateChunks(decayed);
+        const dedupedSorted = deduped.toSorted((a, b) => b.score - a.score);
+        let filtered = dedupedSorted.filter((c) => c.score >= params.baseThreshold);
         if (filtered.length === 0) {
-          filtered = decayed.filter((c) => c.score >= params.thresholdFloor);
+          filtered = dedupedSorted.filter((c) => c.score >= params.thresholdFloor);
         }
-        // MMR reorder before progressive loading
+        // MMR reorder before progressive loading — use large budget to get ordering only
         const mmrLambda = params.mmrLambda ?? 0.6;
-        const mmrResult = mmrSelect(filtered, retrievalBudget, mmrLambda);
-        const result = progressiveLoadChunks(mmrResult.chunks, params, retrievalBudget);
+        const mmrResult = mmrSelectChunks(filtered, Number.MAX_SAFE_INTEGER, mmrLambda);
+        const result = progressiveLoadChunks(
+          mmrResult.chunks.map(fromDiverseChunk),
+          params,
+          retrievalBudget,
+        );
         const threshold =
           result.chunks.length > 0
             ? result.chunks[result.chunks.length - 1].score

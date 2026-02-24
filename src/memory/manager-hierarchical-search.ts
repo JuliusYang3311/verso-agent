@@ -43,11 +43,14 @@ export async function searchHierarchical(
     filesFtsAvailable,
   } = params;
 
-  const fileLimit = contextParams.hierarchicalFileLimit ?? 10;
+  const fileThreshold = contextParams.hierarchicalFileThreshold ?? 0.5;
+  const fileThresholdFloor = contextParams.hierarchicalFileThresholdFloor ?? 0.3;
   const alpha = contextParams.hierarchicalAlpha ?? 0.7;
   const convergenceRounds = contextParams.hierarchicalConvergenceRounds ?? 3;
   const fileVecWeight = contextParams.fileVectorWeight ?? 0.7;
   const fileBm25Weight = contextParams.fileBm25Weight ?? 0.3;
+
+  // No limit — threshold filtering decides the final count.
 
   // ---- Phase 1: File-level pre-filter ----
 
@@ -57,7 +60,6 @@ export async function searchHierarchical(
           db,
           filesVectorTable,
           queryVec,
-          limit: fileLimit,
           ensureFileVectorReady: params.ensureFileVectorReady,
         }).catch(() => [])
       : [];
@@ -68,7 +70,6 @@ export async function searchHierarchical(
           db,
           filesFtsTable,
           query,
-          limit: fileLimit,
           buildFtsQuery,
           bm25RankToScore,
         })
@@ -91,7 +92,21 @@ export async function searchHierarchical(
     textWeight: fileBm25Weight,
   });
 
-  if (topFiles.length === 0) {
+  // Threshold-driven file selection (learnable).
+  // Falls back to fileThresholdFloor if nothing passes primary threshold.
+  // Guarantees at least 1 file if any results exist.
+  const selectFiles = (files: typeof topFiles, threshold: number) =>
+    files.filter((f) => f.score >= threshold);
+
+  let selectedFiles = selectFiles(topFiles, fileThreshold);
+  if (selectedFiles.length === 0) {
+    selectedFiles = selectFiles(topFiles, fileThresholdFloor);
+  }
+  if (selectedFiles.length === 0 && topFiles.length > 0) {
+    selectedFiles = [topFiles[0]];
+  }
+
+  if (selectedFiles.length === 0) {
     // No file-level results — fall back to flat search
     return searchVector({
       db: params.db,
@@ -112,7 +127,7 @@ export async function searchHierarchical(
   let stableRounds = 0;
   let prevTopK: string[] = [];
 
-  for (const file of topFiles) {
+  for (const file of selectedFiles) {
     // Search chunks within this file using path filter
     const pathFilter = {
       sql: ` AND c.path = ?`,
