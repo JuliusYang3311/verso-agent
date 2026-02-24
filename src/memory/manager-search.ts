@@ -21,6 +21,8 @@ export type SearchRowResult = {
   l0Abstract?: string;
   /** L1 overview for progressive loading. */
   l1Overview?: string;
+  /** Embedding vector — present when retrieved via the in-process fallback path. */
+  embedding?: number[];
 };
 
 export async function searchVector(params: {
@@ -102,6 +104,7 @@ export async function searchVector(params: {
       score: entry.score,
       snippet: truncateUtf16Safe(entry.chunk.text, params.snippetMaxChars),
       source: entry.chunk.source,
+      embedding: entry.chunk.embedding,
     }));
 }
 
@@ -214,26 +217,31 @@ export async function searchVectorFiles(params: {
   db: DatabaseSync;
   filesVectorTable: string;
   queryVec: number[];
-  limit: number;
+  limit?: number;
   ensureFileVectorReady: (dimensions: number) => Promise<boolean>;
 }): Promise<FileSearchResult[]> {
-  if (params.queryVec.length === 0 || params.limit <= 0) {
+  if (params.queryVec.length === 0) {
+    return [];
+  }
+  if (params.limit !== undefined && params.limit <= 0) {
     return [];
   }
   if (!(await params.ensureFileVectorReady(params.queryVec.length))) {
     return [];
   }
   try {
-    const rows = params.db
-      .prepare(
-        `SELECT f.path, f.source, f.l0_abstract,\n` +
-          `       vec_distance_cosine(v.embedding, ?) AS dist\n` +
-          `  FROM ${params.filesVectorTable} v\n` +
-          `  JOIN files f ON f.path = v.path\n` +
-          ` ORDER BY dist ASC\n` +
-          ` LIMIT ?`,
-      )
-      .all(vectorToBlob(params.queryVec), params.limit) as Array<{
+    const sql =
+      `SELECT f.path, f.source, f.l0_abstract,\n` +
+      `       vec_distance_cosine(v.embedding, ?) AS dist\n` +
+      `  FROM ${params.filesVectorTable} v\n` +
+      `  JOIN files f ON f.path = v.path\n` +
+      ` ORDER BY dist ASC` +
+      (params.limit !== undefined ? `\n LIMIT ?` : "");
+    const args =
+      params.limit !== undefined
+        ? [vectorToBlob(params.queryVec), params.limit]
+        : [vectorToBlob(params.queryVec)];
+    const rows = params.db.prepare(sql).all(...args) as Array<{
       path: string;
       source: SearchSource;
       l0_abstract: string;
@@ -257,11 +265,11 @@ export function searchKeywordFiles(params: {
   db: DatabaseSync;
   filesFtsTable: string;
   query: string;
-  limit: number;
+  limit?: number;
   buildFtsQuery: (raw: string) => string | null;
   bm25RankToScore: (rank: number) => number;
 }): FileSearchResult[] {
-  if (params.limit <= 0) {
+  if (params.limit !== undefined && params.limit <= 0) {
     return [];
   }
   const ftsQuery = params.buildFtsQuery(params.query);
@@ -269,16 +277,15 @@ export function searchKeywordFiles(params: {
     return [];
   }
   try {
-    const rows = params.db
-      .prepare(
-        `SELECT path, source, l0_abstract,\n` +
-          `       bm25(${params.filesFtsTable}) AS rank\n` +
-          `  FROM ${params.filesFtsTable}\n` +
-          ` WHERE ${params.filesFtsTable} MATCH ?\n` +
-          ` ORDER BY rank ASC\n` +
-          ` LIMIT ?`,
-      )
-      .all(ftsQuery, params.limit) as Array<{
+    const sql =
+      `SELECT path, source, l0_abstract,\n` +
+      `       bm25(${params.filesFtsTable}) AS rank\n` +
+      `  FROM ${params.filesFtsTable}\n` +
+      ` WHERE ${params.filesFtsTable} MATCH ?\n` +
+      ` ORDER BY rank ASC` +
+      (params.limit !== undefined ? `\n LIMIT ?` : "");
+    const args = params.limit !== undefined ? [ftsQuery, params.limit] : [ftsQuery];
+    const rows = params.db.prepare(sql).all(...args) as Array<{
       path: string;
       source: SearchSource;
       l0_abstract: string;

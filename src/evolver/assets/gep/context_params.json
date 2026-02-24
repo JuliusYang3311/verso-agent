@@ -10,7 +10,8 @@
   "compactSafetyMargin": 1.2,
   "flushSoftThreshold": 4000,
   "hierarchicalSearch": true,
-  "hierarchicalFileLimit": 10,
+  "hierarchicalFileThreshold": 0.5,
+  "hierarchicalFileThresholdFloor": 0.3,
   "hierarchicalAlpha": 0.7,
   "hierarchicalConvergenceRounds": 3,
   "fileVectorWeight": 0.7,
@@ -22,5 +23,16 @@
   "progressiveLoadingEnabled": true,
   "progressiveL2MaxChunks": 5,
   "mmrLambda": 0.6,
-  "redundancyThreshold": 0.95
+  "redundancyThreshold": 0.95,
+  "latentFactorEnabled": false,
+  "factorActivationThreshold": 0.35,
+  "factorTopK": 4,
+  "factorMmrLambda": 0.7,
+  "dimensionWeights": {
+    "rel": 0.5,
+    "div": 0.25,
+    "time": 0.15,
+    "source": 0.05,
+    "level": 0.05
+  }
 }
