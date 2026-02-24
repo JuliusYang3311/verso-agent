@@ -165,6 +165,23 @@ class FallbackMemoryManager implements MemorySearchManager {
     return { ok: false, error: this.lastError ?? "memory embeddings unavailable" };
   }
 
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    if (!this.primaryFailed) {
+      try {
+        return await this.deps.primary.embedBatch!(texts);
+      } catch (err) {
+        this.primaryFailed = true;
+        this.lastError = err instanceof Error ? err.message : String(err);
+        this.evictCacheEntry();
+      }
+    }
+    const fallback = await this.ensureFallback();
+    if (fallback?.embedBatch) {
+      return await fallback.embedBatch(texts);
+    }
+    throw new Error(this.lastError ?? "embedBatch unavailable");
+  }
+
   async probeVectorAvailability() {
     if (!this.primaryFailed) {
       return await this.deps.primary.probeVectorAvailability();

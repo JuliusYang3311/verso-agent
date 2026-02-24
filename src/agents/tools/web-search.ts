@@ -402,12 +402,13 @@ function resolveSubqueries(
   space: LatentFactorSpace,
   query: string,
   mmrLambda: number,
+  queryVec: number[] = [],
 ): SubqueryPlan {
   if (space.factors.length === 0) {
     return { selectedFactors: [], subqueries: [{ factorId: "direct", subquery: query }] };
   }
   return queryToSubqueries({
-    queryVec: [],
+    queryVec,
     queryText: query,
     space,
     providerModel: WEB_PROVIDER_MODEL,
@@ -449,7 +450,25 @@ async function runWebSearch(params: {
     void ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {});
   }
 
-  const { selectedFactors, subqueries } = resolveSubqueries(space, params.query, params.mmrLambda);
+  // Embed the query for semantic factor projection; fall back to bigram-Jaccard if unavailable.
+  let queryVec: number[] = [];
+  if (params.embedBatch && space.factors.length > 0) {
+    try {
+      const vecs = await params.embedBatch([params.query]);
+      if (vecs[0]?.length > 0) {
+        queryVec = vecs[0];
+      }
+    } catch {
+      // Non-fatal: bigram-Jaccard fallback will be used
+    }
+  }
+
+  const { selectedFactors, subqueries } = resolveSubqueries(
+    space,
+    params.query,
+    params.mmrLambda,
+    queryVec,
+  );
 
   const countPerFactor = params.resultsPerFactor ?? perFactorCount(10, subqueries.length);
 

@@ -777,6 +777,10 @@ export class MemoryIndexManager implements MemorySearchManager {
     return this.ensureVectorReady();
   }
 
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    return this.provider.embedBatch(texts);
+  }
+
   async probeEmbeddingAvailability(): Promise<MemoryEmbeddingProbeResult> {
     try {
       const ctx = this.buildEmbeddingContext();

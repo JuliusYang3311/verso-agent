@@ -11,6 +11,7 @@ import type { AnyAgentTool } from "./pi-tools.types.js";
 import type { SandboxContext } from "./sandbox.js";
 import type { SandboxFsBridge } from "./sandbox/fs-bridge.js";
 import { logWarn } from "../logger.js";
+import { getMemorySearchManager } from "../memory/search-manager.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
 import { resolveGatewayMessageChannel } from "../utils/message-channel.js";
@@ -386,6 +387,19 @@ export function createOpenClawCodingTools(options?: {
       disableMessageTool: options?.disableMessageTool,
       requesterAgentIdOverride: agentId,
       currentAuthProfileId: options?.authProfileId,
+      embedBatch:
+        agentId && options?.config
+          ? async (texts: string[]) => {
+              const { manager } = await getMemorySearchManager({
+                cfg: options.config!,
+                agentId,
+              });
+              if (!manager?.embedBatch) {
+                throw new Error("embedBatch unavailable");
+              }
+              return manager.embedBatch(texts);
+            }
+          : undefined,
     }),
   ];
   // Security: treat unknown/undefined as unauthorized (opt-in, not opt-out)

@@ -61,6 +61,8 @@ export function createOpenClawTools(options?: {
   currentModel?: { provider: string; model: string };
   /** Current auth profile ID to inherit. */
   currentAuthProfileId?: string;
+  /** Optional embedding function for semantic latent-factor query decomposition. */
+  embedBatch?: (texts: string[]) => Promise<number[][]>;
 }): AnyAgentTool[] {
   const imageTool = options?.agentDir?.trim()
     ? createImageTool({
@@ -73,6 +75,7 @@ export function createOpenClawTools(options?: {
   const webSearchTool = createWebSearchTool({
     config: options?.config,
     sandboxed: options?.sandboxed,
+    embedBatch: options?.embedBatch,
   });
   const webFetchTool = createWebFetchTool({
     config: options?.config,

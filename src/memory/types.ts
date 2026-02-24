@@ -84,5 +84,6 @@ export interface MemorySearchManager {
   }): Promise<void>;
   probeEmbeddingAvailability(): Promise<MemoryEmbeddingProbeResult>;
   probeVectorAvailability(): Promise<boolean>;
+  embedBatch?(texts: string[]): Promise<number[][]>;
   close?(): Promise<void>;
 }
