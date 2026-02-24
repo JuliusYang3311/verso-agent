@@ -88,7 +88,7 @@ describe("web_search country and language parameters", () => {
 
     const calls = mockFetch.mock.calls as Array<[string, ...unknown[]]>;
     const allUrls = calls.map((c) => new URL(c[0]));
-    expect(allUrls.some((u) => u.searchParams.get("ui_lang") === "de")).toBe(true);
+    expect(allUrls.some((u) => u.searchParams.get("ui_lang") === "de-DE")).toBe(true);
   });
 
   it("should pass freshness parameter to Brave API", async () => {
