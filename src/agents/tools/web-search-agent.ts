@@ -48,7 +48,6 @@ import {
 // ---------- Constants ----------
 
 const DEFAULT_MMR_LAMBDA = 0.7;
-const DEFAULT_FACTOR_THRESHOLD = 1 / 18; // softmax uniform baseline for 18 factors; factors above this are "activated"
 const DEFAULT_FACTOR_TOP_K = 4;
 const DEFAULT_MMR_MIN_GAIN = 0.05;
 const DEFAULT_BUDGET_TOKENS = 8000;
@@ -354,7 +353,6 @@ async function runAgentSearch(params: {
   minMmrGain: number;
   budgetTokens: number;
   factorTopK: number;
-  factorThreshold: number;
   country?: string;
   searchLang?: string;
   uiLang?: string;
@@ -384,7 +382,7 @@ async function runAgentSearch(params: {
     space,
     providerModel: WEB_PROVIDER_MODEL,
     useCase: "web",
-    threshold: params.factorThreshold,
+    threshold: 1 / space.factors.length,
     topK: params.factorTopK,
     mmrLambda: params.mmrLambda,
   });
@@ -543,7 +541,6 @@ export function createWebSearchAgentTool(options?: {
         minMmrGain: DEFAULT_MMR_MIN_GAIN,
         budgetTokens,
         factorTopK,
-        factorThreshold: DEFAULT_FACTOR_THRESHOLD,
         country: readStringParam(params, "country"),
         searchLang: readStringParam(params, "search_lang"),
         uiLang: readStringParam(params, "ui_lang"),
