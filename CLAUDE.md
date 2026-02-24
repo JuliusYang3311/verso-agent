@@ -634,6 +634,177 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ---
 
+## 3.3 企业级 Latent Factor 多维查询（进行中 🚧）
+
+### 目标
+
+将查询投影到一个**抽象认知因子空间（Latent Factor Space）**，从中选出若干正交分析维度（facets），驱动多源并行检索、跨因子去冗与结构化输出。同时在 `RetrievedChunk` 元数据中暴露因子使用信息，为 Evolver 提供可观测的学习信号入口。
+
+核心思想（几何视角）：
+
+```
+v_q = embed(query)
+s_i = cos(v_q, v_{f_i})          // 投影到每个因子
+selected = MMR(s_i, v_{f_i})     // 跨因子去相关，选 top-K
+subquery_i = entity + template_i  // 生成子查询，无需 LLM
+```
+
+### 因子空间设计
+
+初始 12 个核心因子（`src/memory/factor-space.json`）：
+
+| ID                | 名称     | 语义描述                               |
+| ----------------- | -------- | -------------------------------------- |
+| `internal`        | 内部机制 | 内部结构 机制 自身因素 原因 结构性问题 |
+| `external`        | 外部环境 | 宏观环境 外部经济 政策 市场环境        |
+| `trend`           | 时间趋势 | 长期趋势 发展方向 未来变化 历史演变    |
+| `cost`            | 成本结构 | 成本 价格 规模效应 效率 资源消耗       |
+| `policy`          | 政策监管 | 政策 法规 合规 监管 制度约束           |
+| `technology`      | 技术能力 | 技术 能力 创新 研发 工程实现           |
+| `risk`            | 风险因素 | 风险 不确定性 威胁 脆弱性 暴露         |
+| `user_behavior`   | 用户行为 | 用户 行为 需求 偏好 使用模式           |
+| `time`            | 时间维度 | 时间 节奏 周期 时序 紧迫性             |
+| `market_momentum` | 市场情绪 | 市场情绪 动量 预期 信心 舆论           |
+| `regulatory`      | 合规框架 | 合规 标准 认证 审计 治理               |
+| `competition`     | 竞争结构 | 竞争者 竞争格局 市场份额 对手行为      |
+
+每个因子存储：`id`、`description`（用于离线 embedding）、`vector`（预计算，存入 JSON）、`subqueryTemplate`（子查询模板）。
+
+### 核心组件
+
+**`src/memory/latent-factors.ts`**
+
+```typescript
+// 类型
+type LatentFactor = {
+  id: string;
+  description: string;
+  vector: number[];           // 预计算 embedding（离线生成）
+  subqueryTemplate: string;   // "{entity} {keywords}"
+};
+
+type LatentFactorSpace = {
+  version: string;
+  factors: LatentFactor[];
+};
+
+// API
+loadFactorSpace(): Promise<LatentFactorSpace>
+projectQueryToFactors(queryVec: number[], space: LatentFactorSpace): FactorScore[]
+selectFactorsAboveThreshold(scores: FactorScore[], threshold: number): FactorScore[]
+mmrDiversifyFactors(scores: FactorScore[], space: LatentFactorSpace, lambda: number, topK: number): FactorScore[]
+buildSubqueries(entity: string, selectedFactors: FactorScore[], space: LatentFactorSpace): string[]
+```
+
+**`src/memory/factor-space.json`**
+
+因子空间持久化文件。`vector` 字段初始为空数组（`[]`），运行时降级为纯文本 bigram 相似度代理；当 embedding provider 可用时可离线填充。
+
+**`src/agents/dynamic-context.ts`（扩展）**
+
+`RetrievedChunk` 新增字段：
+
+```typescript
+factorsUsed?: Array<{ id: string; score: number }>;  // 命中的因子及分数
+latentProjection?: { factorIds: string[]; scores: number[] }; // 完整投影快照（用于观测）
+```
+
+**`src/evolver/dimension-hooks.ts`**
+
+Evolver 学习信号入口（占位，接口稳定）：
+
+```typescript
+onFactorHit(factorId: string, querySnippet: string, retrievalScore: number): void
+onFactorMiss(factorId: string, querySnippet: string): void
+onThresholdFeedback(factorId: string, suggestedThreshold: number): void
+```
+
+### 配置参数（`context_params.json` 新增）
+
+```json
+{
+  "latentFactorEnabled": true,
+  "factorActivationThreshold": 0.35,
+  "factorTopK": 4,
+  "factorMmrLambda": 0.7,
+  "dimensionWeights": {
+    "rel": 0.5,
+    "div": 0.25,
+    "time": 0.15,
+    "source": 0.05,
+    "level": 0.05
+  }
+}
+```
+
+### 检索流程（集成后）
+
+```
+query
+  │
+  ▼
+embed(query) → v_q
+  │
+  ▼
+projectQueryToFactors(v_q, factorSpace)
+  → [(internal, 0.81), (technology, 0.74), (risk, 0.61), ...]
+  │
+  ▼
+selectFactorsAboveThreshold(threshold=0.35)
+  → 粗筛，保留高相关因子
+  │
+  ▼
+mmrDiversifyFactors(lambda=0.7, topK=4)
+  → 跨因子去相关，选出正交维度
+  │
+  ▼
+buildSubqueries(entity, selectedFactors)
+  → ["entity 内部机制 结构", "entity 技术 能力", ...]
+  │
+  ▼
+parallel search per subquery (existing hybrid vector+BM25)
+  │
+  ▼
+merge + dedup (existing cross-source dedup)
+  │
+  ▼
+inject factorsUsed + latentProjection into RetrievedChunk
+  │
+  ▼
+existing MMR + progressive loading
+```
+
+**关键设计原则**：
+
+- 不改变现有检索核心路径的时间复杂度
+- `latentFactorEnabled: false` 时完全 bypass，零影响
+- 因子向量初始为空时，降级为 bigram 相似度代理（无需 embedding）
+- 所有因子分数写入 `RetrievedChunk` 元数据，Evolver 可读取
+
+### 实施阶段
+
+| 阶段 | 内容                                                               | 状态 |
+| ---- | ------------------------------------------------------------------ | ---- |
+| 1    | `latent-factors.ts` + `factor-space.json` + 核心投影/筛选/MMR 函数 | 🚧   |
+| 2    | `RetrievedChunk` 元数据扩展 + `dynamic-context.ts` 集成            | ⏳   |
+| 3    | `context_params.json` 新增字段 + `ContextParams` 类型扩展          | ⏳   |
+| 4    | `dimension-hooks.ts` Evolver 占位接口                              | ⏳   |
+| 5    | 单元测试 + 集成测试 + CI                                           | ⏳   |
+
+### 验收标准
+
+- `latentFactorEnabled: false` 时，现有所有测试 100% 通过，无回归
+- `latentFactorEnabled: true` 时，给定 query 能输出 ≥1 个 factor，`RetrievedChunk.factorsUsed` 非空
+- `mmrDiversifyFactors` 输出的因子两两 cosine < 0.6（正交性保证）
+- `pnpm build` 0 错误，`pnpm test` 通过率 > 95%
+
+### 回滚策略
+
+- `context_params.json` 中 `latentFactorEnabled` 设为 `false` 即可完全关闭，无需代码变更
+- 所有新增代码在独立文件中，不修改现有检索核心逻辑
+
+---
+
 ## 验证标准
 
 - Evolve 沙盒测试成功率 > 95%，失败自动回滚 100%
@@ -645,8 +816,8 @@ src/env/ ← dotenv.ts, home-dir.ts, path-env.ts, shell-env.ts ✅
 
 ---
 
-**计划版本**: 4.4
+**计划版本**: 4.5
 **创建日期**: 2026-02-14
-**最后更新**: 2026-02-17
-**当前状态**: 阶段 1-5 全部完成。信息论优化已实施：写入端信息增益过滤（跨文件去重）、检索端 MMR 多样性选择、retrievedChunks 注入修复。
+**最后更新**: 2026-02-24
+**当前状态**: 阶段 1-5 全部完成。信息论优化已实施。企业级 Latent Factor 多维查询扩展进行中（3.3 节）。
 **测试基线**: 998 files, 6785 tests, 0 failures
