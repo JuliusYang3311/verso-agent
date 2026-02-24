@@ -114,7 +114,13 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
     return _cachedSpace;
   }
   const p = factorSpacePath();
-  const raw = await fs.readFile(p, "utf-8");
+  let raw: string;
+  try {
+    raw = await fs.readFile(p, "utf-8");
+  } catch {
+    _cachedSpace = { version: "1.0.0", factors: [] };
+    return _cachedSpace;
+  }
   const parsed = JSON.parse(raw) as {
     version: string;
     factors: Array<Omit<LatentFactor, "weights"> & { weights?: Record<string, number> }>;
