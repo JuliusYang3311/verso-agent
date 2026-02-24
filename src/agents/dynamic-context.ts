@@ -60,6 +60,11 @@ export type ContextParams = {
   factorActivationThreshold?: number;
   factorTopK?: number;
   factorMmrLambda?: number;
+  // Web search agent params
+  webSearchMmrLambda?: number;
+  webSearchFactorTopK?: number;
+  webSearchMmrMinGain?: number;
+  webSearchBudgetTokens?: number;
   dimensionWeights?: {
     rel: number;
     div: number;

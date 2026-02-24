@@ -344,14 +344,18 @@ export function queryToSubqueries(params: {
   providerModel: string;
   useCase: string;
   threshold: number;
-  topK: number;
   mmrLambda: number;
 }): { selectedFactors: FactorScore[]; subqueries: Array<{ factorId: string; subquery: string }> } {
-  const { queryVec, queryText, space, providerModel, useCase, threshold, topK, mmrLambda } = params;
+  const { queryVec, queryText, space, providerModel, useCase, threshold, mmrLambda } = params;
 
   const allScores = projectQueryToFactors(queryVec, queryText, space, providerModel, useCase);
   const aboveThreshold = selectFactorsAboveThreshold(allScores, threshold);
-  const selectedFactors = mmrDiversifyFactors(aboveThreshold, providerModel, mmrLambda, topK);
+  const selectedFactors = mmrDiversifyFactors(
+    aboveThreshold,
+    providerModel,
+    mmrLambda,
+    aboveThreshold.length,
+  );
   const subqueries = buildSubqueries(queryText, selectedFactors);
 
   return { selectedFactors, subqueries };

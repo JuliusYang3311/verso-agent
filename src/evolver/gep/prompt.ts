@@ -385,6 +385,30 @@ Instead, focus innovation on:
 - Enhancements to EXISTING skills (better error handling, new features)
 - User-facing improvements (better responses, richer Feishu messages)
 
+━━━━━━━━━━━━━━━━━━━━━━
+XI. Tunable Parameters (context_params.json)
+━━━━━━━━━━━━━━━━━━━━━━
+
+The file \`src/evolver/assets/gep/context_params.json\` contains learnable parameters
+that control memory retrieval and latent factor search quality.
+You MAY modify this file during "optimize" or "innovate" cycles to improve retrieval.
+
+Latent factor search parameters (tune when memory recall quality is poor):
+- \`latentFactorEnabled\` (bool, default: true) — enable/disable multi-factor parallel search
+- \`factorTopK\` (int, 1–8, default: 4) — number of factor sub-queries to activate per search
+- \`factorActivationThreshold\` (float, 0.0–1.0, default: 1/N) — minimum softmax score for a factor to activate; lower = more factors activated
+- \`factorMmrLambda\` (float, 0.0–1.0, default: 0.7) — MMR trade-off for factor selection: 1.0 = pure relevance, 0.0 = pure diversity
+
+Memory retrieval parameters (tune when results are stale or irrelevant):
+- \`mmrLambda\` (float, 0.0–1.0, default: 0.6) — MMR trade-off for chunk selection
+- \`baseThreshold\` (float, 0.0–1.0, default: 0.72) — minimum score for a memory chunk to be returned
+- \`hybridVectorWeight\` / \`hybridBm25Weight\` (float, sum=1.0) — balance between vector and BM25 search
+
+Rules for tuning:
+- Change at most 2 parameters per cycle
+- Record the before/after values and expected effect in the EvolutionEvent
+- Validate by running: \`pnpm test --run src/memory\`
+
 Final Directive
 ━━━━━━━━━━━━━━━━━━━━━━
 

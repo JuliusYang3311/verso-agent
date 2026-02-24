@@ -375,17 +375,18 @@ export class MemoryIndexManager implements MemorySearchManager {
       try {
         // Project query onto factor space and build sub-queries
         const space = await loadFactorSpace();
-        const factorCount = Math.min(4, space.factors.length);
-        const { subqueries } = queryToSubqueries({
-          queryVec,
-          queryText: cleaned,
-          space,
-          providerModel: this.provider.model,
-          useCase: "memory",
-          threshold: 1 / space.factors.length, // softmax uniform baseline
-          topK: factorCount,
-          mmrLambda: 0.7,
-        });
+        const latentFactorEnabled = contextParams.latentFactorEnabled ?? true;
+        const { subqueries } = latentFactorEnabled
+          ? queryToSubqueries({
+              queryVec,
+              queryText: cleaned,
+              space,
+              providerModel: this.provider.model,
+              useCase: "memory",
+              threshold: contextParams.factorActivationThreshold ?? 1 / space.factors.length,
+              mmrLambda: contextParams.factorMmrLambda ?? 0.7,
+            })
+          : { subqueries: [] };
 
         // Embed all sub-query texts in a single batch, in parallel with the
         // original query vector (which is already computed above).

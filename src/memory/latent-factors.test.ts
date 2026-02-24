@@ -188,7 +188,6 @@ describe("queryToSubqueries", () => {
       providerModel: MODEL,
       useCase: "test",
       threshold: 0.3,
-      topK: 3,
       mmrLambda: 0.7,
     });
     expect(result.selectedFactors.length).toBeGreaterThanOrEqual(1);
@@ -206,7 +205,6 @@ describe("queryToSubqueries", () => {
       providerModel: MODEL,
       useCase: "test",
       threshold: 0.0,
-      topK: 4,
       mmrLambda: 0.7,
     });
     expect(result.selectedFactors.length).toBeGreaterThanOrEqual(1);

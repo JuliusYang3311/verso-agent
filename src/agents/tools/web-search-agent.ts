@@ -31,6 +31,7 @@ import {
 } from "../../memory/latent-factors.js";
 import { wrapWebContent } from "../../security/external-content.js";
 import { normalizeSecretInput } from "../../utils/normalize-secret-input.js";
+import { loadContextParams } from "../dynamic-context.js";
 import { jsonResult, readNumberParam, readStringParam } from "./common.js";
 import {
   normalizeCacheKey,
@@ -47,10 +48,6 @@ import {
 
 // ---------- Constants ----------
 
-const DEFAULT_MMR_LAMBDA = 0.7;
-const DEFAULT_FACTOR_TOP_K = 4;
-const DEFAULT_MMR_MIN_GAIN = 0.05;
-const DEFAULT_BUDGET_TOKENS = 8000;
 const WEB_PROVIDER_MODEL = "web-search-agent"; // key used in factor-space.json for web factors
 
 const BRAVE_SEARCH_ENDPOINT = "https://api.search.brave.com/res/v1/web/search";
@@ -314,16 +311,9 @@ const WebSearchAgentSchema = Type.Object({
   ),
   mmr_lambda: Type.Optional(
     Type.Number({
-      description: `MMR trade-off: 1.0 = pure relevance, 0.0 = pure diversity. Defaults to ${DEFAULT_MMR_LAMBDA}.`,
+      description: "MMR trade-off: 1.0 = pure relevance, 0.0 = pure diversity.",
       minimum: 0,
       maximum: 1,
-    }),
-  ),
-  factor_top_k: Type.Optional(
-    Type.Number({
-      description: `Number of query dimensions (factors) to activate. Defaults to ${DEFAULT_FACTOR_TOP_K}.`,
-      minimum: 1,
-      maximum: 20,
     }),
   ),
   results_per_factor: Type.Optional(
@@ -335,7 +325,7 @@ const WebSearchAgentSchema = Type.Object({
   ),
   budget_tokens: Type.Optional(
     Type.Number({
-      description: `Token budget for MMR result selection. Defaults to ${DEFAULT_BUDGET_TOKENS}.`,
+      description: "Token budget for MMR result selection.",
       minimum: 100,
     }),
   ),
@@ -352,7 +342,6 @@ async function runAgentSearch(params: {
   mmrLambda: number;
   minMmrGain: number;
   budgetTokens: number;
-  factorTopK: number;
   country?: string;
   searchLang?: string;
   uiLang?: string;
@@ -360,7 +349,7 @@ async function runAgentSearch(params: {
   embedBatch?: (texts: string[]) => Promise<number[][]>;
 }): Promise<Record<string, unknown>> {
   const cacheKey = normalizeCacheKey(
-    `agent:${params.query}:${params.resultsPerFactor ?? "auto"}:${params.factorTopK}:${params.mmrLambda}:${params.budgetTokens}:${params.country ?? ""}:${params.freshness ?? ""}`,
+    `agent:${params.query}:${params.resultsPerFactor ?? "auto"}:${params.mmrLambda}:${params.budgetTokens}:${params.country ?? ""}:${params.freshness ?? ""}`,
   );
   const cached = readCache(AGENT_SEARCH_CACHE, cacheKey);
   if (cached) {
@@ -377,13 +366,12 @@ async function runAgentSearch(params: {
 
   // 2. Project query onto factor space (softmax-normalised weighted cosine / bigram fallback)
   const { selectedFactors, subqueries } = queryToSubqueries({
-    queryVec: [], // web-search-agent has no query embedding at call time; uses bigram fallback
+    queryVec: [],
     queryText: params.query,
     space,
     providerModel: WEB_PROVIDER_MODEL,
     useCase: "web",
     threshold: 1 / space.factors.length,
-    topK: params.factorTopK,
     mmrLambda: params.mmrLambda,
   });
 
@@ -501,19 +489,14 @@ export function createWebSearchAgentTool(options?: {
       const params = args as Record<string, unknown>;
       const query = readStringParam(params, "query", { required: true });
 
+      const ctxParams = await loadContextParams();
+
       const mmrLambda = (() => {
         const v = readNumberParam(params, "mmr_lambda");
         return typeof v === "number" && Number.isFinite(v)
           ? Math.max(0, Math.min(1, v))
-          : DEFAULT_MMR_LAMBDA;
+          : (ctxParams.webSearchMmrLambda ?? 0.7);
       })();
-
-      const factorTopK = Math.max(
-        1,
-        Math.floor(
-          readNumberParam(params, "factor_top_k", { integer: true }) ?? DEFAULT_FACTOR_TOP_K,
-        ),
-      );
 
       const resultsPerFactor = (() => {
         const v = readNumberParam(params, "results_per_factor", { integer: true });
@@ -522,7 +505,9 @@ export function createWebSearchAgentTool(options?: {
 
       const budgetTokens = (() => {
         const v = readNumberParam(params, "budget_tokens", { integer: true });
-        return typeof v === "number" && v >= 100 ? Math.floor(v) : DEFAULT_BUDGET_TOKENS;
+        return typeof v === "number" && v >= 100
+          ? Math.floor(v)
+          : (ctxParams.webSearchBudgetTokens ?? 8000);
       })();
 
       const result = await runAgentSearch({
@@ -538,9 +523,8 @@ export function createWebSearchAgentTool(options?: {
           DEFAULT_CACHE_TTL_MINUTES,
         ),
         mmrLambda,
-        minMmrGain: DEFAULT_MMR_MIN_GAIN,
+        minMmrGain: ctxParams.webSearchMmrMinGain ?? 0.05,
         budgetTokens,
-        factorTopK,
         country: readStringParam(params, "country"),
         searchLang: readStringParam(params, "search_lang"),
         uiLang: readStringParam(params, "ui_lang"),
