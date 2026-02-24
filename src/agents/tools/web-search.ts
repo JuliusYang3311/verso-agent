@@ -445,15 +445,17 @@ async function runWebSearch(params: {
 
   const start = Date.now();
 
-  const space: LatentFactorSpace = await loadFactorSpace();
+  let space: LatentFactorSpace = await loadFactorSpace();
 
-  // Embed query and ensure factor vectors in parallel; both are needed for semantic projection.
+  // Embed query and ensure factor vectors in parallel; reload space after to get fresh vectors.
   let queryVec: number[] = [];
   if (params.embedBatch && space.factors.length > 0) {
     const [vecs] = await Promise.all([
       params.embedBatch([params.query]).catch(() => null),
       ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {}),
     ]);
+    // Reload to pick up any newly registered factor vectors.
+    space = await loadFactorSpace();
     if (vecs?.[0]?.length) {
       queryVec = vecs[0];
     }
