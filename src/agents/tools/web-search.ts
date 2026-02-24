@@ -82,6 +82,87 @@ function resolveSearchApiKey(search?: WebSearchConfig): string | undefined {
   return fromConfig || fromEnv || undefined;
 }
 
+// ---------- UI language ----------
+
+const BRAVE_UI_LANG_VALUES = new Set([
+  "es-AR",
+  "en-AU",
+  "de-AT",
+  "nl-BE",
+  "fr-BE",
+  "pt-BR",
+  "en-CA",
+  "fr-CA",
+  "es-CL",
+  "da-DK",
+  "fi-FI",
+  "fr-FR",
+  "de-DE",
+  "el-GR",
+  "zh-HK",
+  "en-IN",
+  "en-ID",
+  "it-IT",
+  "ja-JP",
+  "ko-KR",
+  "en-MY",
+  "es-MX",
+  "nl-NL",
+  "en-NZ",
+  "no-NO",
+  "zh-CN",
+  "pl-PL",
+  "en-PH",
+  "ru-RU",
+  "en-ZA",
+  "es-ES",
+  "sv-SE",
+  "fr-CH",
+  "de-CH",
+  "zh-TW",
+  "tr-TR",
+  "en-GB",
+  "en-US",
+  "es-US",
+]);
+
+// Map bare language codes to the most common Brave ui_lang value.
+const BARE_LANG_TO_UI_LANG: Record<string, string> = {
+  en: "en-US",
+  de: "de-DE",
+  fr: "fr-FR",
+  es: "es-ES",
+  it: "it-IT",
+  ja: "ja-JP",
+  ko: "ko-KR",
+  zh: "zh-CN",
+  pt: "pt-BR",
+  nl: "nl-NL",
+  ru: "ru-RU",
+  pl: "pl-PL",
+  sv: "sv-SE",
+  da: "da-DK",
+  fi: "fi-FI",
+  no: "no-NO",
+  tr: "tr-TR",
+  el: "el-GR",
+};
+
+function normalizeUiLang(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (BRAVE_UI_LANG_VALUES.has(trimmed)) {
+    return trimmed;
+  }
+  const mapped = BARE_LANG_TO_UI_LANG[trimmed.toLowerCase()];
+  return mapped ?? undefined;
+}
+
 // ---------- Freshness ----------
 
 function normalizeFreshness(value: string | undefined): string | undefined {
@@ -511,7 +592,7 @@ export function createWebSearchTool(options?: {
       const query = readStringParam(params, "query", { required: true });
       const country = readStringParam(params, "country");
       const search_lang = readStringParam(params, "search_lang");
-      const ui_lang = readStringParam(params, "ui_lang");
+      const ui_lang = normalizeUiLang(readStringParam(params, "ui_lang"));
       const rawFreshness = readStringParam(params, "freshness");
       const freshness = rawFreshness ? normalizeFreshness(rawFreshness) : undefined;
       if (rawFreshness && !freshness) {
