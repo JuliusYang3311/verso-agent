@@ -5,73 +5,157 @@
       "id": "internal",
       "description": "内部结构 机制 自身因素 原因 结构性问题 internal mechanism root cause",
       "subqueryTemplate": "{entity} internal mechanism structure root cause",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "external",
       "description": "宏观环境 外部经济 政策 市场环境 external environment macro economy",
       "subqueryTemplate": "{entity} external environment macro market",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "trend",
       "description": "长期趋势 发展方向 未来变化 历史演变 trend trajectory evolution forecast",
       "subqueryTemplate": "{entity} trend trajectory future evolution",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "cost",
       "description": "成本 价格 规模效应 效率 资源消耗 cost price efficiency scale",
       "subqueryTemplate": "{entity} cost price efficiency scale economics",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "policy",
       "description": "政策 法规 合规 监管 制度约束 policy regulation compliance governance",
       "subqueryTemplate": "{entity} policy regulation compliance governance",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "technology",
       "description": "技术 能力 创新 研发 工程实现 technology capability innovation engineering",
       "subqueryTemplate": "{entity} technology capability innovation engineering",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "risk",
       "description": "风险 不确定性 威胁 脆弱性 暴露 risk uncertainty threat vulnerability",
       "subqueryTemplate": "{entity} risk uncertainty threat vulnerability",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "user_behavior",
       "description": "用户 行为 需求 偏好 使用模式 user behavior demand preference adoption",
       "subqueryTemplate": "{entity} user behavior demand preference adoption",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "time",
       "description": "时间 节奏 周期 时序 紧迫性 timing cycle urgency cadence schedule",
       "subqueryTemplate": "{entity} timing cycle urgency schedule",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "market_momentum",
       "description": "市场情绪 动量 预期 信心 舆论 market sentiment momentum expectation confidence",
       "subqueryTemplate": "{entity} market sentiment momentum expectation",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "regulatory",
       "description": "合规 标准 认证 审计 治理 regulatory standard certification audit governance",
       "subqueryTemplate": "{entity} regulatory standard certification audit",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     },
     {
       "id": "competition",
       "description": "竞争者 竞争格局 市场份额 对手行为 competition competitor market share rivalry",
       "subqueryTemplate": "{entity} competition competitor market share rivalry",
-      "vectors": {}
+      "vectors": {
+        "mock-embed": [0, 0],
+        "mock-embed-v2": [0, 0]
+      },
+      "weights": {
+        "mock-embed:memory": 1,
+        "mock-embed-v2:memory": 1
+      }
     }
   ]
 }

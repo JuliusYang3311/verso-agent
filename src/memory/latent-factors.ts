@@ -3,14 +3,51 @@
  *
  * Latent Factor Space for multi-dimensional query projection.
  *
- * Core idea: project a query vector into an abstract cognitive factor space,
- * select top-K orthogonal factors via MMR, then generate sub-queries per factor
- * to drive parallel multi-source retrieval.
+ * Mathematical model
+ * ------------------
+ * The factor space is a set of "probe directions" {f₁, f₂, ..., fₙ} in the
+ * embedding space. A query q is projected onto each factor via cosine similarity,
+ * yielding raw coordinates:
  *
- * Factor vectors are stored per embedding model (providerModel key) so that
- * cosine similarity is always computed within the same vector space.
+ *   raw_i = w_i · cosine(q, f_i)
+ *
+ * where w_i is a learnable per-factor weight (default 1.0). The raw coordinates
+ * are then passed through softmax to obtain a proper probability distribution
+ * over factors — this eliminates the "curse of dimensionality" effect where all
+ * high-dimensional cosine similarities collapse toward zero:
+ *
+ *   score_i = softmax(raw)_i = exp(raw_i) / Σ_j exp(raw_j)
+ *
+ * This is analogous to a weighted Fourier transform: each factor is a basis
+ * direction, the scores are the spectral coefficients, and the softmax ensures
+ * the "spectrum" is always meaningful regardless of embedding dimensionality.
+ *
  * When no pre-computed vector exists for the current model, the system falls
- * back to bigram-Jaccard similarity between the query text and factor descriptions.
+ * back to bigram-Jaccard similarity and triggers async embedding of all factors
+ * (fire-and-forget, idempotent). Subsequent queries will use the real projection.
+ *
+ * Key design: vectors vs weights
+ * --------------------------------
+ * `vectors` are keyed by `providerModel` only — the embedding space is a property
+ * of the model, shared across all use cases that use the same model.
+ *
+ * `weights` are keyed by `{providerModel}:{useCase}` — the same embedding model
+ * can be used in different application contexts (e.g. "memory" vs "web"), each
+ * with independently learned factor weights. This allows the evolver to tune
+ * memory retrieval and web search separately even when they share an embedding model.
+ *
+ * Weight learning
+ * ---------------
+ * Weights are updated externally (e.g. by the evolver) using `updateFactorWeight`.
+ * A factor that consistently produces high-scoring retrievals gets its weight
+ * increased; one that produces misses gets decreased.
+ *
+ * Factor set extensibility
+ * ------------------------
+ * The factor set is intentionally not a complete orthogonal basis — it is a
+ * sparse set of semantically meaningful probe directions. When a new factor is
+ * added to factor-space.json, `registerFactorVectors` automatically initialises
+ * its weight to 1.0 for the given weightKey, keeping weights and factors in sync.
  */
 
 import fs from "node:fs/promises";
@@ -22,16 +59,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ---------- Types ----------
 
 /**
- * A single latent factor.
- * `vectors` is keyed by providerModel (e.g. "text-embedding-3-small").
- * An empty object means no pre-computed vectors yet → bigram fallback.
+ * A single latent factor (probe direction in embedding space).
+ *
+ * `vectors`  — providerModel → unit-normalised embedding of the factor description.
+ *              Empty object means no vectors yet; bigram-Jaccard fallback is used.
+ * `weights`  — "{providerModel}:{useCase}" → learnable scalar applied before softmax.
+ *              Keyed by use-case so that memory search and web search can have
+ *              independent calibrations even when sharing the same embedding model.
+ *              Defaults to 1.0 when absent.
  */
 export type LatentFactor = {
   id: string;
   description: string;
   subqueryTemplate: string;
-  /** providerModel → embedding vector */
+  /** providerModel → unit-normalised embedding vector */
   vectors: Record<string, number[]>;
+  /** "{providerModel}:{useCase}" → learnable weight (default 1.0) */
+  weights: Record<string, number>;
 };
 
 export type LatentFactorSpace = {
@@ -41,16 +85,24 @@ export type LatentFactorSpace = {
 
 export type FactorScore = {
   factor: LatentFactor;
+  /** softmax-normalised score ∈ (0, 1), sums to 1 across all factors */
   score: number;
+  /** raw weighted cosine (or bigram-Jaccard) before softmax — useful for debugging */
+  rawScore: number;
 };
 
-// ---------- Load ----------
+/** Canonical weight key for a given model + use-case pair. */
+export function weightKey(providerModel: string, useCase: string): string {
+  return `${providerModel}:${useCase}`;
+}
+
+// ---------- Load / persist ----------
 
 let _cachedSpace: LatentFactorSpace | null = null;
 
 /**
  * Load the factor space from disk. Result is cached in-process.
- * Call `invalidateFactorSpaceCache()` after writing new vectors.
+ * Call `invalidateFactorSpaceCache()` after writing new vectors or weights.
  */
 export async function loadFactorSpace(): Promise<LatentFactorSpace> {
   if (_cachedSpace) {
@@ -58,7 +110,15 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
   }
   const p = path.resolve(__dirname, "factor-space.json");
   const raw = await fs.readFile(p, "utf-8");
-  _cachedSpace = JSON.parse(raw) as LatentFactorSpace;
+  const parsed = JSON.parse(raw) as {
+    version: string;
+    factors: Array<Omit<LatentFactor, "weights"> & { weights?: Record<string, number> }>;
+  };
+  // Backfill missing `weights` field for factors loaded from older JSON
+  _cachedSpace = {
+    ...parsed,
+    factors: parsed.factors.map((f) => ({ ...f, weights: f.weights ?? {} })),
+  };
   return _cachedSpace;
 }
 
@@ -66,10 +126,6 @@ export function invalidateFactorSpaceCache(): void {
   _cachedSpace = null;
 }
 
-/**
- * Persist updated factor vectors back to factor-space.json.
- * Typically called by an offline embedding script, not at query time.
- */
 export async function saveFactorSpace(space: LatentFactorSpace): Promise<void> {
   const p = path.resolve(__dirname, "factor-space.json");
   await fs.writeFile(p, JSON.stringify(space, null, 2), "utf-8");
@@ -119,38 +175,70 @@ function bigramJaccard(a: string, b: string): number {
   return union === 0 ? 0 : intersection / union;
 }
 
-// ---------- Core projection API ----------
+/**
+ * Numerically stable softmax.
+ * Subtracts max before exp to prevent overflow.
+ */
+function softmax(values: number[]): number[] {
+  if (values.length === 0) {
+    return [];
+  }
+  const max = Math.max(...values);
+  const exps = values.map((v) => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+  return sum === 0 ? exps.map(() => 1 / values.length) : exps.map((e) => e / sum);
+}
+
+// ---------- Core projection ----------
 
 /**
- * Project a query into the factor space.
+ * Project a query into the factor space, returning softmax-normalised scores.
  *
- * If the factor has a pre-computed vector for `providerModel`, uses cosine similarity.
- * Otherwise falls back to bigram-Jaccard between `queryText` and the factor description.
+ * Pipeline:
+ *   1. For each factor fᵢ, compute raw_i = w_i · sim(q, fᵢ)
+ *      - w_i   = weights["{providerModel}:{useCase}"] ?? 1.0
+ *      - sim   = cosine(queryVec, factorVec)  if embedding available
+ *      - sim   = bigramJaccard(queryText, fᵢ.description)  otherwise
+ *   2. Apply softmax over all raw_i → score_i
  *
- * @param queryVec      Embedding vector of the query (may be empty for text-only fallback)
- * @param queryText     Raw query text (used for bigram fallback)
- * @param space         Loaded factor space
- * @param providerModel Current embedding model key (e.g. "text-embedding-3-small")
+ * The softmax step is what makes this a proper "Fourier decomposition" of the
+ * query: the scores represent the relative energy in each factor dimension,
+ * independent of the absolute magnitude of cosine similarities (which collapse
+ * in high-dimensional spaces).
  */
 export function projectQueryToFactors(
   queryVec: number[],
   queryText: string,
   space: LatentFactorSpace,
   providerModel: string,
+  useCase: string,
 ): FactorScore[] {
-  return space.factors.map((factor) => {
+  const hasEmbedding = queryVec.length > 0;
+  const wKey = weightKey(providerModel, useCase);
+
+  const rawScores = space.factors.map((factor) => {
     const factorVec = factor.vectors[providerModel];
-    const score =
-      factorVec && factorVec.length > 0 && queryVec.length > 0
+    const weight = factor.weights[wKey] ?? 1.0;
+    const sim =
+      hasEmbedding && factorVec && factorVec.length > 0
         ? cosine(queryVec, factorVec)
         : bigramJaccard(queryText, factor.description);
-    return { factor, score };
+    return weight * sim;
   });
+
+  const normalised = softmax(rawScores);
+
+  return space.factors.map((factor, i) => ({
+    factor,
+    score: normalised[i],
+    rawScore: rawScores[i],
+  }));
 }
 
 /**
- * Coarse threshold gate: keep only factors whose score >= threshold.
- * If nothing passes, returns the single highest-scoring factor as a fallback.
+ * Coarse threshold gate: keep only factors whose softmax score >= threshold.
+ * If nothing passes, returns the single highest-scoring factor as a fallback
+ * so retrieval is never empty.
  */
 export function selectFactorsAboveThreshold(
   scores: FactorScore[],
@@ -160,7 +248,6 @@ export function selectFactorsAboveThreshold(
   if (passing.length > 0) {
     return passing;
   }
-  // Fallback: return the best single factor so retrieval is never empty
   const best = scores.reduce((a, b) => (b.score > a.score ? b : a), scores[0]);
   return best ? [best] : [];
 }
@@ -168,18 +255,16 @@ export function selectFactorsAboveThreshold(
 /**
  * MMR-style diversification across factors.
  *
- * Selects up to `topK` factors that are both relevant (high score) and
- * mutually orthogonal (low inter-factor similarity).
+ * Selects up to `topK` factors that are both relevant (high softmax score) and
+ * mutually dissimilar (low inter-factor cosine / bigram similarity).
  *
- * Inter-factor similarity uses:
- *   - cosine(factorVec_i, factorVec_j) if both have vectors for providerModel
- *   - bigramJaccard(description_i, description_j) otherwise
+ * Inter-factor similarity uses factor vectors (cosine) when available,
+ * falling back to bigram-Jaccard over descriptions.
  *
- * MMR(f_i) = lambda * score_i - (1 - lambda) * max_{f_j ∈ selected} sim(f_i, f_j)
+ * MMR(fᵢ) = λ · score_i − (1−λ) · max_{fⱼ ∈ selected} sim(fᵢ, fⱼ)
  */
 export function mmrDiversifyFactors(
   candidates: FactorScore[],
-  space: LatentFactorSpace,
   providerModel: string,
   lambda: number,
   topK: number,
@@ -229,53 +314,63 @@ export function mmrDiversifyFactors(
 
 /**
  * Build sub-queries for each selected factor by filling the factor's template.
- * Template syntax: `{entity}` is replaced with the entity string.
+ * Supports both `{entity}` and `{query}` placeholder conventions.
  */
-export function buildSubqueries(entity: string, selectedFactors: FactorScore[]): string[] {
-  return selectedFactors.map(({ factor }) =>
-    factor.subqueryTemplate.replace("{entity}", entity).trim(),
-  );
+export function buildSubqueries(
+  queryText: string,
+  selectedFactors: FactorScore[],
+): Array<{ factorId: string; subquery: string }> {
+  return selectedFactors.map(({ factor }) => ({
+    factorId: factor.id,
+    subquery: factor.subqueryTemplate
+      .replace("{entity}", queryText)
+      .replace("{query}", queryText)
+      .trim(),
+  }));
 }
 
 /**
- * Convenience: full pipeline from query to sub-queries.
- *
- * Returns both the selected FactorScores (for metadata injection) and
- * the generated sub-query strings (for parallel retrieval).
+ * Full pipeline: query → softmax factor scores → MMR selection → sub-queries.
  */
 export function queryToSubqueries(params: {
   queryVec: number[];
   queryText: string;
   space: LatentFactorSpace;
   providerModel: string;
+  useCase: string;
   threshold: number;
   topK: number;
   mmrLambda: number;
-}): { selectedFactors: FactorScore[]; subqueries: string[] } {
-  const { queryVec, queryText, space, providerModel, threshold, topK, mmrLambda } = params;
+}): { selectedFactors: FactorScore[]; subqueries: Array<{ factorId: string; subquery: string }> } {
+  const { queryVec, queryText, space, providerModel, useCase, threshold, topK, mmrLambda } = params;
 
-  const allScores = projectQueryToFactors(queryVec, queryText, space, providerModel);
+  const allScores = projectQueryToFactors(queryVec, queryText, space, providerModel, useCase);
   const aboveThreshold = selectFactorsAboveThreshold(allScores, threshold);
-  const selectedFactors = mmrDiversifyFactors(
-    aboveThreshold,
-    space,
-    providerModel,
-    mmrLambda,
-    topK,
-  );
+  const selectedFactors = mmrDiversifyFactors(aboveThreshold, providerModel, mmrLambda, topK);
   const subqueries = buildSubqueries(queryText, selectedFactors);
 
   return { selectedFactors, subqueries };
 }
 
+// ---------- Factor vector registration ----------
+
 /**
  * Register pre-computed embedding vectors for all factors under a given providerModel.
- * Vectors must be ordered to match space.factors order.
- * Persists to disk and invalidates cache.
+ *
+ * - Vectors must be ordered to match space.factors order.
+ * - Automatically initialises weights to 1.0 for the given weightKey for any
+ *   factor that does not yet have an entry — this keeps weights and factors in
+ *   sync whenever new factors are added to the space.
+ * - Persists to disk and invalidates the in-process cache.
+ *
+ * @param useCase  The application context for which to initialise weights
+ *                 (e.g. "memory" or "web"). Vectors are shared across use cases;
+ *                 weights are per use case.
  */
 export async function registerFactorVectors(
   space: LatentFactorSpace,
   providerModel: string,
+  useCase: string,
   vectors: number[][],
 ): Promise<LatentFactorSpace> {
   if (vectors.length !== space.factors.length) {
@@ -283,13 +378,90 @@ export async function registerFactorVectors(
       `registerFactorVectors: expected ${space.factors.length} vectors, got ${vectors.length}`,
     );
   }
+  const wKey = weightKey(providerModel, useCase);
   const updated: LatentFactorSpace = {
     ...space,
     factors: space.factors.map((f, i) => ({
       ...f,
       vectors: { ...f.vectors, [providerModel]: vectors[i] },
+      weights: { ...f.weights, [wKey]: f.weights[wKey] ?? 1.0 },
     })),
   };
   await saveFactorSpace(updated);
   return updated;
+}
+
+/**
+ * Update the learnable weight for a single factor.
+ *
+ * @param factorId      ID of the factor to update.
+ * @param providerModel Embedding model key.
+ * @param useCase       Application context ("memory" | "web" | …).
+ * @param newWeight     New weight value; clamped to [0.1, 10.0].
+ */
+export async function updateFactorWeight(
+  space: LatentFactorSpace,
+  factorId: string,
+  providerModel: string,
+  useCase: string,
+  newWeight: number,
+): Promise<LatentFactorSpace> {
+  const clamped = Math.max(0.1, Math.min(10.0, newWeight));
+  const wKey = weightKey(providerModel, useCase);
+  const updated: LatentFactorSpace = {
+    ...space,
+    factors: space.factors.map((f) =>
+      f.id === factorId ? { ...f, weights: { ...f.weights, [wKey]: clamped } } : f,
+    ),
+  };
+  await saveFactorSpace(updated);
+  return updated;
+}
+
+// ---------- Lazy factor embedding ----------
+
+// In-flight embedding promises keyed by providerModel — prevents duplicate work
+const _embeddingInFlight = new Map<string, Promise<void>>();
+
+/**
+ * Ensure all factors have embedding vectors for the given providerModel.
+ *
+ * If vectors are already present, returns immediately (no I/O).
+ * Otherwise, embeds all factor descriptions in a single batch and persists.
+ * Uses an in-flight lock so concurrent callers share the same promise.
+ *
+ * Designed to be called fire-and-forget at query time:
+ *   void ensureFactorVectors(space, providerModel, useCase, embedBatch).catch(...)
+ *
+ * The current query continues with bigram-Jaccard fallback; subsequent queries
+ * will use the real embedding projection.
+ */
+export function ensureFactorVectors(
+  space: LatentFactorSpace,
+  providerModel: string,
+  useCase: string,
+  embedBatch: (texts: string[]) => Promise<number[][]>,
+): Promise<void> {
+  const allPresent = space.factors.every(
+    (f) => f.vectors[providerModel] && f.vectors[providerModel].length > 0,
+  );
+  if (allPresent) {
+    return Promise.resolve();
+  }
+
+  const existing = _embeddingInFlight.get(providerModel);
+  if (existing) {
+    return existing;
+  }
+
+  const work = (async () => {
+    const descriptions = space.factors.map((f) => f.description);
+    const vectors = await embedBatch(descriptions);
+    await registerFactorVectors(space, providerModel, useCase, vectors);
+  })().finally(() => {
+    _embeddingInFlight.delete(providerModel);
+  });
+
+  _embeddingInFlight.set(providerModel, work);
+  return work;
 }

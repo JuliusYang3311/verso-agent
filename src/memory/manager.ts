@@ -47,6 +47,7 @@ import {
   type MemoryFileEntry,
   runWithConcurrency,
 } from "./internal.js";
+import { loadFactorSpace, ensureFactorVectors, queryToSubqueries } from "./latent-factors.js";
 import {
   BATCH_FAILURE_LIMIT,
   type BatchFailureTracker,
@@ -64,7 +65,7 @@ import {
   withTimeout,
 } from "./manager-embeddings.js";
 import { searchHierarchical } from "./manager-hierarchical-search.js";
-import { searchKeyword, searchVector } from "./manager-search.js";
+import { searchKeyword, searchVector, type SearchRowResult } from "./manager-search.js";
 import {
   type SessionDeltaState,
   resetSessionDelta,
@@ -331,36 +332,109 @@ export class MemoryIndexManager implements MemorySearchManager {
     const queryVec = await embedQueryWithTimeout(ctx, cleaned);
     const hasVector = queryVec.some((v) => v !== 0);
 
+    // Lazily embed factor descriptions for the current model (fire-and-forget).
+    // Subsequent queries will use real cosine projection; this one uses bigram fallback.
+    if (hasVector) {
+      void loadFactorSpace()
+        .then((space) =>
+          ensureFactorVectors(space, this.provider.model, "memory", (texts) =>
+            ctx.provider.embedBatch(texts),
+          ),
+        )
+        .catch(() => {});
+    }
+
     // Load context params for hierarchical search settings
     const contextParams = await this.loadContextParams();
+
+    // Build shared hierarchical search params (reused across factor sub-queries)
+    const baseHierarchicalParams = {
+      db: this.db,
+      snippetMaxChars: SNIPPET_MAX_CHARS,
+      providerModel: this.provider.model,
+      vectorTable: VECTOR_TABLE,
+      filesVectorTable: FILES_VECTOR_TABLE,
+      filesFtsTable: "files_fts",
+      ftsAvailable: this.fts.available,
+      filesFtsAvailable: this.filesFts.available,
+      contextParams: contextParams as ContextParams,
+      ensureVectorReady: async (dims: number) => await this.ensureVectorReady(dims),
+      ensureFileVectorReady: async (dims: number) => {
+        const ready = await this.ensureVectorReady(dims);
+        if (ready && !this.fileVectorTableReady) {
+          this.fileVectorTableReady = ensureFileVectorTable(this.db, dims);
+        }
+        return ready && this.fileVectorTableReady;
+      },
+      sourceFilterVec: this.buildSourceFilter("c"),
+      sourceFilterChunks: this.buildSourceFilter(),
+    };
 
     // Use hierarchical search (file-level pre-filter → chunk-level search)
     if (hasVector) {
       try {
-        const results = await searchHierarchical({
-          db: this.db,
+        // Project query onto factor space and build sub-queries
+        const space = await loadFactorSpace();
+        const factorCount = Math.min(4, space.factors.length);
+        const { subqueries } = queryToSubqueries({
           queryVec,
-          query: cleaned,
-          limit: candidates,
-          snippetMaxChars: SNIPPET_MAX_CHARS,
+          queryText: cleaned,
+          space,
           providerModel: this.provider.model,
-          vectorTable: VECTOR_TABLE,
-          filesVectorTable: FILES_VECTOR_TABLE,
-          filesFtsTable: "files_fts",
-          ftsAvailable: this.fts.available,
-          filesFtsAvailable: this.filesFts.available,
-          contextParams: contextParams as ContextParams,
-          ensureVectorReady: async (dims) => await this.ensureVectorReady(dims),
-          ensureFileVectorReady: async (dims) => {
-            const ready = await this.ensureVectorReady(dims);
-            if (ready && !this.fileVectorTableReady) {
-              this.fileVectorTableReady = ensureFileVectorTable(this.db, dims);
-            }
-            return ready && this.fileVectorTableReady;
-          },
-          sourceFilterVec: this.buildSourceFilter("c"),
-          sourceFilterChunks: this.buildSourceFilter(),
+          useCase: "memory",
+          threshold: 1 / space.factors.length, // softmax uniform baseline
+          topK: factorCount,
+          mmrLambda: 0.7,
         });
+
+        // Embed all sub-query texts in a single batch, in parallel with the
+        // original query vector (which is already computed above).
+        const subQueryTexts = subqueries.map((s) => s.subquery);
+        const subQueryVecs = await ctx.provider
+          .embedBatch(subQueryTexts)
+          .catch(() => [] as number[][]);
+
+        // Build per-factor search inputs: original query + factor sub-queries
+        // Each entry is { queryVec, queryText } for one hierarchical search pass.
+        const searchInputs: Array<{ queryVec: number[]; queryText: string; factorId: string }> = [
+          { queryVec, queryText: cleaned, factorId: "_primary" },
+          ...subqueries
+            .map((s, i) => ({
+              queryVec: subQueryVecs[i] ?? [],
+              queryText: s.subquery,
+              factorId: s.factorId,
+            }))
+            .filter((s) => s.queryVec.length > 0),
+        ];
+
+        // Run all factor searches in parallel
+        const perFactorLimit = Math.ceil(candidates / searchInputs.length);
+        const allResults = await Promise.allSettled(
+          searchInputs.map((input) =>
+            searchHierarchical({
+              ...baseHierarchicalParams,
+              queryVec: input.queryVec,
+              query: input.queryText,
+              limit: perFactorLimit,
+            }),
+          ),
+        );
+
+        // Merge: deduplicate by (path, startLine), keep highest score per chunk
+        const chunkMap = new Map<string, SearchRowResult>();
+        for (const result of allResults) {
+          if (result.status !== "fulfilled") {
+            continue;
+          }
+          for (const row of result.value) {
+            const key = `${row.path}:${row.startLine}`;
+            const existing = chunkMap.get(key);
+            if (!existing || row.score > existing.score) {
+              chunkMap.set(key, row);
+            }
+          }
+        }
+        const results = [...chunkMap.values()].toSorted((a, b) => b.score - a.score);
 
         // Apply keyword boost if hybrid enabled
         if (hybrid.enabled) {
