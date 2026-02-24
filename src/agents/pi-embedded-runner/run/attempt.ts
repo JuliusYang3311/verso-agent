@@ -419,9 +419,6 @@ export async function runEmbeddedAttempt(
     });
     const systemPromptOverride = createSystemPromptOverride(appendPrompt);
     const systemPromptText = systemPromptOverride();
-    log.info(
-      `system prompt web_search check: contains=${appendPrompt.includes("web_search")} toolingSection=${appendPrompt.includes("## Tooling")}`,
-    );
 
     const sessionLock = await acquireSessionWriteLock({
       sessionFile: params.sessionFile,
