@@ -395,8 +395,7 @@ You MAY modify this file during "optimize" or "innovate" cycles to improve retri
 
 Latent factor search parameters (tune when memory recall quality is poor):
 - \`latentFactorEnabled\` (bool, default: true) — enable/disable multi-factor parallel search
-- \`factorTopK\` (int, 1–8, default: 4) — number of factor sub-queries to activate per search
-- \`factorActivationThreshold\` (float, 0.0–1.0, default: 1/N) — minimum softmax score for a factor to activate; lower = more factors activated
+- \`factorActivationThreshold\` (float, 0.0–1.0, default: 0.35) — minimum softmax score for a factor to activate; lower = more factors activated
 - \`factorMmrLambda\` (float, 0.0–1.0, default: 0.7) — MMR trade-off for factor selection: 1.0 = pure relevance, 0.0 = pure diversity
 
 Memory retrieval parameters (tune when results are stale or irrelevant):

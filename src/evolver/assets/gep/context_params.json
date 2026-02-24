@@ -26,10 +26,8 @@
   "redundancyThreshold": 0.95,
   "latentFactorEnabled": true,
   "factorActivationThreshold": 0.35,
-  "factorTopK": 4,
   "factorMmrLambda": 0.7,
   "webSearchMmrLambda": 0.7,
-  "webSearchFactorTopK": 4,
   "webSearchMmrMinGain": 0.05,
   "webSearchBudgetTokens": 8000,
   "dimensionWeights": {

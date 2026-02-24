@@ -58,11 +58,9 @@ export type ContextParams = {
   // Latent factor multi-dimensional query params
   latentFactorEnabled?: boolean;
   factorActivationThreshold?: number;
-  factorTopK?: number;
   factorMmrLambda?: number;
   // Web search agent params
   webSearchMmrLambda?: number;
-  webSearchFactorTopK?: number;
   webSearchMmrMinGain?: number;
   webSearchBudgetTokens?: number;
   dimensionWeights?: {
