@@ -260,8 +260,7 @@ export function selectFactorsAboveThreshold(
 /**
  * MMR-style diversification across factors.
  *
- * Selects up to `topK` factors that are both relevant (high softmax score) and
- * mutually dissimilar (low inter-factor cosine / bigram similarity).
+ * Selects all candidates ordered by MMR score — relevant and mutually dissimilar.
  *
  * Inter-factor similarity uses factor vectors (cosine) when available,
  * falling back to bigram-Jaccard over descriptions.
@@ -272,7 +271,6 @@ export function mmrDiversifyFactors(
   candidates: FactorScore[],
   providerModel: string,
   lambda: number,
-  topK: number,
 ): FactorScore[] {
   if (candidates.length === 0) {
     return [];
@@ -290,7 +288,7 @@ export function mmrDiversifyFactors(
     return bigramJaccard(a.description, b.description);
   };
 
-  while (selected.length < topK && remaining.length > 0) {
+  while (remaining.length > 0) {
     let bestIdx = -1;
     let bestMmr = -Infinity;
 
@@ -350,12 +348,7 @@ export function queryToSubqueries(params: {
 
   const allScores = projectQueryToFactors(queryVec, queryText, space, providerModel, useCase);
   const aboveThreshold = selectFactorsAboveThreshold(allScores, threshold);
-  const selectedFactors = mmrDiversifyFactors(
-    aboveThreshold,
-    providerModel,
-    mmrLambda,
-    aboveThreshold.length,
-  );
+  const selectedFactors = mmrDiversifyFactors(aboveThreshold, providerModel, mmrLambda);
   const subqueries = buildSubqueries(queryText, selectedFactors);
 
   return { selectedFactors, subqueries };

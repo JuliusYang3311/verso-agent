@@ -131,28 +131,27 @@ describe("selectFactorsAboveThreshold", () => {
 // ---------- mmrDiversifyFactors ----------
 
 describe("mmrDiversifyFactors", () => {
-  it("returns at most topK factors", () => {
+  it("returns all candidates in MMR order", () => {
     const scores = projectQueryToFactors([1, 0, 0, 0], "q", SPACE_WITH_VECS, MODEL, "test");
-    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7, 2);
-    expect(diversified.length).toBeLessThanOrEqual(2);
+    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7);
+    expect(diversified.length).toBe(scores.length);
   });
 
-  it("with orthogonal unit vectors, selects topK distinct factors", () => {
+  it("with orthogonal unit vectors, selects all distinct factors", () => {
     const scores = projectQueryToFactors([0.5, 0.5, 0.5, 0.5], "q", SPACE_WITH_VECS, MODEL, "test");
-    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7, 4);
+    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7);
     const ids = diversified.map((s) => s.factor.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("returns empty array for empty input", () => {
-    const result = mmrDiversifyFactors([], MODEL, 0.7, 4);
+    const result = mmrDiversifyFactors([], MODEL, 0.7);
     expect(result).toHaveLength(0);
   });
 
   it("bigram fallback: diversifies by description similarity", () => {
     const scores = projectQueryToFactors([], "internal mechanism", SPACE, MODEL, "test");
-    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7, 3);
-    expect(diversified.length).toBeLessThanOrEqual(3);
+    const diversified = mmrDiversifyFactors(scores, MODEL, 0.7);
     const ids = diversified.map((s) => s.factor.id);
     expect(new Set(ids).size).toBe(ids.length);
   });

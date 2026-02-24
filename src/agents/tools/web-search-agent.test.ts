@@ -119,10 +119,10 @@ describe("selectFactorsAboveThreshold", () => {
 // ---------- mmrDiversifyFactors ----------
 
 describe("mmrDiversifyFactors", () => {
-  it("returns at most topK factors", () => {
+  it("returns all candidates in MMR order", () => {
     const scores = projectQueryToFactors([], "React hooks tutorial", SPACE, "test-model", "test");
-    const selected = mmrDiversifyFactors(scores, "test-model", 0.7, 3);
-    expect(selected.length).toBeLessThanOrEqual(3);
+    const selected = mmrDiversifyFactors(scores, "test-model", 0.7);
+    expect(selected.length).toBe(scores.length);
   });
 
   it("selected factors have unique ids", () => {
@@ -133,7 +133,7 @@ describe("mmrDiversifyFactors", () => {
       "test-model",
       "test",
     );
-    const selected = mmrDiversifyFactors(scores, "test-model", 0.7, 4);
+    const selected = mmrDiversifyFactors(scores, "test-model", 0.7);
     const ids = selected.map((s) => s.factor.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
