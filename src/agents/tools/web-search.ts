@@ -446,20 +446,16 @@ async function runWebSearch(params: {
   const start = Date.now();
 
   const space: LatentFactorSpace = await loadFactorSpace();
-  if (params.embedBatch) {
-    void ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {});
-  }
 
-  // Embed the query for semantic factor projection; fall back to bigram-Jaccard if unavailable.
+  // Embed query and ensure factor vectors in parallel; both are needed for semantic projection.
   let queryVec: number[] = [];
   if (params.embedBatch && space.factors.length > 0) {
-    try {
-      const vecs = await params.embedBatch([params.query]);
-      if (vecs[0]?.length > 0) {
-        queryVec = vecs[0];
-      }
-    } catch {
-      // Non-fatal: bigram-Jaccard fallback will be used
+    const [vecs] = await Promise.all([
+      params.embedBatch([params.query]).catch(() => null),
+      ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {}),
+    ]);
+    if (vecs?.[0]?.length) {
+      queryVec = vecs[0];
     }
   }
 
