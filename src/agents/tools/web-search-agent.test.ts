@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { LatentFactorSpace } from "../../memory/latent-factors.js";
 import {
-  loadFactorSpace,
   projectQueryToFactors,
   queryToSubqueries,
   selectFactorsAboveThreshold,
@@ -9,6 +9,56 @@ import {
 import { __testing } from "./web-search-agent.js";
 
 const { perFactorCount, deduplicateWebResults, mmrSelectWebResults } = __testing;
+
+// ---------- Fixture — mirrors a subset of the real factor-space ----------
+
+const SPACE: LatentFactorSpace = {
+  version: "1.0.0",
+  factors: [
+    {
+      id: "internal",
+      description: "内部结构 机制 自身因素 原因 结构性问题 internal mechanism root cause",
+      subqueryTemplate: "{entity} internal mechanism structure root cause",
+      vectors: {},
+      weights: {},
+    },
+    {
+      id: "technology",
+      description: "技术 能力 创新 研发 工程实现 technology capability innovation engineering",
+      subqueryTemplate: "{entity} technology capability innovation engineering",
+      vectors: {},
+      weights: {},
+    },
+    {
+      id: "risk",
+      description: "风险 不确定性 威胁 脆弱性 暴露 risk uncertainty threat vulnerability",
+      subqueryTemplate: "{entity} risk uncertainty threat vulnerability",
+      vectors: {},
+      weights: {},
+    },
+    {
+      id: "trend",
+      description: "长期趋势 发展方向 未来变化 历史演变 trend trajectory evolution forecast",
+      subqueryTemplate: "{entity} trend trajectory future evolution",
+      vectors: {},
+      weights: {},
+    },
+    {
+      id: "cost",
+      description: "成本 价格 规模效应 效率 资源消耗 cost price efficiency scale",
+      subqueryTemplate: "{entity} cost price efficiency scale economics",
+      vectors: {},
+      weights: {},
+    },
+    {
+      id: "competition",
+      description: "竞争者 竞争格局 市场份额 对手行为 competition competitor market share rivalry",
+      subqueryTemplate: "{entity} competition competitor market share rivalry",
+      vectors: {},
+      weights: {},
+    },
+  ],
+};
 
 // ---------- Helpers ----------
 
@@ -21,53 +71,46 @@ function makeRaw(url: string, factorId: string, score: number, title = "", desc 
 // ---------- projectQueryToFactors ----------
 
 describe("projectQueryToFactors", () => {
-  it("returns a softmax score for every factor", async () => {
-    const space = await loadFactorSpace();
-    const scores = projectQueryToFactors([], "how to use React hooks", space, "test-model", "test");
-    expect(scores).toHaveLength(space.factors.length);
+  it("returns a softmax score for every factor", () => {
+    const scores = projectQueryToFactors([], "how to use React hooks", SPACE, "test-model", "test");
+    expect(scores).toHaveLength(SPACE.factors.length);
     for (const s of scores) {
       expect(s.score).toBeGreaterThan(0);
       expect(s.score).toBeLessThanOrEqual(1);
     }
   });
 
-  it("softmax scores sum to ~1", async () => {
-    const space = await loadFactorSpace();
-    const scores = projectQueryToFactors([], "TypeScript generics", space, "test-model", "test");
+  it("softmax scores sum to ~1", () => {
+    const scores = projectQueryToFactors([], "TypeScript generics", SPACE, "test-model", "test");
     const sum = scores.reduce((a, b) => a + b.score, 0);
     expect(sum).toBeCloseTo(1, 5);
   });
 
-  it("tutorial-like factor scores higher for how-to query", async () => {
-    const space = await loadFactorSpace();
-    // Use a query that strongly matches one factor description
+  it("tutorial-like factor scores higher for how-to query", () => {
     const scores = projectQueryToFactors(
       [],
       "how to implement step by step guide tutorial example",
-      space,
+      SPACE,
       "test-model",
       "test",
     );
-    // The highest-scoring factor should have a score above the uniform baseline (1/N)
     const best = scores.reduce((a, b) => (b.score > a.score ? b : a));
-    expect(best.score).toBeGreaterThan(1 / space.factors.length);
+    expect(best.score).toBeGreaterThan(1 / SPACE.factors.length);
   });
 });
 
 // ---------- selectFactorsAboveThreshold ----------
 
 describe("selectFactorsAboveThreshold", () => {
-  it("returns at least 1 factor even when nothing passes threshold", async () => {
-    const space = await loadFactorSpace();
-    const scores = projectQueryToFactors([], "xyz", space, "test-model", "test");
+  it("returns at least 1 factor even when nothing passes threshold", () => {
+    const scores = projectQueryToFactors([], "xyz", SPACE, "test-model", "test");
     const selected = selectFactorsAboveThreshold(scores, 0.99);
     expect(selected.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("returns all factors above threshold", async () => {
-    const space = await loadFactorSpace();
-    const scores = projectQueryToFactors([], "test", space, "test-model", "test");
-    const threshold = 1 / space.factors.length / 2; // well below uniform
+  it("returns all factors above threshold", () => {
+    const scores = projectQueryToFactors([], "test", SPACE, "test-model", "test");
+    const threshold = 1 / SPACE.factors.length / 2;
     const selected = selectFactorsAboveThreshold(scores, threshold);
     expect(selected.length).toBeGreaterThan(0);
   });
@@ -76,19 +119,17 @@ describe("selectFactorsAboveThreshold", () => {
 // ---------- mmrDiversifyFactors ----------
 
 describe("mmrDiversifyFactors", () => {
-  it("returns at most topK factors", async () => {
-    const space = await loadFactorSpace();
-    const scores = projectQueryToFactors([], "React hooks tutorial", space, "test-model", "test");
+  it("returns at most topK factors", () => {
+    const scores = projectQueryToFactors([], "React hooks tutorial", SPACE, "test-model", "test");
     const selected = mmrDiversifyFactors(scores, "test-model", 0.7, 3);
     expect(selected.length).toBeLessThanOrEqual(3);
   });
 
-  it("selected factors have unique ids", async () => {
-    const space = await loadFactorSpace();
+  it("selected factors have unique ids", () => {
     const scores = projectQueryToFactors(
       [],
       "comparison alternatives versus",
-      space,
+      SPACE,
       "test-model",
       "test",
     );
@@ -101,12 +142,11 @@ describe("mmrDiversifyFactors", () => {
 // ---------- queryToSubqueries ----------
 
 describe("queryToSubqueries", () => {
-  it("substitutes query into each template", async () => {
-    const space = await loadFactorSpace();
+  it("substitutes query into each template", () => {
     const { subqueries } = queryToSubqueries({
       queryVec: [],
       queryText: "TypeScript",
-      space,
+      space: SPACE,
       providerModel: "test-model",
       useCase: "test",
       threshold: 0,

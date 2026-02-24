@@ -1,7 +1,17 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, afterEach, beforeEach, vi } from "vitest";
 
 // Ensure Vitest environment is properly set
 process.env.VITEST = "true";
+
+// Redirect factor-space writes to a per-worker temp file so production
+// factor-space.json is never polluted by mock-embed test data.
+const _tmpFactorSpaceDir = fs.mkdtempSync(path.join(os.tmpdir(), "verso-factor-space-"));
+const _tmpFactorSpacePath = path.join(_tmpFactorSpaceDir, "factor-space.json");
+fs.writeFileSync(_tmpFactorSpacePath, JSON.stringify({ version: "1.0.0", factors: [] }));
+process.env.LATENT_FACTOR_SPACE_PATH = _tmpFactorSpacePath;
 
 import type {
   ChannelId,

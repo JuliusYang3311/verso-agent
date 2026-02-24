@@ -56,6 +56,11 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** Override in tests via LATENT_FACTOR_SPACE_PATH to avoid polluting production data. */
+function factorSpacePath(): string {
+  return process.env.LATENT_FACTOR_SPACE_PATH ?? path.resolve(__dirname, "factor-space.json");
+}
+
 // ---------- Types ----------
 
 /**
@@ -108,7 +113,7 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
   if (_cachedSpace) {
     return _cachedSpace;
   }
-  const p = path.resolve(__dirname, "factor-space.json");
+  const p = factorSpacePath();
   const raw = await fs.readFile(p, "utf-8");
   const parsed = JSON.parse(raw) as {
     version: string;
@@ -127,7 +132,7 @@ export function invalidateFactorSpaceCache(): void {
 }
 
 export async function saveFactorSpace(space: LatentFactorSpace): Promise<void> {
-  const p = path.resolve(__dirname, "factor-space.json");
+  const p = factorSpacePath();
   await fs.writeFile(p, JSON.stringify(space, null, 2), "utf-8");
   _cachedSpace = space;
 }

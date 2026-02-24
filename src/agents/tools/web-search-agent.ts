@@ -48,7 +48,7 @@ import {
 // ---------- Constants ----------
 
 const DEFAULT_MMR_LAMBDA = 0.7;
-const DEFAULT_FACTOR_THRESHOLD = 1 / 12; // softmax uniform baseline for 12 factors; factors above this are "activated"
+const DEFAULT_FACTOR_THRESHOLD = 1 / 18; // softmax uniform baseline for 18 factors; factors above this are "activated"
 const DEFAULT_FACTOR_TOP_K = 4;
 const DEFAULT_MMR_MIN_GAIN = 0.05;
 const DEFAULT_BUDGET_TOKENS = 8000;
