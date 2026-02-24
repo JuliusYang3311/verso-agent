@@ -43,9 +43,10 @@ jobs:
               console.error('Missing evolver daemon entry: ' + entry);
               process.exit(1);
             }
-            // Verify the bundled evolve chunk exists (code-split from daemon-entry)
+            // Verify evolve bundle exists — either as a named entry (evolve.js)
+            // or as a code-split hash chunk (evolve-<hash>.js)
             const files = fs.readdirSync('dist/evolver');
-            const hasEvolveChunk = files.some(f => f.startsWith('evolve-') && f.endsWith('.js'));
+            const hasEvolveChunk = files.some(f => f === 'evolve.js' || (f.startsWith('evolve-') && f.endsWith('.js')));
             if (!hasEvolveChunk) {
               console.error('Missing bundled evolve chunk in dist/evolver/');
               process.exit(1);
