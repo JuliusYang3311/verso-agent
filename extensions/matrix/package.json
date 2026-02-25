@@ -26,11 +26,6 @@
       "blurb": "open protocol; install the plugin to enable.",
       "order": 70,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@openclaw/matrix",
-      "localPath": "extensions/matrix",
-      "defaultChoice": "npm"
     }
   }
 }

@@ -23,11 +23,6 @@
       ],
       "order": 85,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@verso/zalouser",
-      "localPath": "extensions/zalouser",
-      "defaultChoice": "npm"
     }
   }
 }

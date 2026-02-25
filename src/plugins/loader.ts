@@ -255,7 +255,12 @@ export function loadVersoPlugins(options: PluginLoadOptions = {}): PluginRegistr
       continue;
     }
 
-    const enableState = resolveEnableState(pluginId, candidate.origin, normalized);
+    const enableState = resolveEnableState(
+      pluginId,
+      candidate.origin,
+      normalized,
+      manifestRecord.channels,
+    );
     const entry = normalized.entries[pluginId];
     const record = createPluginRecord({
       id: pluginId,

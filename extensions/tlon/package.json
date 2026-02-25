@@ -16,11 +16,6 @@
       "blurb": "decentralized messaging on Urbit; install the plugin to enable.",
       "order": 90,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@verso/tlon",
-      "localPath": "extensions/tlon",
-      "defaultChoice": "npm"
     }
   }
 }

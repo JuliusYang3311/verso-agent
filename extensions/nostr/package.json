@@ -23,11 +23,6 @@
       "blurb": "Decentralized protocol; encrypted DMs via NIP-04.",
       "order": 55,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@openclaw/nostr",
-      "localPath": "extensions/nostr",
-      "defaultChoice": "npm"
     }
   }
 }

@@ -25,11 +25,6 @@
       ],
       "order": 80,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@openclaw/zalo",
-      "localPath": "extensions/zalo",
-      "defaultChoice": "npm"
     }
   }
 }

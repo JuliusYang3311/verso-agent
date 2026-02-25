@@ -7,7 +7,7 @@
   "devDependencies": {
     "verso-custom": "workspace:*"
   },
-  "openclaw": {
+  "verso": {
     "extensions": [
       "./index.ts"
     ],

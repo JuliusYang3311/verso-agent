@@ -28,11 +28,6 @@
         "teams"
       ],
       "order": 60
-    },
-    "install": {
-      "npmSpec": "@openclaw/msteams",
-      "localPath": "extensions/msteams",
-      "defaultChoice": "npm"
     }
   }
 }

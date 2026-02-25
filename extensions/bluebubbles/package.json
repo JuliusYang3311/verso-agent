@@ -23,11 +23,6 @@
       ],
       "systemImage": "bubble.left.and.text.bubble.right",
       "order": 75
-    },
-    "install": {
-      "npmSpec": "@verso/bluebubbles",
-      "localPath": "extensions/bluebubbles",
-      "defaultChoice": "npm"
     }
   }
 }

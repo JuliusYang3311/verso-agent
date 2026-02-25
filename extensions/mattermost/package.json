@@ -15,11 +15,6 @@
       "docsLabel": "mattermost",
       "blurb": "self-hosted Slack-style chat; install the plugin to enable.",
       "order": 65
-    },
-    "install": {
-      "npmSpec": "@verso/mattermost",
-      "localPath": "extensions/mattermost",
-      "defaultChoice": "npm"
     }
   }
 }

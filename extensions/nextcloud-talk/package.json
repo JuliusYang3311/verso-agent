@@ -20,11 +20,6 @@
       ],
       "order": 65,
       "quickstartAllowFrom": true
-    },
-    "install": {
-      "npmSpec": "@verso/nextcloud-talk",
-      "localPath": "extensions/nextcloud-talk",
-      "defaultChoice": "npm"
     }
   }
 }

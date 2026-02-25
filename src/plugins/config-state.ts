@@ -165,6 +165,7 @@ export function resolveEnableState(
   id: string,
   origin: PluginRecord["origin"],
   config: NormalizedPluginsConfig,
+  channels?: string[],
 ): { enabled: boolean; reason?: string } {
   if (!config.enabled) {
     return { enabled: false, reason: "plugins disabled" };
@@ -186,6 +187,9 @@ export function resolveEnableState(
     return { enabled: false, reason: "disabled in config" };
   }
   if (origin === "bundled" && BUNDLED_ENABLED_BY_DEFAULT.has(id)) {
+    return { enabled: true };
+  }
+  if (origin === "bundled" && channels && channels.length > 0) {
     return { enabled: true };
   }
   if (origin === "bundled") {

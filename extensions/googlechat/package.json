@@ -30,11 +30,6 @@
         "google-chat"
       ],
       "order": 55
-    },
-    "install": {
-      "npmSpec": "@openclaw/googlechat",
-      "localPath": "extensions/googlechat",
-      "defaultChoice": "npm"
     }
   }
 }
