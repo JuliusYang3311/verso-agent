@@ -10,6 +10,7 @@ description: Create and maintain long-form serialized fiction with a shared styl
 3. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
 4. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
 5. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
+6. **After every chapter, immediately update project memory.** Run `extract-updates.ts` → `validate-patch.ts` → `apply-patch.ts` in sequence before doing anything else. Never leave memory stale after a write.
 
 # Novel Writer
 
