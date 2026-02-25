@@ -126,6 +126,7 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
     version: string;
     factors: Array<Omit<LatentFactor, "weights"> & { weights?: Record<string, number> }>;
   };
+  console.log(`[latent-factors] loaded factor-space from ${p}: ${parsed.factors.length} factors`);
   // Backfill missing `weights` field for factors loaded from older JSON
   _cachedSpace = {
     ...parsed,
