@@ -451,14 +451,26 @@ async function runWebSearch(params: {
   let queryVec: number[] = [];
   if (params.embedBatch && space.factors.length > 0) {
     const [vecs] = await Promise.all([
-      params.embedBatch([params.query]).catch(() => null),
-      ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {}),
+      params.embedBatch([params.query]).catch((err) => {
+        console.error("[web-search] embedBatch query failed:", err);
+        return null;
+      }),
+      ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch((err) => {
+        console.error("[web-search] ensureFactorVectors failed:", err);
+      }),
     ]);
     // Reload to pick up any newly registered factor vectors.
     space = await loadFactorSpace();
     if (vecs?.[0]?.length) {
       queryVec = vecs[0];
     }
+    console.log(
+      `[web-search] debug: embedBatch=${!!params.embedBatch} queryVecLen=${queryVec.length} factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[WEB_PROVIDER_MODEL]?.length > 0).length}`,
+    );
+  } else {
+    console.log(
+      `[web-search] debug: embedBatch=${!!params.embedBatch} factorCount=${space.factors.length} — skipping semantic projection`,
+    );
   }
 
   const { selectedFactors, subqueries } = resolveSubqueries(
