@@ -50,6 +50,7 @@
  * its weight to 1.0 for the given weightKey, keeping weights and factors in sync.
  */
 
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,7 +59,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Override in tests via LATENT_FACTOR_SPACE_PATH to avoid polluting production data. */
 function factorSpacePath(): string {
-  return process.env.LATENT_FACTOR_SPACE_PATH ?? path.resolve(__dirname, "factor-space.json");
+  if (process.env.LATENT_FACTOR_SPACE_PATH) {
+    return process.env.LATENT_FACTOR_SPACE_PATH;
+  }
+  // Unbundled: __dirname = dist/memory/; bundled: __dirname = dist/
+  // Try sibling first, then memory/ subdirectory as fallback for bundled builds.
+  const sibling = path.resolve(__dirname, "factor-space.json");
+  const subdir = path.resolve(__dirname, "memory", "factor-space.json");
+  return fsSync.existsSync(sibling) ? sibling : subdir;
 }
 
 // ---------- Types ----------
