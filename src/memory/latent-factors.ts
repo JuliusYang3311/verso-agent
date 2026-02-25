@@ -119,6 +119,7 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
     raw = await fs.readFile(p, "utf-8");
   } catch {
     // Do not cache missing file — allow retry on next call.
+    console.error(`[latent-factors] factor-space.json not found at: ${p}`);
     return { version: "1.0.0", factors: [] };
   }
   const parsed = JSON.parse(raw) as {
