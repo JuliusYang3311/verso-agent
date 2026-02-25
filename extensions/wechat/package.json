@@ -1,0 +1,29 @@
+{
+  "name": "@openclaw/wechat",
+  "version": "2026.2.9",
+  "description": "Verso WeChat channel plugin via Proxy API",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "verso-custom": "workspace:*"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "channel": {
+      "id": "wechat",
+      "label": "WeChat",
+      "selectionLabel": "WeChat (微信)",
+      "docsPath": "/channels/wechat",
+      "docsLabel": "wechat",
+      "blurb": "WeChat channel via Proxy API",
+      "order": 80
+    },
+    "install": {
+      "npmSpec": "@openclaw/wechat",
+      "localPath": "extensions/wechat",
+      "defaultChoice": "local"
+    }
+  }
+}

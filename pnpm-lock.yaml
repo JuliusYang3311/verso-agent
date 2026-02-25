@@ -508,6 +508,12 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
 
+  extensions/wechat:
+    devDependencies:
+      verso-custom:
+        specifier: workspace:*
+        version: link:../..
+
   extensions/whatsapp:
     devDependencies:
       verso-custom:
