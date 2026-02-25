@@ -332,18 +332,6 @@ export class MemoryIndexManager implements MemorySearchManager {
     const queryVec = await embedQueryWithTimeout(ctx, cleaned);
     const hasVector = queryVec.some((v) => v !== 0);
 
-    // Lazily embed factor descriptions for the current model (fire-and-forget).
-    // Subsequent queries will use real cosine projection; this one uses bigram fallback.
-    if (hasVector) {
-      void loadFactorSpace()
-        .then((space) =>
-          ensureFactorVectors(space, this.provider.model, "memory", (texts) =>
-            ctx.provider.embedBatch(texts),
-          ),
-        )
-        .catch(() => {});
-    }
-
     // Load context params for hierarchical search settings
     const contextParams = await this.loadContextParams();
 
@@ -374,7 +362,14 @@ export class MemoryIndexManager implements MemorySearchManager {
     if (hasVector) {
       try {
         // Project query onto factor space and build sub-queries
-        const space = await loadFactorSpace();
+        let space = await loadFactorSpace();
+        // Ensure factor vectors are computed before projection; reload to get fresh vectors.
+        if (hasVector && space.factors.length > 0) {
+          await ensureFactorVectors(space, this.provider.model, "memory", (texts) =>
+            ctx.provider.embedBatch(texts),
+          ).catch(() => {});
+          space = await loadFactorSpace();
+        }
         const latentFactorEnabled = contextParams.latentFactorEnabled ?? true;
         const { subqueries } = latentFactorEnabled
           ? queryToSubqueries({
@@ -387,6 +382,10 @@ export class MemoryIndexManager implements MemorySearchManager {
               mmrLambda: contextParams.factorMmrLambda ?? 0.7,
             })
           : { subqueries: [] };
+
+        log.info(
+          `[memory-search] latent factors: factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[this.provider.model]?.length > 0).length} subqueries=${subqueries.length} subqueryIds=${subqueries.map((s) => s.factorId).join(",")}`,
+        );
 
         // Embed all sub-query texts in a single batch, in parallel with the
         // original query vector (which is already computed above).
