@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import type { VersoConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
 import { formatCliCommand } from "../../cli/command-format.js";
+import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   loadFactorSpace,
   queryToSubqueries,
@@ -25,6 +26,8 @@ import {
   withTimeout,
   writeCache,
 } from "./web-shared.js";
+
+const log = createSubsystemLogger("web-search");
 
 const WEB_PROVIDER_MODEL = "web-search-agent";
 
@@ -452,11 +455,11 @@ async function runWebSearch(params: {
   if (params.embedBatch && space.factors.length > 0) {
     const [vecs] = await Promise.all([
       params.embedBatch([params.query]).catch((err) => {
-        console.error("[web-search] embedBatch query failed:", err);
+        log.warn(`embedBatch query failed: ${err}`);
         return null;
       }),
       ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch((err) => {
-        console.error("[web-search] ensureFactorVectors failed:", err);
+        log.warn(`ensureFactorVectors failed: ${err}`);
       }),
     ]);
     // Reload to pick up any newly registered factor vectors.
@@ -464,12 +467,12 @@ async function runWebSearch(params: {
     if (vecs?.[0]?.length) {
       queryVec = vecs[0];
     }
-    console.log(
-      `[web-search] debug: embedBatch=${!!params.embedBatch} queryVecLen=${queryVec.length} factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[WEB_PROVIDER_MODEL]?.length > 0).length}`,
+    log.info(
+      `embedBatch=${!!params.embedBatch} queryVecLen=${queryVec.length} factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[WEB_PROVIDER_MODEL]?.length > 0).length}`,
     );
   } else {
-    console.log(
-      `[web-search] debug: embedBatch=${!!params.embedBatch} factorCount=${space.factors.length} — skipping semantic projection`,
+    log.info(
+      `embedBatch=${!!params.embedBatch} factorCount=${space.factors.length} — skipping semantic projection`,
     );
   }
 
