@@ -118,8 +118,8 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
   try {
     raw = await fs.readFile(p, "utf-8");
   } catch {
-    _cachedSpace = { version: "1.0.0", factors: [] };
-    return _cachedSpace;
+    // Do not cache missing file — allow retry on next call.
+    return { version: "1.0.0", factors: [] };
   }
   const parsed = JSON.parse(raw) as {
     version: string;
