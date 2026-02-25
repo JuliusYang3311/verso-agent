@@ -383,10 +383,6 @@ export class MemoryIndexManager implements MemorySearchManager {
             })
           : { subqueries: [] };
 
-        log.info(
-          `[memory-search] latent factors: factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[this.provider.model]?.length > 0).length} subqueries=${subqueries.length} subqueryIds=${subqueries.map((s) => s.factorId).join(",")}`,
-        );
-
         // Embed all sub-query texts in a single batch, in parallel with the
         // original query vector (which is already computed above).
         const subQueryTexts = subqueries.map((s) => s.subquery);

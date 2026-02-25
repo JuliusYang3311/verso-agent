@@ -2,7 +2,6 @@ import { Type } from "@sinclair/typebox";
 import type { VersoConfig } from "../../config/config.js";
 import type { AnyAgentTool } from "./common.js";
 import { formatCliCommand } from "../../cli/command-format.js";
-import { createSubsystemLogger } from "../../logging/subsystem.js";
 import {
   loadFactorSpace,
   queryToSubqueries,
@@ -26,8 +25,6 @@ import {
   withTimeout,
   writeCache,
 } from "./web-shared.js";
-
-const log = createSubsystemLogger("web-search");
 
 const WEB_PROVIDER_MODEL = "web-search-agent";
 
@@ -454,26 +451,14 @@ async function runWebSearch(params: {
   let queryVec: number[] = [];
   if (params.embedBatch && space.factors.length > 0) {
     const [vecs] = await Promise.all([
-      params.embedBatch([params.query]).catch((err) => {
-        log.warn(`embedBatch query failed: ${err}`);
-        return null;
-      }),
-      ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch((err) => {
-        log.warn(`ensureFactorVectors failed: ${err}`);
-      }),
+      params.embedBatch([params.query]).catch(() => null),
+      ensureFactorVectors(space, WEB_PROVIDER_MODEL, "web", params.embedBatch).catch(() => {}),
     ]);
     // Reload to pick up any newly registered factor vectors.
     space = await loadFactorSpace();
     if (vecs?.[0]?.length) {
       queryVec = vecs[0];
     }
-    log.info(
-      `embedBatch=${!!params.embedBatch} queryVecLen=${queryVec.length} factorCount=${space.factors.length} factorsWithVectors=${space.factors.filter((f) => f.vectors[WEB_PROVIDER_MODEL]?.length > 0).length}`,
-    );
-  } else {
-    log.info(
-      `embedBatch=${!!params.embedBatch} factorCount=${space.factors.length} — skipping semantic projection`,
-    );
   }
 
   const { selectedFactors, subqueries } = resolveSubqueries(

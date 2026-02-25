@@ -54,9 +54,7 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createSubsystemLogger } from "../logging/subsystem.js";
 
-const log = createSubsystemLogger("latent-factors");
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** Override in tests via LATENT_FACTOR_SPACE_PATH to avoid polluting production data. */
@@ -129,14 +127,12 @@ export async function loadFactorSpace(): Promise<LatentFactorSpace> {
     raw = await fs.readFile(p, "utf-8");
   } catch {
     // Do not cache missing file — allow retry on next call.
-    log.warn(`factor-space.json not found at: ${p}`);
     return { version: "1.0.0", factors: [] };
   }
   const parsed = JSON.parse(raw) as {
     version: string;
     factors: Array<Omit<LatentFactor, "weights"> & { weights?: Record<string, number> }>;
   };
-  log.info(`loaded factor-space from ${p}: ${parsed.factors.length} factors`);
   // Backfill missing `weights` field for factors loaded from older JSON
   _cachedSpace = {
     ...parsed,
