@@ -11,6 +11,7 @@ import {
   shouldTriggerGroupResponse,
   extractGroupMessageContent,
 } from "./dynamic-agent.js";
+import { logger } from "./logger.js";
 import { getWecomRuntime } from "./runtime.js";
 import { streamManager } from "./stream-manager.js";
 import {
@@ -163,6 +164,7 @@ async function handleStreamError(
   errorMessage: string,
 ): Promise<void> {
   if (!streamId) return;
+  logger.error("Stream error", { streamId, streamKey, errorMessage });
   const stream = streamManager.getStream(streamId);
   if (stream && !stream.finished) {
     if (stream.content.trim() === THINKING_PLACEHOLDER.trim()) {
@@ -178,15 +180,20 @@ function guessMimeType(fileName: string): string {
   const map: Record<string, string> = {
     pdf: "application/pdf",
     doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     txt: "text/plain",
+    csv: "text/csv",
+    zip: "application/zip",
     png: "image/png",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     gif: "image/gif",
     mp4: "video/mp4",
     mp3: "audio/mpeg",
-    zip: "application/zip",
-    csv: "text/csv",
   };
   return map[ext] || "application/octet-stream";
 }
@@ -201,6 +208,7 @@ async function downloadAndDecryptImage(
   if (!response.ok) throw new Error(`Failed to download image: ${response.status}`);
   const encrypted = Buffer.from(await response.arrayBuffer());
   const decrypted = new WecomCrypto(token, encodingAesKey).decryptMedia(encrypted);
+  logger.debug("Image decrypted", { size: decrypted.length });
 
   let ext = "jpg";
   if (decrypted[0] === 0x89 && decrypted[1] === 0x50) ext = "png";
@@ -279,10 +287,23 @@ async function ensureDynamicAgentListed(agentId: string): Promise<void> {
       const latestConfig = configRuntime.loadConfig();
       if (!latestConfig) return;
       const changed = upsertAgentIdOnlyEntry(latestConfig, normalizedId);
-      if (changed) await configRuntime.writeConfigFile(latestConfig);
+      if (changed) {
+        await configRuntime.writeConfigFile(latestConfig);
+        logger.info("Dynamic agent added to agents.list", { agentId: normalizedId });
+      }
+      // Keep runtime in-memory config aligned to avoid stale reads
+      const liveConfig = (runtime as any).config?.cfg;
+      if (liveConfig && typeof liveConfig === "object") {
+        upsertAgentIdOnlyEntry(liveConfig, normalizedId);
+      }
       ensuredDynamicAgentIds.add(normalizedId);
     })
-    .catch(() => {});
+    .catch((err: unknown) => {
+      logger.warn("Failed to sync dynamic agent into agents.list", {
+        agentId: normalizedId,
+        error: (err as Error)?.message || String(err),
+      });
+    });
   await ensureDynamicAgentWriteQueue;
 }
 
@@ -403,6 +424,10 @@ function flushMessageBuffer(
     account: target.account,
     config: target.config,
   }).catch(async (err) => {
+    logger.error("Flush dispatch failed", {
+      streamKey,
+      error: (err as Error)?.message || String(err),
+    });
     await handleStreamError(primaryStreamId, streamKey, "处理消息时出错，请稍后再试。");
   });
 }
@@ -483,6 +508,14 @@ async function processInboundMessage(params: {
   const streamKey = isGroupChat ? chatId : senderId;
   if (streamId) registerActiveStream(streamKey, streamId);
 
+  logger.info("Processing inbound message", {
+    msgId: message.msgId,
+    from: senderId,
+    chatType,
+    chatId: chatId || undefined,
+    msgType: message.msgType,
+  });
+
   // Save response_url for fallback
   if (message.responseUrl?.trim()) {
     responseUrls.set(streamKey, {
@@ -557,6 +590,15 @@ async function processInboundMessage(params: {
     route.sessionKey = `agent:${targetAgentId}:${peerKind}:${peerId}`;
   }
 
+  // Read previous timestamp for envelope
+  const storePath = core.session.resolveStorePath(config.session?.store, {
+    agentId: route.agentId,
+  });
+  const previousTimestamp = core.session.readSessionUpdatedAt({
+    storePath,
+    sessionKey: route.sessionKey,
+  });
+
   // Build envelope
   const envelopeOptions = core.reply.resolveEnvelopeFormatOptions(config);
   const senderLabel = isGroupChat ? `[${senderId}]` : senderId;
@@ -564,6 +606,7 @@ async function processInboundMessage(params: {
     channel: isGroupChat ? "Enterprise WeChat Group" : "Enterprise WeChat",
     from: senderLabel,
     timestamp: Date.now(),
+    previousTimestamp,
     envelope: envelopeOptions,
     body: rawBody,
   });
@@ -630,7 +673,9 @@ async function processInboundMessage(params: {
         ...((ctxBase.MediaTypes as string[]) || []),
         guessMimeType(effectiveFileName),
       ];
-    } catch {
+      logger.info("File attachment prepared", { path: localPath, name: effectiveFileName });
+    } catch (e: unknown) {
+      logger.warn("File download failed", { error: (e as Error)?.message || String(e) });
       const label = fileName ? `[文件: ${fileName}]` : "[文件]";
       if (!rawBody.trim()) {
         ctxBase.Body = `[用户发送了文件] ${label}`;
@@ -638,9 +683,29 @@ async function processInboundMessage(params: {
         ctxBase.CommandBody = "";
       }
     }
+    // Fallback: download succeeded but no text body was provided
+    if (!rawBody.trim() && !ctxBase.Body) {
+      const label = fileName ? `[文件: ${fileName}]` : "[文件]";
+      ctxBase.Body = `[用户发送了文件] ${label}`;
+      ctxBase.RawBody = label;
+      ctxBase.CommandBody = "";
+    }
   }
 
   const ctxPayload = core.reply.finalizeInboundContext(ctxBase);
+
+  // Record session meta (fire-and-forget)
+  void core.session
+    .recordSessionMetaFromInbound({
+      storePath,
+      sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
+      ctx: ctxPayload,
+    })
+    .catch((err: unknown) => {
+      logger.error("Failed updating session meta", {
+        error: (err as Error)?.message || String(err),
+      });
+    });
 
   // Dispatch with serialization
   const prevLock = dispatchLocks.get(streamKey) ?? Promise.resolve();
@@ -700,7 +765,27 @@ function resolveWecomCommandAuthorized(
   if (!sender) return false;
   const wecom = cfg?.channels?.wecom as WecomConfig | undefined;
   if (!wecom) return true;
-  const allowFromRaw = wecom.dm?.allowFrom ?? [];
+
+  // Multi-path resolution: accounts[accountId] → wecom root
+  const normalizedAccountId = String(accountId || "default")
+    .trim()
+    .toLowerCase();
+  const accounts = wecom.accounts;
+  const account =
+    accounts && typeof accounts === "object"
+      ? (accounts[accountId] ??
+        accounts[
+          Object.keys(accounts).find((key) => key.toLowerCase() === normalizedAccountId) ?? ""
+        ])
+      : undefined;
+
+  const allowFromRaw =
+    account?.dm?.allowFrom ??
+    (account as any)?.allowFrom ??
+    wecom.dm?.allowFrom ??
+    (wecom as any)?.allowFrom ??
+    [];
+
   if (!Array.isArray(allowFromRaw) || allowFromRaw.length === 0) return true;
   const normalized = allowFromRaw
     .map((r) =>

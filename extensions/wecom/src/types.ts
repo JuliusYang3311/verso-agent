@@ -10,6 +10,7 @@ export interface WecomAccountConfig {
   token?: string;
   encodingAesKey?: string;
   webhookPath?: string;
+  allowFrom?: string[];
   commands?: {
     enabled?: boolean;
     allowlist?: string[];

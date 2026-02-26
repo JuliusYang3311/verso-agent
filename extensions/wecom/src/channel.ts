@@ -45,9 +45,27 @@ export const wecomPlugin: ChannelPlugin<ResolvedWecomAccount> = {
     media: true,
     reactions: false,
     polls: false,
+    threads: false,
+    nativeCommands: false,
+    blockStreaming: true,
   },
 
-  configSchema: { schema: wecomConfigSchema },
+  reload: { configPrefixes: ["channels.wecom"] },
+
+  configSchema: {
+    schema: wecomConfigSchema,
+    uiHints: {
+      token: {
+        sensitive: true,
+        label: "Bot Token",
+      },
+      encodingAesKey: {
+        sensitive: true,
+        label: "Encoding AES Key",
+        help: "43-character encryption key from WeCom admin console",
+      },
+    },
+  },
 
   config: {
     listAccountIds: (cfg) => listWecomAccountIds(cfg),
@@ -79,8 +97,29 @@ export const wecomPlugin: ChannelPlugin<ResolvedWecomAccount> = {
       configured: account.configured,
       name: account.name || account.accountId,
     }),
-    resolveAllowFrom: () => [],
-    formatAllowFrom: ({ allowFrom }) => allowFrom.map(String),
+    resolveAllowFrom: ({ cfg, accountId }) => {
+      const account = resolveWecomAccount(cfg, accountId);
+      const wecom = cfg.channels?.wecom as WecomConfig | undefined;
+      const acctCfg = account.config;
+      const allowFromRaw =
+        acctCfg?.dm?.allowFrom ??
+        (acctCfg as any)?.allowFrom ??
+        wecom?.dm?.allowFrom ??
+        (wecom as any)?.allowFrom ??
+        [];
+      if (!Array.isArray(allowFromRaw)) return [];
+      return allowFromRaw.map((e) => String(e ?? "").trim()).filter(Boolean);
+    },
+    formatAllowFrom: ({ allowFrom }) =>
+      allowFrom
+        .map((entry) => String(entry).trim())
+        .filter(Boolean)
+        .map((entry) =>
+          entry
+            .replace(/^(wecom|wework):/i, "")
+            .replace(/^user:/i, "")
+            .toLowerCase(),
+        ),
   },
 
   onboarding: wecomOnboardingAdapter,
