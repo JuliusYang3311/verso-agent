@@ -438,6 +438,7 @@ export async function setupChannels(
     const catalog = listChannelPluginCatalogEntries({ workspaceDir }).filter(
       (entry) => !installedIds.has(entry.id),
     );
+    const bundled = listBundledChannelEntries({ workspaceDir });
     const metaById = new Map<string, ChannelMeta>();
     for (const meta of core) {
       metaById.set(meta.id, meta);
@@ -446,6 +447,11 @@ export async function setupChannels(
       metaById.set(plugin.id, plugin.meta);
     }
     for (const entry of catalog) {
+      if (!metaById.has(entry.id)) {
+        metaById.set(entry.id, entry.meta);
+      }
+    }
+    for (const entry of bundled) {
       if (!metaById.has(entry.id)) {
         metaById.set(entry.id, entry.meta);
       }

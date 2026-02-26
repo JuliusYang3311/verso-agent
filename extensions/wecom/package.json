@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.ts",
   "devDependencies": {
-    "verso": "workspace:*"
+    "verso-custom": "workspace:*"
   },
   "verso": {
     "extensions": [
