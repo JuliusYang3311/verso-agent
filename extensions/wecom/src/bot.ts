@@ -720,6 +720,7 @@ async function processInboundMessage(params: {
               await deliverWecomReply({ payload, senderId: streamKey, streamId });
               if (streamId && info.kind === "final") {
                 streamMeta.set(streamId, { mainResponseDone: true, doneAt: Date.now() });
+                await streamManager.finishStream(streamId);
               }
             },
             onError: async () => {
