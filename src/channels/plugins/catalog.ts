@@ -311,6 +311,17 @@ export function listChannelPluginCatalogEntries(
     });
 }
 
+/** Bundled channel plugin metadata (for fallback display when plugin fails to load). */
+export function listBundledChannelEntries(
+  options: CatalogOptions = {},
+): ChannelPluginCatalogEntry[] {
+  const all = discoverAllCatalogEntries(options);
+
+  return Array.from(all.values())
+    .filter(({ origin }) => origin === "bundled")
+    .map(({ entry }) => entry);
+}
+
 export function getChannelPluginCatalogEntry(
   id: string,
   options: CatalogOptions = {},

@@ -10,7 +10,10 @@ import type {
   SetupChannelsOptions,
 } from "./onboarding/types.js";
 import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
-import { listChannelPluginCatalogEntries } from "../channels/plugins/catalog.js";
+import {
+  listBundledChannelEntries,
+  listChannelPluginCatalogEntries,
+} from "../channels/plugins/catalog.js";
 import { resolveChannelDefaultAccountId } from "../channels/plugins/helpers.js";
 import { listChannelPlugins, getChannelPlugin } from "../channels/plugins/index.js";
 import {
@@ -149,7 +152,31 @@ async function collectChannelStatus(params: {
     selectionHint: "plugin · install",
     quickstartScore: 0,
   }));
-  const combinedStatuses = [...statusEntries, ...fallbackStatuses, ...catalogStatuses];
+  // Bundled channel plugins that failed to load — show as "not configured" fallback.
+  const seenIds = new Set([
+    ...statusEntries.map((e) => e.channel),
+    ...fallbackStatuses.map((e) => e.channel),
+    ...catalogStatuses.map((e) => e.channel),
+  ]);
+  const bundledFallbacks = listBundledChannelEntries({ workspaceDir })
+    .filter((entry) => !installedIds.has(entry.id) && !seenIds.has(entry.id))
+    .map((entry) => {
+      const configured = isChannelConfigured(params.cfg, entry.id);
+      const statusLabel = configured ? "configured (plugin loading)" : "not configured";
+      return {
+        channel: entry.id,
+        configured,
+        statusLines: [`${entry.meta.label}: ${statusLabel}`],
+        selectionHint: configured ? "configured · loading" : "not configured",
+        quickstartScore: 0,
+      };
+    });
+  const combinedStatuses = [
+    ...statusEntries,
+    ...fallbackStatuses,
+    ...catalogStatuses,
+    ...bundledFallbacks,
+  ];
   const mergedStatusByChannel = new Map(combinedStatuses.map((entry) => [entry.channel, entry]));
   const statusLines = combinedStatuses.flatMap((entry) => entry.statusLines);
   return {
