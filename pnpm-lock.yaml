@@ -520,9 +520,9 @@ importers:
 
   extensions/wecom:
     devDependencies:
-      verso-custom:
+      verso:
         specifier: workspace:*
-        version: link:../..
+        version: link:../../packages/verso
 
   extensions/whatsapp:
     devDependencies:
