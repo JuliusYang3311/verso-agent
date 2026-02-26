@@ -6,14 +6,14 @@ import { getChannelPluginCatalogEntry, listChannelPluginCatalogEntries } from ".
 
 describe("channel plugin catalog", () => {
   it("resolves bundled channel plugin metadata by id", () => {
-    const entry = getChannelPluginCatalogEntry("msteams");
-    expect(entry?.install.npmSpec).toBe("@openclaw/msteams");
-    expect(entry?.meta.aliases).toContain("teams");
+    const entry = getChannelPluginCatalogEntry("feishu");
+    expect(entry?.install.npmSpec).toBe("@openclaw/feishu");
+    expect(entry?.meta.aliases).toContain("lark");
   });
 
   it("excludes bundled channel plugins from install catalog", () => {
     const ids = listChannelPluginCatalogEntries().map((entry) => entry.id);
-    expect(ids).not.toContain("msteams");
+    expect(ids).not.toContain("feishu");
   });
 
   it("includes external catalog entries", () => {

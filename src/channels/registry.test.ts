@@ -6,21 +6,15 @@ import {
 } from "./registry.js";
 
 describe("channel registry", () => {
-  it("normalizes aliases", () => {
-    expect(normalizeChatChannelId("imsg")).toBe("imessage");
-    expect(normalizeChatChannelId("gchat")).toBe("googlechat");
-    expect(normalizeChatChannelId("google-chat")).toBe("googlechat");
+  it("normalizes known channel ids", () => {
+    expect(normalizeChatChannelId("telegram")).toBe("telegram");
+    expect(normalizeChatChannelId("discord")).toBe("discord");
     expect(normalizeChatChannelId("web")).toBeNull();
   });
 
   it("keeps Telegram first in the default order", () => {
     const channels = listChatChannels();
     expect(channels[0]?.id).toBe("telegram");
-  });
-
-  it("does not include MS Teams by default", () => {
-    const channels = listChatChannels();
-    expect(channels.some((channel) => channel.id === "msteams")).toBe(false);
   });
 
   it("formats selection lines with docs labels", () => {
