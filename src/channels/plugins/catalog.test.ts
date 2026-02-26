@@ -5,15 +5,15 @@ import { describe, expect, it } from "vitest";
 import { getChannelPluginCatalogEntry, listChannelPluginCatalogEntries } from "./catalog.js";
 
 describe("channel plugin catalog", () => {
-  it("includes Microsoft Teams", () => {
+  it("resolves bundled channel plugin metadata by id", () => {
     const entry = getChannelPluginCatalogEntry("msteams");
     expect(entry?.install.npmSpec).toBe("@openclaw/msteams");
     expect(entry?.meta.aliases).toContain("teams");
   });
 
-  it("lists plugin catalog entries", () => {
+  it("excludes bundled channel plugins from install catalog", () => {
     const ids = listChannelPluginCatalogEntries().map((entry) => entry.id);
-    expect(ids).toContain("msteams");
+    expect(ids).not.toContain("msteams");
   });
 
   it("includes external catalog entries", () => {

@@ -260,11 +260,14 @@ export function buildChannelUiCatalog(
   return { entries, order, labels, detailLabels, systemImages, byId };
 }
 
-export function listChannelPluginCatalogEntries(
+function discoverAllCatalogEntries(
   options: CatalogOptions = {},
-): ChannelPluginCatalogEntry[] {
+): Map<string, { entry: ChannelPluginCatalogEntry; priority: number; origin: PluginOrigin }> {
   const discovery = discoverVersoPlugins({ workspaceDir: options.workspaceDir });
-  const resolved = new Map<string, { entry: ChannelPluginCatalogEntry; priority: number }>();
+  const resolved = new Map<
+    string,
+    { entry: ChannelPluginCatalogEntry; priority: number; origin: PluginOrigin }
+  >();
 
   for (const candidate of discovery.candidates) {
     const entry = buildCatalogEntry(candidate);
@@ -274,7 +277,7 @@ export function listChannelPluginCatalogEntries(
     const priority = ORIGIN_PRIORITY[candidate.origin] ?? 99;
     const existing = resolved.get(entry.id);
     if (!existing || priority < existing.priority) {
-      resolved.set(entry.id, { entry, priority });
+      resolved.set(entry.id, { entry, priority, origin: candidate.origin });
     }
   }
 
@@ -283,11 +286,20 @@ export function listChannelPluginCatalogEntries(
     .filter((entry): entry is ChannelPluginCatalogEntry => Boolean(entry));
   for (const entry of externalEntries) {
     if (!resolved.has(entry.id)) {
-      resolved.set(entry.id, { entry, priority: 99 });
+      resolved.set(entry.id, { entry, priority: 99, origin: "config" });
     }
   }
 
-  return Array.from(resolved.values())
+  return resolved;
+}
+
+export function listChannelPluginCatalogEntries(
+  options: CatalogOptions = {},
+): ChannelPluginCatalogEntry[] {
+  const all = discoverAllCatalogEntries(options);
+
+  return Array.from(all.values())
+    .filter(({ origin }) => origin !== "bundled")
     .map(({ entry }) => entry)
     .toSorted((a, b) => {
       const orderA = a.meta.order ?? 999;
@@ -307,5 +319,5 @@ export function getChannelPluginCatalogEntry(
   if (!trimmed) {
     return undefined;
   }
-  return listChannelPluginCatalogEntries(options).find((entry) => entry.id === trimmed);
+  return discoverAllCatalogEntries(options).get(trimmed)?.entry;
 }
