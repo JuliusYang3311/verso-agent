@@ -6,6 +6,7 @@
  */
 
 import { execFile } from "node:child_process";
+import fsSync from "node:fs";
 import path from "node:path";
 import type { VersoConfig } from "../../config/types.js";
 import type { GatewayMessageChannel } from "../../utils/message-channel.js";
@@ -29,7 +30,24 @@ const NovelWriterSchema = {
   required: ["command"] as const,
 };
 
-const SCRIPT_PATH = path.resolve(import.meta.dirname, "../../skills/novel-writer/write-chapter.js");
+// Resolve repo root by walking up from import.meta.dirname to find package.json,
+// then locate the compiled script under dist/skills/novel-writer/.
+function findRepoRoot(): string {
+  let dir = import.meta.dirname;
+  for (let i = 0; i < 10; i++) {
+    if (fsSync.existsSync(path.join(dir, "package.json"))) {
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return process.cwd();
+}
+
+const SCRIPT_PATH = path.join(findRepoRoot(), "dist", "skills", "novel-writer", "write-chapter.js");
 
 function parseArgs(raw: string): string[] {
   const args: string[] = [];

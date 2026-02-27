@@ -22,6 +22,7 @@ import {
 import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { resolveAgentDir } from "../../../src/agents/agent-scope.js";
 import { resolveConfiguredModelRef } from "../../../src/agents/model-selection.js";
 import { resolveModel } from "../../../src/agents/pi-embedded-runner/model.js";
 import { loadConfig } from "../../../src/config/config.js";
@@ -68,7 +69,7 @@ export async function resolveLlmModel(): Promise<ResolvedLlm> {
     modelId = ref.model;
   }
 
-  const agentDir = process.env.NOVEL_WRITER_AGENT_DIR || undefined;
+  const agentDir = resolveAgentDir(cfg, "main");
   const { model, error, authStorage } = resolveModel(provider, modelId, agentDir, cfg);
   if (!model || error) {
     throw new Error(`Failed to resolve model ${provider}/${modelId}: ${error ?? "unknown"}`);
@@ -176,11 +177,12 @@ export interface ExtractUpdatesOpts {
   chapter: number;
   title: string;
   chapterText: string;
-  maxTokens?: number;
+  /** Reuse an already-resolved LLM instead of resolving again. */
+  llm?: ResolvedLlm;
 }
 
 export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<string, unknown>> {
-  const { chapter, title, chapterText, maxTokens = 1200 } = opts;
+  const { chapter, title, chapterText } = opts;
 
   const systemPrompt =
     "Extract continuity updates as JSON patch. Never delete protected entries. " +
@@ -210,22 +212,18 @@ export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<s
     0,
   );
 
-  const llm = await resolveLlmModel();
+  const llm = opts.llm ?? (await resolveLlmModel());
 
-  const res = await novelComplete(
-    llm,
-    {
-      systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: userContent,
-          timestamp: Date.now(),
-        },
-      ],
-    },
-    { maxTokens },
-  );
+  const res = await novelComplete(llm, {
+    systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: userContent,
+        timestamp: Date.now(),
+      },
+    ],
+  });
 
   const rawText = res.content
     .filter((block) => block.type === "text")
@@ -243,7 +241,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       chapter: { type: "string" },
       title: { type: "string" },
       text: { type: "string" },
-      "max-tokens": { type: "string", default: "1200" },
     },
     strict: true,
   });
@@ -259,7 +256,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     chapter: parseInt(values.chapter, 10),
     title: values.title,
     chapterText: fsSync.readFileSync(values.text, "utf-8"),
-    maxTokens: values["max-tokens"] ? parseInt(values["max-tokens"], 10) : undefined,
   })
     .then((result) => console.log(JSON.stringify(result, null, 2)))
     .catch((err) => {

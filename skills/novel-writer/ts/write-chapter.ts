@@ -8,10 +8,10 @@
  *
  * Usage:
  *   node dist/skills/novel-writer/write-chapter.js \
- *     --project my_novel --outline "林澈在旧港码头发现暗门"
+ *     --project my_novel --outline "The hero discovers a hidden door at the old harbor"
  *
  *   node dist/skills/novel-writer/write-chapter.js \
- *     --project my_novel --rewrite --chapter 8 --notes "节奏太慢，加强悬疑"
+ *     --project my_novel --rewrite --chapter 8 --notes "Pacing too slow, increase suspense"
  */
 
 import fsSync from "node:fs";
@@ -93,13 +93,13 @@ function loadRules(project: string): string {
 function summarizeMemoryChanges(patch: AnyObj): string[] {
   const changes: string[] = [];
   for (const c of (patch.characters?.add ?? []) as AnyObj[]) {
-    changes.push(`新角色: ${c.name ?? "unknown"}`);
+    changes.push(`new character: ${c.name ?? "unknown"}`);
   }
   for (const t of (patch.plot_threads?.add ?? []) as AnyObj[]) {
-    changes.push(`伏笔: ${t.title ?? t.thread_id ?? "unknown"}`);
+    changes.push(`plot thread: ${t.title ?? t.thread_id ?? "unknown"}`);
   }
   if (patch.timeline?.summary) {
-    changes.push(`摘要: ${String(patch.timeline.summary).slice(0, 80)}`);
+    changes.push(`summary: ${String(patch.timeline.summary)}`);
   }
   return changes;
 }
@@ -132,27 +132,29 @@ async function initProjectMemory(
     "- timeline.summary should be a one-line synopsis of the entire story premise",
   ].join("\n");
 
-  const res = await novelComplete(
-    llm,
-    {
-      systemPrompt,
-      messages: [{ role: "user", content: outline, timestamp: Date.now() }],
-    },
-    { maxTokens: 2000 },
-  );
+  const res = await novelComplete(llm, {
+    systemPrompt,
+    messages: [{ role: "user", content: outline, timestamp: Date.now() }],
+  });
 
   const rawText = res.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("");
 
+  console.error(`[initProjectMemory] LLM returned ${rawText.length} chars`);
+  if (rawText.length < 10) {
+    console.error(`[initProjectMemory] LLM output too short, raw: ${rawText}`);
+  }
+
   const init = safeParseJson(rawText) as AnyObj;
+  console.error(`[initProjectMemory] Parsed keys: ${Object.keys(init).join(", ")}`);
   const changes: string[] = [];
 
   // Save characters
   if (init.characters?.characters?.length) {
     saveJson(memPath(project, "characters.json"), { characters: init.characters.characters });
-    changes.push(`初始角色: ${init.characters.characters.map((c: AnyObj) => c.name).join(", ")}`);
+    changes.push(`characters: ${init.characters.characters.map((c: AnyObj) => c.name).join(", ")}`);
   } else {
     saveJson(memPath(project, "characters.json"), { characters: [] });
   }
@@ -164,7 +166,7 @@ async function initProjectMemory(
       protected_keys: init.world_bible.protected_keys ?? [],
     });
     const keys = Object.keys(init.world_bible.world);
-    if (keys.length) changes.push(`世界观: ${keys.join(", ")}`);
+    if (keys.length) changes.push(`world: ${keys.join(", ")}`);
   } else {
     saveJson(memPath(project, "world_bible.json"), { world: {}, protected_keys: [] });
   }
@@ -173,7 +175,7 @@ async function initProjectMemory(
   if (init.plot_threads?.threads?.length) {
     saveJson(memPath(project, "plot_threads.json"), { threads: init.plot_threads.threads });
     changes.push(
-      `伏笔线: ${init.plot_threads.threads.map((t: AnyObj) => t.promise ?? t.thread_id).join(", ")}`,
+      `threads: ${init.plot_threads.threads.map((t: AnyObj) => t.promise ?? t.thread_id).join(", ")}`,
     );
   } else {
     saveJson(memPath(project, "plot_threads.json"), { threads: [] });
@@ -182,7 +184,7 @@ async function initProjectMemory(
   // Save initial timeline entry (chapter 0 = premise)
   {
     const tl = init.timeline ?? {};
-    const summary = tl.summary ?? outline.slice(0, 120);
+    const summary = tl.summary ?? outline;
     const entry = {
       chapter: 0,
       title: "premise",
@@ -192,12 +194,12 @@ async function initProjectMemory(
       pov: tl.pov ?? "",
       locations: tl.locations ?? [],
       characters: tl.characters ?? [],
-      updated_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+      updated_at: new Date().toISOString().replace("T", " "),
     };
     const tlPath = memPath(project, "timeline.jsonl");
     fsSync.mkdirSync(path.dirname(tlPath), { recursive: true });
     fsSync.writeFileSync(tlPath, JSON.stringify(entry) + "\n", "utf-8");
-    changes.push(`前提: ${String(summary).slice(0, 60)}`);
+    changes.push(`premise: ${String(summary)}`);
   }
 
   return changes;
@@ -260,7 +262,7 @@ function buildWritingPrompt(context: AnyObj, opts: { outline: string; title?: st
 
   parts.push("## Writing Requirements");
   parts.push("- Output the chapter text directly, no title, chapter number, or metadata");
-  parts.push("- Final output MUST exceed 10000 tokens");
+  parts.push("- Final output MUST exceed 8000 tokens");
   parts.push("- Keep character personalities consistent, follow world-building rules");
   parts.push("- Advance foreshadowing, create suspense");
   parts.push("- Write in the SAME LANGUAGE as the outline");
@@ -277,7 +279,7 @@ function buildRewritePrompt(context: AnyObj, originalText: string, notes: string
     "",
     "## Rewrite Mode",
     "Below is the original chapter. Rewrite it based on the rewrite notes.",
-    "Write in the SAME LANGUAGE as the original chapter. Output MUST exceed 10000 tokens.",
+    "Write in the SAME LANGUAGE as the original chapter. Output MUST exceed 8000 tokens.",
     "",
     "### Rewrite Notes",
     notes,
@@ -289,39 +291,31 @@ function buildRewritePrompt(context: AnyObj, originalText: string, notes: string
 }
 
 async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<string> {
-  const res = await novelComplete(
-    llm,
-    {
-      systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: "Begin writing now. Output the chapter text directly, no preamble.",
-          timestamp: Date.now(),
-        },
-      ],
-    },
-    { maxTokens: 16384 },
-  );
+  const res = await novelComplete(llm, {
+    systemPrompt,
+    messages: [
+      {
+        role: "user",
+        content: "Begin writing now. Output the chapter text directly, no preamble.",
+        timestamp: Date.now(),
+      },
+    ],
+  });
 
   let text = res.content
     .filter((block) => block.type === "text")
     .map((block) => block.text)
     .join("");
 
-  // Continuation if output is too short (10000+ tokens required ≈ 10000+ chars)
+  // Continuation if output is too short (8000+ tokens required ≈ 8000+ chars)
   // Note: systemPrompt already contains full memory context (characters, world_bible,
   // plot_threads, timeline, style), so the continuation has access to all memory.
-  if (text.length < 10000) {
+  if (text.length < 8000) {
     const contPrompt = `Here is what has been written so far. Continue writing from where it left off. Do NOT repeat any existing content:\n\n---\n${text}\n---\n\nContinue directly.`;
-    const cont = await novelComplete(
-      llm,
-      {
-        systemPrompt,
-        messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
-      },
-      { maxTokens: 16384 },
-    );
+    const cont = await novelComplete(llm, {
+      systemPrompt,
+      messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
+    });
     text += cont.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
@@ -354,7 +348,7 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   // Auto-detect next chapter number
   const state = loadState(project);
   const chapter = ((state.last_chapter as number) ?? 0) + 1;
-  const title = opts.title ?? `第${chapter}章`;
+  const title = opts.title ?? `Chapter ${chapter}`;
 
   // Ensure project dirs exist
   projectDir(project);
@@ -365,12 +359,18 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   const memDir = path.join(PROJECTS_DIR, project, "memory");
   if (!fsSync.existsSync(memDir)) {
     console.error("New project detected, initializing memory from outline...");
-    initChanges = await initProjectMemory(project, outline, llm);
-    console.error(`Memory initialized: ${initChanges.join("; ")}`);
+    try {
+      initChanges = await initProjectMemory(project, outline, llm);
+      console.error(`Memory initialized: ${initChanges.join("; ")}`);
+    } catch (err) {
+      console.error(`WARNING: initProjectMemory failed, continuing without initial memory: ${err}`);
+      // Ensure memory dir exists so we don't retry on next call
+      fsSync.mkdirSync(memDir, { recursive: true });
+    }
   }
 
   // 1. Assemble context (memory + style + timeline)
-  const context = await assembleContext({ project, outline, style, budget: budget ?? 8000 });
+  const context = await assembleContext({ project, outline, style, budget: budget ?? 12000 });
 
   // 2. Build writing prompt
   const systemPrompt = buildWritingPrompt(context, { outline, title });
@@ -382,7 +382,7 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   const chapterPath = saveChapterFile(project, chapter, chapterText);
 
   // 5. Extract memory updates → validate → apply
-  const patch = await extractUpdates({ chapter, title, chapterText });
+  const patch = await extractUpdates({ chapter, title, chapterText, llm });
   validatePatchOrThrow({ project, patch });
   await applyPatch({ project, patch, chapter, title });
 
@@ -405,7 +405,12 @@ export async function rewriteChapter(opts: RewriteChapterOpts): Promise<WriteRes
   await revertChapterMemory(project, chapter);
 
   // 3. Assemble context (memory is now reverted to pre-chapter state)
-  const context = await assembleContext({ project, outline: notes, style, budget: budget ?? 8000 });
+  const context = await assembleContext({
+    project,
+    outline: notes,
+    style,
+    budget: budget ?? 12000,
+  });
 
   // 4. Build rewrite prompt
   const systemPrompt = buildRewritePrompt(context, originalText, notes);
@@ -421,8 +426,8 @@ export async function rewriteChapter(opts: RewriteChapterOpts): Promise<WriteRes
   const state = loadState(project);
   const title =
     (state.chapters_written as AnyObj[])?.find((w) => w.chapter === chapter)?.title ??
-    `第${chapter}章`;
-  const patch = await extractUpdates({ chapter, title, chapterText: newText });
+    `Chapter ${chapter}`;
+  const patch = await extractUpdates({ chapter, title, chapterText: newText, llm });
   validatePatchOrThrow({ project, patch });
   await applyPatch({ project, patch, chapter, title });
 

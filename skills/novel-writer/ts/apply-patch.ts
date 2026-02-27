@@ -34,6 +34,9 @@ const SKILL_ROOT = path.join(findRepoRoot(), "skills", "novel-writer");
 export const PROJECTS_DIR = path.join(SKILL_ROOT, "projects");
 export const STYLE_DB_PATH = path.join(SKILL_ROOT, "style", "style_memory.sqlite");
 
+// Log resolved paths once at startup for diagnostics
+console.error(`[novel-writer] PROJECTS_DIR=${PROJECTS_DIR}`);
+
 // --- Helpers ---
 
 export function projectDir(project: string): string {
