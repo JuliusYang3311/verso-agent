@@ -1,17 +1,8 @@
+import https from "node:https";
 import type { EmbeddingProvider, EmbeddingProviderOptions } from "./embeddings.js";
 import { requireApiKey, resolveApiKeyForProvider } from "../agents/model-auth.js";
 import { isTruthyEnvValue } from "../infra/env.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-
-// Node.js built-in fetch (undici) can hang on HTTP/2 ALPN negotiation with some
-// endpoints unless a global dispatcher is configured. pi-ai sets one via a
-// fire-and-forget import().then(), but that races with early fetch calls in
-// subprocesses. We eagerly await the same setup so embedding fetches are safe.
-const _dispatcherReady: Promise<void> = import("undici")
-  .then(({ EnvHttpProxyAgent, setGlobalDispatcher }) => {
-    setGlobalDispatcher(new EnvHttpProxyAgent());
-  })
-  .catch(() => {});
 
 export type GeminiEmbeddingClient = {
   baseUrl: string;
@@ -72,35 +63,65 @@ function buildGeminiModelPath(model: string): string {
   return model.startsWith("models/") ? model : `models/${model}`;
 }
 
+/** POST JSON via node:https — bypasses undici/fetch which can hang on some endpoints. */
+function httpsPost(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  timeoutMs: number,
+): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port || 443,
+        path: parsed.pathname + parsed.search,
+        method: "POST",
+        headers: { ...headers, "Content-Length": Buffer.byteLength(body).toString() },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () =>
+          resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString() }),
+        );
+        res.on("error", reject);
+      },
+    );
+    req.on("timeout", () => {
+      req.destroy(new Error(`gemini embedding request timed out after ${timeoutMs}ms`));
+    });
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+
 export async function createGeminiEmbeddingProvider(
   options: EmbeddingProviderOptions,
 ): Promise<{ provider: EmbeddingProvider; client: GeminiEmbeddingClient }> {
-  await _dispatcherReady;
   const client = await resolveGeminiEmbeddingClient(options);
   const baseUrl = client.baseUrl.replace(/\/$/, "");
   const embedUrl = `${baseUrl}/${client.modelPath}:embedContent`;
   const batchUrl = `${baseUrl}/${client.modelPath}:batchEmbedContents`;
 
-  const FETCH_TIMEOUT_MS = 30_000; // 30s hard timeout on fetch itself
+  const TIMEOUT_MS = 30_000;
 
   const embedQuery = async (text: string): Promise<number[]> => {
     if (!text.trim()) {
       return [];
     }
-    const res = await fetch(embedUrl, {
-      method: "POST",
-      headers: client.headers,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      body: JSON.stringify({
-        content: { parts: [{ text }] },
-        taskType: "RETRIEVAL_QUERY",
-      }),
-    });
-    if (!res.ok) {
-      const payload = await res.text();
-      throw new Error(`gemini embeddings failed: ${res.status} ${payload}`);
+    const res = await httpsPost(
+      embedUrl,
+      client.headers,
+      JSON.stringify({ content: { parts: [{ text }] }, taskType: "RETRIEVAL_QUERY" }),
+      TIMEOUT_MS,
+    );
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`gemini embeddings failed: ${res.status} ${res.body}`);
     }
-    const payload = (await res.json()) as { embedding?: { values?: number[] } };
+    const payload = JSON.parse(res.body) as { embedding?: { values?: number[] } };
     return payload.embedding?.values ?? [];
   };
 
@@ -113,17 +134,11 @@ export async function createGeminiEmbeddingProvider(
       content: { parts: [{ text }] },
       taskType: "RETRIEVAL_DOCUMENT",
     }));
-    const res = await fetch(batchUrl, {
-      method: "POST",
-      headers: client.headers,
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      body: JSON.stringify({ requests }),
-    });
-    if (!res.ok) {
-      const payload = await res.text();
-      throw new Error(`gemini embeddings failed: ${res.status} ${payload}`);
+    const res = await httpsPost(batchUrl, client.headers, JSON.stringify({ requests }), TIMEOUT_MS);
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`gemini embeddings failed: ${res.status} ${res.body}`);
     }
-    const payload = (await res.json()) as { embeddings?: Array<{ values?: number[] }> };
+    const payload = JSON.parse(res.body) as { embeddings?: Array<{ values?: number[] }> };
     const embeddings = Array.isArray(payload.embeddings) ? payload.embeddings : [];
     return texts.map((_, index) => embeddings[index]?.values ?? []);
   };
