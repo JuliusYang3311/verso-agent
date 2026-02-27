@@ -75,14 +75,22 @@ export async function createGeminiEmbeddingProvider(
       return [];
     }
     console.error(`[gemini-embedding] embedQuery URL=${embedUrl}`);
-    const res = await fetch(embedUrl, {
-      method: "POST",
-      headers: client.headers,
-      body: JSON.stringify({
-        content: { parts: [{ text }] },
-        taskType: "RETRIEVAL_QUERY",
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(embedUrl, {
+        method: "POST",
+        headers: client.headers,
+        body: JSON.stringify({
+          content: { parts: [{ text }] },
+          taskType: "RETRIEVAL_QUERY",
+        }),
+      });
+    } catch (fetchErr: any) {
+      console.error(
+        `[gemini-embedding] fetch error: ${fetchErr?.message} cause=${fetchErr?.cause?.message ?? fetchErr?.cause ?? "none"} code=${fetchErr?.cause?.code ?? "none"}`,
+      );
+      throw fetchErr;
+    }
     if (!res.ok) {
       const payload = await res.text();
       throw new Error(`gemini embeddings failed: ${res.status} ${payload}`);
