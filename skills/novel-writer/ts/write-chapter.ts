@@ -19,9 +19,16 @@ import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { applyPatch, PROJECTS_DIR, loadJson, projectDir } from "./apply-patch.js";
+import {
+  applyPatch,
+  PROJECTS_DIR,
+  loadJson,
+  saveJson,
+  projectDir,
+  memPath,
+} from "./apply-patch.js";
 import { assembleContext } from "./context.js";
-import { extractUpdates, resolveLlmModel } from "./extract-updates.js";
+import { extractUpdates, resolveLlmModel, stripCodeFences } from "./extract-updates.js";
 import { revertChapterMemory } from "./revert-memory.js";
 import { validatePatchOrThrow } from "./validate-patch.js";
 
@@ -93,6 +100,104 @@ function summarizeMemoryChanges(patch: AnyObj): string[] {
 }
 
 // --- Prompt builders ---
+
+// --- Step 0: Initialize project memory from outline ---
+
+async function initProjectMemory(
+  project: string,
+  outline: string,
+  model: Model<Api>,
+  apiKey: string,
+): Promise<string[]> {
+  const systemPrompt = [
+    "You are a fiction planning assistant. Given a novel outline/synopsis, extract the initial story setup as JSON.",
+    "Write in the SAME LANGUAGE as the outline.",
+    "Output ONLY valid JSON with these keys:",
+    "",
+    "characters: { characters: [{ name, aliases?, role (main/support/minor), traits: [], status, relations?: {}, protected?: true }] }",
+    "world_bible: { world: { rules?: [], locations?: [], organizations?: [], ... }, protected_keys: [] }",
+    "plot_threads: { threads: [{ thread_id, introduced_in: 0, promise, stakes, status: 'open', must_resolve_by?, notes? }] }",
+    "timeline: { summary: '<one-line synopsis>', events: [], consequences: [], pov: '', locations: [], characters: [] }",
+    "",
+    "Guidelines:",
+    "- Mark protagonist(s) as role: 'main' and protected: true",
+    "- Add core world rules to protected_keys",
+    "- Create plot threads for major story arcs mentioned in the outline",
+    "- thread_id format: t-<short-kebab-case>",
+    "- introduced_in: 0 means established before chapter 1",
+    "- timeline.summary should be a one-line synopsis of the entire story premise",
+  ].join("\n");
+
+  const res = await completeSimple(
+    model,
+    {
+      systemPrompt,
+      messages: [{ role: "user", content: outline, timestamp: Date.now() }],
+    },
+    { apiKey, maxTokens: 2000 },
+  );
+
+  const rawText = res.content
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+
+  const init = JSON.parse(stripCodeFences(rawText)) as AnyObj;
+  const changes: string[] = [];
+
+  // Save characters
+  if (init.characters?.characters?.length) {
+    saveJson(memPath(project, "characters.json"), { characters: init.characters.characters });
+    changes.push(`初始角色: ${init.characters.characters.map((c: AnyObj) => c.name).join(", ")}`);
+  } else {
+    saveJson(memPath(project, "characters.json"), { characters: [] });
+  }
+
+  // Save world bible
+  if (init.world_bible?.world) {
+    saveJson(memPath(project, "world_bible.json"), {
+      world: init.world_bible.world,
+      protected_keys: init.world_bible.protected_keys ?? [],
+    });
+    const keys = Object.keys(init.world_bible.world);
+    if (keys.length) changes.push(`世界观: ${keys.join(", ")}`);
+  } else {
+    saveJson(memPath(project, "world_bible.json"), { world: {}, protected_keys: [] });
+  }
+
+  // Save plot threads
+  if (init.plot_threads?.threads?.length) {
+    saveJson(memPath(project, "plot_threads.json"), { threads: init.plot_threads.threads });
+    changes.push(
+      `伏笔线: ${init.plot_threads.threads.map((t: AnyObj) => t.promise ?? t.thread_id).join(", ")}`,
+    );
+  } else {
+    saveJson(memPath(project, "plot_threads.json"), { threads: [] });
+  }
+
+  // Save initial timeline entry (chapter 0 = premise)
+  if (init.timeline?.summary) {
+    const entry = {
+      chapter: 0,
+      title: "premise",
+      summary: init.timeline.summary,
+      events: init.timeline.events ?? [],
+      consequences: init.timeline.consequences ?? [],
+      pov: init.timeline.pov ?? "",
+      locations: init.timeline.locations ?? [],
+      characters: init.timeline.characters ?? [],
+      updated_at: new Date().toISOString().replace("T", " ").slice(0, 19),
+    };
+    const tlPath = memPath(project, "timeline.jsonl");
+    fsSync.mkdirSync(path.dirname(tlPath), { recursive: true });
+    fsSync.writeFileSync(tlPath, JSON.stringify(entry) + "\n", "utf-8");
+    changes.push(`前提: ${String(init.timeline.summary).slice(0, 60)}`);
+  }
+
+  return changes;
+}
+
+// --- Prompt builders (chapter writing) ---
 
 function buildWritingPrompt(context: AnyObj, opts: { outline: string; title?: string }): string {
   const parts: string[] = [];
@@ -234,6 +339,19 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   // Ensure project dirs exist
   projectDir(project);
 
+  // 0. Initialize memory if this is a new project (no chapters written yet)
+  const { model, apiKey } = await resolveLlmModel();
+  let initChanges: string[] = [];
+  if (chapter === 1) {
+    const charPath = memPath(project, "characters.json");
+    const chars = loadJson(charPath, { characters: [] }) as AnyObj;
+    if (!chars.characters?.length) {
+      console.error("New project detected, initializing memory from outline...");
+      initChanges = await initProjectMemory(project, outline, model, apiKey);
+      console.error(`Memory initialized: ${initChanges.join("; ")}`);
+    }
+  }
+
   // 1. Assemble context (memory + style + timeline)
   const context = await assembleContext({ project, outline, style, budget: budget ?? 8000 });
 
@@ -241,7 +359,6 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   const systemPrompt = buildWritingPrompt(context, { outline, title });
 
   // 3. Call LLM to write chapter
-  const { model, apiKey } = await resolveLlmModel();
   const chapterText = await generateChapter(model, apiKey, systemPrompt);
 
   // 4. Save chapter as .txt
@@ -256,7 +373,7 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
     summary: (patch as AnyObj).timeline?.summary ?? "",
     chapterPath,
     wordCount: chapterText.length,
-    memoryUpdated: summarizeMemoryChanges(patch as AnyObj),
+    memoryUpdated: [...initChanges, ...summarizeMemoryChanges(patch as AnyObj)],
   };
 }
 
