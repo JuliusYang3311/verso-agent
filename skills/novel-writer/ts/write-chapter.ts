@@ -176,22 +176,24 @@ async function initProjectMemory(
   }
 
   // Save initial timeline entry (chapter 0 = premise)
-  if (init.timeline?.summary) {
+  {
+    const tl = init.timeline ?? {};
+    const summary = tl.summary ?? outline.slice(0, 120);
     const entry = {
       chapter: 0,
       title: "premise",
-      summary: init.timeline.summary,
-      events: init.timeline.events ?? [],
-      consequences: init.timeline.consequences ?? [],
-      pov: init.timeline.pov ?? "",
-      locations: init.timeline.locations ?? [],
-      characters: init.timeline.characters ?? [],
+      summary,
+      events: tl.events ?? [],
+      consequences: tl.consequences ?? [],
+      pov: tl.pov ?? "",
+      locations: tl.locations ?? [],
+      characters: tl.characters ?? [],
       updated_at: new Date().toISOString().replace("T", " ").slice(0, 19),
     };
     const tlPath = memPath(project, "timeline.jsonl");
     fsSync.mkdirSync(path.dirname(tlPath), { recursive: true });
     fsSync.writeFileSync(tlPath, JSON.stringify(entry) + "\n", "utf-8");
-    changes.push(`前提: ${String(init.timeline.summary).slice(0, 60)}`);
+    changes.push(`前提: ${String(summary).slice(0, 60)}`);
   }
 
   return changes;
@@ -339,17 +341,14 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   // Ensure project dirs exist
   projectDir(project);
 
-  // 0. Initialize memory if this is a new project (no chapters written yet)
+  // 0. Initialize memory if this is a new project (project memory dir doesn't exist)
   const { model, apiKey } = await resolveLlmModel();
   let initChanges: string[] = [];
-  if (chapter === 1) {
-    const charPath = memPath(project, "characters.json");
-    const chars = loadJson(charPath, { characters: [] }) as AnyObj;
-    if (!chars.characters?.length) {
-      console.error("New project detected, initializing memory from outline...");
-      initChanges = await initProjectMemory(project, outline, model, apiKey);
-      console.error(`Memory initialized: ${initChanges.join("; ")}`);
-    }
+  const memDir = path.join(PROJECTS_DIR, project, "memory");
+  if (!fsSync.existsSync(memDir)) {
+    console.error("New project detected, initializing memory from outline...");
+    initChanges = await initProjectMemory(project, outline, model, apiKey);
+    console.error(`Memory initialized: ${initChanges.join("; ")}`);
   }
 
   // 1. Assemble context (memory + style + timeline)
