@@ -11,8 +11,7 @@
 import fsSync from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-
-const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
+import { PROJECTS_DIR } from "./apply-patch.js";
 
 function loadJson(filePath: string, fallback: unknown): any {
   if (!fsSync.existsSync(filePath)) return fallback;

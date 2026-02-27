@@ -15,8 +15,7 @@ import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-
-const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
+import { PROJECTS_DIR } from "./apply-patch.js";
 
 type AnyObj = Record<string, any>;
 

@@ -19,10 +19,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { DEFAULT_CONTEXT_PARAMS, loadContextParams } from "../../../src/agents/dynamic-context.js";
+import { PROJECTS_DIR, STYLE_DB_PATH } from "./apply-patch.js";
 import { NovelMemoryStore } from "./novel-memory.js";
-
-export const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
-const STYLE_DB_PATH = path.resolve(import.meta.dirname, "../style/style_memory.sqlite");
 
 /** Default total token budget for timeline recent. */
 const DEFAULT_BUDGET_TOKENS = 8000;

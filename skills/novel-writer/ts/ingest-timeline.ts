@@ -11,9 +11,8 @@
 import fsSync from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { PROJECTS_DIR } from "./apply-patch.js";
 import { NovelMemoryStore } from "./novel-memory.js";
-
-const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
 
 function timelineDbPath(project: string): string {
   return path.join(PROJECTS_DIR, project, "timeline_memory.sqlite");

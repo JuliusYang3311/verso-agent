@@ -14,9 +14,8 @@ import { globSync } from "node:fs";
 import fsSync from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
+import { STYLE_DB_PATH } from "./apply-patch.js";
 import { NovelMemoryStore } from "./novel-memory.js";
-
-const STYLE_DB_PATH = path.resolve(import.meta.dirname, "../style/style_memory.sqlite");
 
 function chunkByChars(text: string, minChars: number, maxChars: number): string[] {
   const cleaned = text.trim().replace(/\r/g, "");

@@ -18,7 +18,21 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { NovelMemoryStore } from "./novel-memory.js";
 
-export const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
+// Resolve skill root reliably whether running from source (ts/) or bundled (dist/skills/novel-writer/)
+function findRepoRoot(): string {
+  let dir = import.meta.dirname;
+  for (let i = 0; i < 10; i++) {
+    if (fsSync.existsSync(path.join(dir, "package.json"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return process.cwd();
+}
+
+const SKILL_ROOT = path.join(findRepoRoot(), "skills", "novel-writer");
+export const PROJECTS_DIR = path.join(SKILL_ROOT, "projects");
+export const STYLE_DB_PATH = path.join(SKILL_ROOT, "style", "style_memory.sqlite");
 
 // --- Helpers ---
 
