@@ -14,14 +14,15 @@
 
 import fsSync from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { NovelMemoryStore } from "./novel-memory.js";
 
-const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
+export const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
 
 // --- Helpers ---
 
-function projectDir(project: string): string {
+export function projectDir(project: string): string {
   const dir = path.join(PROJECTS_DIR, project);
   fsSync.mkdirSync(path.join(dir, "memory"), { recursive: true });
   fsSync.mkdirSync(path.join(dir, "chapters"), { recursive: true });
@@ -29,15 +30,15 @@ function projectDir(project: string): string {
   return dir;
 }
 
-function memPath(project: string, file: string): string {
+export function memPath(project: string, file: string): string {
   return path.join(PROJECTS_DIR, project, "memory", file);
 }
 
-function timelineDbPath(project: string): string {
+export function timelineDbPath(project: string): string {
   return path.join(PROJECTS_DIR, project, "timeline_memory.sqlite");
 }
 
-function loadJson(filePath: string, fallback: unknown): any {
+export function loadJson(filePath: string, fallback: unknown): any {
   if (!fsSync.existsSync(filePath)) return fallback;
   try {
     return JSON.parse(fsSync.readFileSync(filePath, "utf-8"));
@@ -46,17 +47,17 @@ function loadJson(filePath: string, fallback: unknown): any {
   }
 }
 
-function saveJson(filePath: string, data: unknown): void {
+export function saveJson(filePath: string, data: unknown): void {
   fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
   fsSync.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
 }
 
-function appendJsonl(filePath: string, data: unknown): void {
+export function appendJsonl(filePath: string, data: unknown): void {
   fsSync.mkdirSync(path.dirname(filePath), { recursive: true });
   fsSync.appendFileSync(filePath, JSON.stringify(data) + "\n", "utf-8");
 }
 
-function nowTs(): string {
+export function nowTs(): string {
   return new Date().toISOString().replace("T", " ").slice(0, 19);
 }
 
@@ -82,7 +83,7 @@ function mergeItem(base: AnyObj, patch: AnyObj): AnyObj {
 
 // --- Patch application ---
 
-function applyCharacterPatch(characters: AnyObj, patch: AnyObj): AnyObj {
+export function applyCharacterPatch(characters: AnyObj, patch: AnyObj): AnyObj {
   const items: AnyObj[] = characters.characters ?? [];
   const existing = byName(items);
 
@@ -126,7 +127,7 @@ function applyCharacterPatch(characters: AnyObj, patch: AnyObj): AnyObj {
   return { characters: [...remaining.values()] };
 }
 
-function applyWorldPatch(world: AnyObj, patch: AnyObj): AnyObj {
+export function applyWorldPatch(world: AnyObj, patch: AnyObj): AnyObj {
   const data: AnyObj = { ...(world.world ?? {}) };
   const protectedKeys = new Set<string>(world.protected_keys ?? []);
 
@@ -157,7 +158,7 @@ function applyWorldPatch(world: AnyObj, patch: AnyObj): AnyObj {
   return { world: data, protected_keys: world.protected_keys ?? [] };
 }
 
-function applyPlotPatch(plot: AnyObj, patch: AnyObj): AnyObj {
+export function applyPlotPatch(plot: AnyObj, patch: AnyObj): AnyObj {
   const threads: AnyObj[] = plot.threads ?? [];
   const byId = new Map<string, AnyObj>();
   for (const t of threads) {
@@ -186,37 +187,100 @@ function applyPlotPatch(plot: AnyObj, patch: AnyObj): AnyObj {
   return { threads: [...byId.values()] };
 }
 
-// --- Main ---
+// --- Pre-patch snapshot for revert support ---
 
-async function main() {
-  const { values } = parseArgs({
-    options: {
-      project: { type: "string" },
-      patch: { type: "string" },
-      chapter: { type: "string" },
-      title: { type: "string" },
-      summary: { type: "string", default: "" },
-    },
-    strict: true,
-  });
+export function buildPrePatchSnapshot(
+  chapter: number,
+  charBackup: AnyObj,
+  worldBackup: AnyObj,
+  plotBackup: AnyObj,
+  patchData: AnyObj,
+): AnyObj {
+  const snapshot: AnyObj = { chapter };
 
-  const project = values.project;
-  const patchFile = values.patch;
-  const chapter = values.chapter ? parseInt(values.chapter, 10) : undefined;
-  const title = values.title;
+  // Characters: track what's being added/updated/deleted
+  const charPatch = patchData.characters ?? {};
+  const existingChars = byName(charBackup.characters ?? []);
+  snapshot.characters = {
+    added_names: ((charPatch.add ?? []) as AnyObj[])
+      .map((c) => String(c.name ?? "").trim())
+      .filter((n) => n && !existingChars.has(n)),
+    updated_originals: ((charPatch.update ?? []) as AnyObj[])
+      .map((c) => existingChars.get(String(c.name ?? "").trim()))
+      .filter(Boolean),
+    deleted_originals: ((charPatch.delete ?? []) as any[])
+      .map((c) => existingChars.get(String(typeof c === "object" ? (c?.name ?? c) : c).trim()))
+      .filter(Boolean),
+  };
 
-  if (!project || !patchFile || chapter === undefined || !title) {
-    console.error("--project, --patch, --chapter, --title are all required");
-    process.exit(1);
+  // World bible: track added/updated/deleted keys
+  const worldPatch = patchData.world_bible ?? {};
+  const worldData = worldBackup.world ?? {};
+  const wAdded: AnyObj = {};
+  const wUpdated: AnyObj = {};
+  const wDeleted: AnyObj = {};
+  const addW = worldPatch.add ?? {};
+  if (typeof addW === "object" && !Array.isArray(addW)) {
+    for (const [k, v] of Object.entries(addW)) {
+      if (!(k in worldData)) wAdded[k] = v;
+      else wUpdated[k] = worldData[k];
+    }
   }
-
-  if (!fsSync.existsSync(patchFile)) {
-    console.error(`patch file not found: ${patchFile}`);
-    process.exit(1);
+  const updateW = worldPatch.update ?? {};
+  if (typeof updateW === "object" && !Array.isArray(updateW)) {
+    for (const [k] of Object.entries(updateW)) {
+      if (k in worldData && !(k in wUpdated)) wUpdated[k] = worldData[k];
+    }
   }
+  for (const key of (worldPatch.delete ?? []) as string[]) {
+    if (typeof key === "string" && key in worldData) wDeleted[key] = worldData[key];
+  }
+  snapshot.world_bible = {
+    added_keys: wAdded,
+    updated_originals: wUpdated,
+    deleted_originals: wDeleted,
+  };
 
+  // Plot threads: track added/updated/closed
+  const plotPatch = patchData.plot_threads ?? {};
+  const existingThreads = new Map<string, AnyObj>();
+  for (const t of (plotBackup.threads ?? []) as AnyObj[]) {
+    if (t.thread_id) existingThreads.set(t.thread_id, t);
+  }
+  snapshot.plot_threads = {
+    added_ids: ((plotPatch.add ?? []) as AnyObj[])
+      .map((t) => t.thread_id)
+      .filter((id: string) => id && !existingThreads.has(id)),
+    updated_originals: ((plotPatch.update ?? []) as AnyObj[])
+      .map((t) => existingThreads.get(t.thread_id))
+      .filter(Boolean),
+    closed_originals: ((plotPatch.close ?? []) as any[])
+      .map((t) => existingThreads.get(typeof t === "object" ? t?.thread_id : t))
+      .filter(Boolean),
+  };
+
+  return snapshot;
+}
+
+// --- Exported API ---
+
+export interface ApplyPatchOpts {
+  project: string;
+  patch: Record<string, any>;
+  chapter: number;
+  title: string;
+  summary?: string;
+}
+
+export interface ApplyResult {
+  status: string;
+  state: Record<string, any>;
+}
+
+export async function applyPatch(opts: ApplyPatchOpts): Promise<ApplyResult> {
+  const { project, chapter, title, summary = "" } = opts;
+  const patchData = opts.patch as AnyObj;
   const pDir = projectDir(project);
-  const patchData: AnyObj = JSON.parse(fsSync.readFileSync(patchFile, "utf-8"));
 
   // --- Backup current state ---
   const charPath = memPath(project, "characters.json");
@@ -227,6 +291,19 @@ async function main() {
   const charBackup = loadJson(charPath, { characters: [] });
   const worldBackup = loadJson(worldPath, { world: {}, protected_keys: [] });
   const plotBackup = loadJson(plotPath, { threads: [] });
+
+  // --- Save pre-patch snapshot for revert support ---
+  const patchesDir = path.join(pDir, "patches");
+  fsSync.mkdirSync(patchesDir, { recursive: true });
+  const padChapter = String(chapter).padStart(2, "0");
+  const preSnapshot = buildPrePatchSnapshot(
+    chapter,
+    charBackup,
+    worldBackup,
+    plotBackup,
+    patchData,
+  );
+  saveJson(path.join(patchesDir, `patch-${padChapter}.pre.json`), preSnapshot);
 
   try {
     // --- Apply patches ---
@@ -243,7 +320,7 @@ async function main() {
     const timelineEntry: AnyObj = {
       chapter,
       title,
-      summary: tlPatch.summary || values.summary || "",
+      summary: tlPatch.summary || summary || "",
       events: tlPatch.events ?? [],
       consequences: tlPatch.consequences ?? [],
       pov: tlPatch.pov ?? "",
@@ -279,10 +356,8 @@ async function main() {
 
       const markdown = parts.join("\n");
 
-      // Count existing entries to determine index
-      const stats = store.stats();
-      const entryIndex = stats.files;
-      const virtualPath = `timeline/entry-${String(entryIndex).padStart(5, "0")}`;
+      // Use chapter-based path for revert support
+      const virtualPath = `timeline/chapter-${padChapter}`;
 
       await store.indexContent({ virtualPath, content: markdown });
       store.close();
@@ -307,18 +382,51 @@ async function main() {
     state.chapters_written = written;
     saveJson(statePath, state);
 
-    console.log(JSON.stringify({ status: "ok", state }, null, 2));
+    // --- Archive patch ---
+    saveJson(path.join(patchesDir, `patch-${padChapter}.json`), patchData);
+
+    return { status: "ok", state };
   } catch (err) {
     // --- Rollback on failure ---
     console.error(`Patch failed, rolling back: ${err}`);
     saveJson(charPath, charBackup);
     saveJson(worldPath, worldBackup);
     saveJson(plotPath, plotBackup);
-    process.exit(1);
+    throw err;
   }
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { values } = parseArgs({
+    options: {
+      project: { type: "string" },
+      patch: { type: "string" },
+      chapter: { type: "string" },
+      title: { type: "string" },
+      summary: { type: "string", default: "" },
+    },
+    strict: true,
+  });
+  if (!values.project || !values.patch || !values.chapter || !values.title) {
+    console.error("--project, --patch, --chapter, --title are all required");
+    process.exit(1);
+  }
+  if (!fsSync.existsSync(values.patch)) {
+    console.error(`patch file not found: ${values.patch}`);
+    process.exit(1);
+  }
+  const patchData = JSON.parse(fsSync.readFileSync(values.patch, "utf-8"));
+  applyPatch({
+    project: values.project,
+    patch: patchData,
+    chapter: parseInt(values.chapter, 10),
+    title: values.title,
+    summary: values.summary,
+  })
+    .then((result) => console.log(JSON.stringify(result, null, 2)))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

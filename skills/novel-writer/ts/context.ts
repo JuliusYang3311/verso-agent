@@ -16,11 +16,12 @@
 
 import fsSync from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { DEFAULT_CONTEXT_PARAMS, loadContextParams } from "../../../src/agents/dynamic-context.js";
 import { NovelMemoryStore } from "./novel-memory.js";
 
-const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
+export const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
 const STYLE_DB_PATH = path.resolve(import.meta.dirname, "../style/style_memory.sqlite");
 
 /** Default total token budget for timeline recent. */
@@ -38,7 +39,7 @@ function timelineDbPath(project: string): string {
   return path.join(PROJECTS_DIR, project, "timeline_memory.sqlite");
 }
 
-function loadJson(filePath: string, fallback: unknown): unknown {
+export function loadJson(filePath: string, fallback: unknown): unknown {
   if (!fsSync.existsSync(filePath)) return fallback;
   try {
     return JSON.parse(fsSync.readFileSync(filePath, "utf-8"));
@@ -47,7 +48,7 @@ function loadJson(filePath: string, fallback: unknown): unknown {
   }
 }
 
-function loadJsonl(filePath: string): unknown[] {
+export function loadJsonl(filePath: string): unknown[] {
   if (!fsSync.existsSync(filePath)) return [];
   try {
     return fsSync
@@ -89,24 +90,30 @@ function selectRecentTimeline(
   return { selected, count: selected.length };
 }
 
-async function main() {
-  const { values } = parseArgs({
-    options: {
-      project: { type: "string" },
-      outline: { type: "string", default: "" },
-      style: { type: "string", default: "" },
-      budget: { type: "string", default: "" },
-    },
-    strict: true,
-  });
+export interface AssembleContextOpts {
+  project: string;
+  outline?: string;
+  style?: string;
+  budget?: number;
+}
 
-  const project = values.project;
-  if (!project) {
-    console.error("--project is required");
-    process.exit(1);
-  }
+export type ContextResult = {
+  status: string;
+  project: string;
+  meta: Record<string, unknown>;
+  state: unknown;
+  characters: unknown;
+  world_bible: unknown;
+  plot_threads: unknown;
+  timeline_recent: unknown[];
+  timeline_hits: unknown[];
+  style_snippets: unknown[];
+  default_style: unknown;
+};
 
-  const budget = values.budget ? parseInt(values.budget, 10) : DEFAULT_BUDGET_TOKENS;
+export async function assembleContext(opts: AssembleContextOpts): Promise<ContextResult> {
+  const { project } = opts;
+  const budget = opts.budget ?? DEFAULT_BUDGET_TOKENS;
   const contextParams = await loadContextParams();
   const recentRatio = contextParams.recentRatioBase ?? DEFAULT_CONTEXT_PARAMS.recentRatioBase;
   const timelineRecentBudget = Math.floor(budget * recentRatio);
@@ -129,7 +136,7 @@ async function main() {
   );
 
   // Build search query from outline + style
-  const query = (values.outline || values.style || "").trim();
+  const query = (opts.outline || opts.style || "").trim();
 
   let styleSnippets: unknown[] = [];
   let timelineHits: unknown[] = [];
@@ -175,7 +182,7 @@ async function main() {
     }
   }
 
-  const output = {
+  return {
     status: "ok",
     project,
     meta: {
@@ -195,10 +202,32 @@ async function main() {
     style_snippets: styleSnippets,
     default_style: defaultStyle,
   };
-  console.log(JSON.stringify(output, null, 2));
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { values } = parseArgs({
+    options: {
+      project: { type: "string" },
+      outline: { type: "string", default: "" },
+      style: { type: "string", default: "" },
+      budget: { type: "string", default: "" },
+    },
+    strict: true,
+  });
+  if (!values.project) {
+    console.error("--project is required");
+    process.exit(1);
+  }
+  assembleContext({
+    project: values.project,
+    outline: values.outline,
+    style: values.style,
+    budget: values.budget ? parseInt(values.budget, 10) : undefined,
+  })
+    .then((result) => console.log(JSON.stringify(result, null, 2)))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

@@ -12,6 +12,7 @@
 
 import { type Api, completeSimple, type Model } from "@mariozechner/pi-ai";
 import fsSync from "node:fs";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { getApiKeyForModel, requireApiKey } from "../../../src/agents/model-auth.js";
 import { resolveConfiguredModelRef } from "../../../src/agents/model-selection.js";
@@ -26,7 +27,7 @@ function loadVersoConfig() {
   }
 }
 
-async function resolveLlmModel(): Promise<{ model: Model<Api>; apiKey: string }> {
+export async function resolveLlmModel(): Promise<{ model: Model<Api>; apiKey: string }> {
   const cfg = loadVersoConfig();
 
   // Resolve model ref from agents.defaults.model.primary
@@ -49,37 +50,21 @@ async function resolveLlmModel(): Promise<{ model: Model<Api>; apiKey: string }>
   return { model, apiKey };
 }
 
-/** Strip markdown code fences from LLM output (```json ... ```). */
-function stripCodeFences(text: string): string {
+export function stripCodeFences(text: string): string {
   const trimmed = text.trim();
   const match = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
   return match ? match[1].trim() : trimmed;
 }
 
-async function main() {
-  const { values } = parseArgs({
-    options: {
-      project: { type: "string" },
-      chapter: { type: "string" },
-      title: { type: "string" },
-      text: { type: "string" },
-      "max-tokens": { type: "string", default: "1200" },
-    },
-    strict: true,
-  });
+export interface ExtractUpdatesOpts {
+  chapter: number;
+  title: string;
+  chapterText: string;
+  maxTokens?: number;
+}
 
-  if (!values.project || !values.chapter || !values.title || !values.text) {
-    console.error("--project, --chapter, --title, --text are all required");
-    process.exit(1);
-  }
-
-  if (!fsSync.existsSync(values.text)) {
-    console.error(`text file not found: ${values.text}`);
-    process.exit(1);
-  }
-
-  const chapterText = fsSync.readFileSync(values.text, "utf-8");
-  const maxTokens = parseInt(values["max-tokens"]!, 10);
+export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<string, unknown>> {
+  const { chapter, title, chapterText, maxTokens = 1200 } = opts;
 
   const systemPrompt =
     "Extract continuity updates as JSON patch. Never delete protected entries. " +
@@ -88,8 +73,8 @@ async function main() {
 
   const userContent = JSON.stringify(
     {
-      chapter: parseInt(values.chapter, 10),
-      title: values.title,
+      chapter,
+      title,
       text: chapterText,
       schema: {
         characters: { add: [], update: [], delete: [] },
@@ -134,11 +119,38 @@ async function main() {
     .map((block) => block.text)
     .join("");
 
-  // Strip markdown code fences and output clean JSON
-  console.log(stripCodeFences(rawText));
+  return JSON.parse(stripCodeFences(rawText));
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// CLI entry point
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const { values } = parseArgs({
+    options: {
+      project: { type: "string" },
+      chapter: { type: "string" },
+      title: { type: "string" },
+      text: { type: "string" },
+      "max-tokens": { type: "string", default: "1200" },
+    },
+    strict: true,
+  });
+  if (!values.project || !values.chapter || !values.title || !values.text) {
+    console.error("--project, --chapter, --title, --text are all required");
+    process.exit(1);
+  }
+  if (!fsSync.existsSync(values.text)) {
+    console.error(`text file not found: ${values.text}`);
+    process.exit(1);
+  }
+  extractUpdates({
+    chapter: parseInt(values.chapter, 10),
+    title: values.title,
+    chapterText: fsSync.readFileSync(values.text, "utf-8"),
+    maxTokens: values["max-tokens"] ? parseInt(values["max-tokens"], 10) : undefined,
+  })
+    .then((result) => console.log(JSON.stringify(result, null, 2)))
+    .catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+}

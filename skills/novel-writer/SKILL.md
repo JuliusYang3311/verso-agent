@@ -5,12 +5,12 @@ description: Create and maintain long-form serialized fiction with a shared styl
 
 ## ⚠️ Mandatory Rules (must follow before writing any chapter)
 
-1. **Each chapter must be 5000+ words.** No short chapters.
-2. **Write to file, NEVER to chat.** Save chapter text directly to `chapters/chapter-XX.txt`. Only output a one-line confirmation in the conversation. Outputting full chapter text to chat will cause context overflow.
-3. **When rewriting a chapter, revert the corresponding entry in `timeline.jsonl` first.** No stale records allowed.
+1. **Each chapter must output 10000+ tokens（约 5000+ 中文字）.** No short chapters.
+2. **Write to file, NEVER to chat.** Save chapter text directly to `chapters/chapter-XX.txt`. Only output a one-line confirmation in the conversation.
+3. **When rewriting a chapter, use rewrite mode** which automatically reverts memory before rewriting.
 4. **Apply patch per chapter individually.** Never merge multiple chapters into one patch.
 5. **Read the project `RULES.md` before writing** (located at `projects/<project>/RULES.md`).
-6. **After every chapter, immediately update project memory.** Run `extract-updates.ts` → `validate-patch.ts` → `apply-patch.ts` in sequence before doing anything else. Never leave memory stale after a write.
+6. **After every chapter, immediately update project memory.** The autonomous engine handles this automatically.
 
 # Novel Writer
 
@@ -18,23 +18,24 @@ description: Create and maintain long-form serialized fiction with a shared styl
 
 Style-aware, continuity-safe fiction pipeline: ingest corpus → index style → write chapters from outline → auto-update four-layer story memory → optionally save to Google Docs.
 
-All scripts are in `skills/novel-writer/ts/` and run via `npx tsx`. Embedding and vector search are powered by verso's memory infrastructure (sqlite-vec, FTS5, hierarchical search, embedding cache).
+All scripts are in `skills/novel-writer/ts/` and built to `dist/skills/novel-writer/`. Embedding and vector search are powered by verso's memory infrastructure (sqlite-vec, FTS5, hierarchical search, embedding cache).
 
 ## Architecture
 
 ```
 skills/novel-writer/
-├── ts/                         # TypeScript scripts (verso-backed)
+├── ts/                         # TypeScript source (built by tsdown)
+│   ├── write-chapter.ts        # Autonomous engine (write + rewrite modes)
+│   ├── revert-memory.ts        # Memory rollback for rewrite mode
 │   ├── novel-memory.ts         # Core: isolated SQLite DBs with verso's memory schema
 │   ├── ingest-style.ts         # Ingest style corpus → shared style DB
 │   ├── ingest-timeline.ts      # Bulk re-index timeline.jsonl → per-project timeline DB
 │   ├── search.ts               # Search style or timeline DB
 │   ├── context.ts              # Assemble full context (JSON memory + search results)
-│   ├── apply-patch.ts          # Apply patch + auto-index timeline (main entry point)
+│   ├── apply-patch.ts          # Apply patch + auto-index timeline + save pre-patch snapshot
 │   ├── validate-patch.ts       # Validate patch before applying
 │   ├── extract-updates.ts      # LLM-based patch extraction from chapter text
 │   └── status.ts               # Show project progress
-├── scripts/                    # Legacy Python scripts (deprecated, still functional)
 ├── references/
 │   ├── memory_schema.md        # JSON schemas for 4-layer memory
 │   ├── style_tags.md           # Allowed tags + style taxonomy
@@ -43,13 +44,17 @@ skills/novel-writer/
 │   └── style_memory.sqlite     # Verso-backed style index
 └── projects/<project>/         # PER-PROJECT isolation
     ├── state.json              # Progress tracking
+    ├── RULES.md                # Optional per-project writing rules
     ├── memory/
     │   ├── characters.json
     │   ├── world_bible.json
     │   ├── plot_threads.json
     │   └── timeline.jsonl
+    ├── patches/                # Patch history (for rewrite rollback)
+    │   ├── patch-01.json       # Archived patch
+    │   └── patch-01.pre.json   # Pre-patch snapshot (original values)
     ├── timeline_memory.sqlite  # Verso-backed timeline index (auto-updated)
-    ├── chapters/               # Chapter text files
+    ├── chapters/               # Chapter text files (.txt)
     └── style/
         └── default_style.json  # Per-project default tags
 ```
@@ -71,6 +76,44 @@ Key rules:
 - Timeline DB is **automatically re-indexed** every time `apply-patch.ts` runs.
 
 ## Core Workflow
+
+### Autonomous Mode (Recommended)
+
+One command completes the full pipeline: context assembly → LLM writing → save chapter → extract updates → validate → apply patch → update memory.
+
+**Write new chapter** (auto-detects next chapter number from state.json):
+
+```bash
+node dist/skills/novel-writer/write-chapter.js \
+  --project my_novel \
+  --outline "林澈在旧港码头发现暗门，苏宁被跟踪"
+```
+
+**Rewrite existing chapter** (reverts memory → rewrites → re-applies patch):
+
+```bash
+node dist/skills/novel-writer/write-chapter.js \
+  --project my_novel \
+  --rewrite \
+  --chapter 8 \
+  --notes "节奏太慢，需要加强悬疑感"
+```
+
+Returns JSON to stdout:
+
+```json
+{
+  "summary": "主角发现暗门，苏宁遭遇跟踪...",
+  "chapterPath": "skills/novel-writer/projects/my_novel/chapters/chapter-08.txt",
+  "wordCount": 5230,
+  "memoryUpdated": ["新角色: 守护者", "伏笔: 核心裂痕"],
+  "rewritten": false
+}
+```
+
+Optional flags: `--title "章节标题"`, `--style "noir 悬疑"`, `--budget 8000`
+
+### Manual Mode (Debugging / Fine Control)
 
 ### 1. Create a New Project
 
@@ -515,7 +558,3 @@ npx tsx skills/novel-writer/ts/search.ts --db style --query "紧张氛围描写"
 - `references/memory_schema.md`: JSON schemas for 4-layer memory + patch format
 - `references/style_tags.md`: allowed tags + style taxonomy
 - `references/doc_naming.md`: Google Docs naming rules ("NovelName - Chapter X: Title")
-
-## Legacy Python Scripts (Deprecated)
-
-The `scripts/` directory contains the original Python implementations. They remain functional but are superseded by the TypeScript versions in `ts/`. The TS scripts use verso's memory infrastructure for better embedding caching, hierarchical search, and vector indexing.

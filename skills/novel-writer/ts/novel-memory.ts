@@ -483,7 +483,7 @@ export class NovelMemoryStore {
       textWeight: qs.hybrid.textWeight,
     });
 
-    return merged.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
+    return merged.filter((r) => r.score >= minScore).slice(0, qs.maxResults) as SearchRowResult[];
   }
 
   /** Get stats about the index. */

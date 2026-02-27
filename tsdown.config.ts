@@ -56,4 +56,22 @@ export default defineConfig([
     fixedExtension: false,
     platform: "node",
   },
+  {
+    entry: [
+      "skills/novel-writer/ts/write-chapter.ts",
+      "skills/novel-writer/ts/context.ts",
+      "skills/novel-writer/ts/extract-updates.ts",
+      "skills/novel-writer/ts/validate-patch.ts",
+      "skills/novel-writer/ts/apply-patch.ts",
+      "skills/novel-writer/ts/revert-memory.ts",
+      "skills/novel-writer/ts/ingest-style.ts",
+      "skills/novel-writer/ts/ingest-timeline.ts",
+      "skills/novel-writer/ts/search.ts",
+      "skills/novel-writer/ts/status.ts",
+    ],
+    outDir: "dist/skills/novel-writer",
+    env,
+    fixedExtension: false,
+    platform: "node",
+  },
 ]);

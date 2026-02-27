@@ -13,6 +13,7 @@
 
 import fsSync from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 const PROJECTS_DIR = path.resolve(import.meta.dirname, "../projects");
@@ -93,7 +94,28 @@ function validateWorld(current: AnyObj, patch: AnyObj): void {
   }
 }
 
-function main() {
+export interface ValidatePatchOpts {
+  project: string;
+  patch: Record<string, any>;
+}
+
+export function validatePatch(opts: ValidatePatchOpts): { status: string } {
+  const characters = loadJson(memPath(opts.project, "characters.json"), { characters: [] });
+  const world = loadJson(memPath(opts.project, "world_bible.json"), {
+    world: {},
+    protected_keys: [],
+  });
+  validateCharacters(characters, (opts.patch as AnyObj).characters ?? {});
+  validateWorld(world, (opts.patch as AnyObj).world_bible ?? {});
+  return { status: "ok" };
+}
+
+export function validatePatchOrThrow(opts: ValidatePatchOpts): void {
+  validatePatch(opts);
+}
+
+// CLI entry point
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const { values } = parseArgs({
     options: {
       project: { type: "string" },
@@ -101,33 +123,20 @@ function main() {
     },
     strict: true,
   });
-
   if (!values.project || !values.patch) {
     console.error("--project and --patch are required");
     process.exit(1);
   }
-
-  const patchFile = values.patch;
-  if (!fsSync.existsSync(patchFile)) {
-    console.error(`patch file not found: ${patchFile}`);
+  if (!fsSync.existsSync(values.patch)) {
+    console.error(`patch file not found: ${values.patch}`);
     process.exit(1);
   }
-
-  const patchData: AnyObj = JSON.parse(fsSync.readFileSync(patchFile, "utf-8"));
-  const characters = loadJson(memPath(values.project, "characters.json"), { characters: [] });
-  const world = loadJson(memPath(values.project, "world_bible.json"), {
-    world: {},
-    protected_keys: [],
-  });
-
   try {
-    validateCharacters(characters, patchData.characters ?? {});
-    validateWorld(world, patchData.world_bible ?? {});
-    console.log(JSON.stringify({ status: "ok" }));
+    const patchData = JSON.parse(fsSync.readFileSync(values.patch, "utf-8"));
+    const result = validatePatch({ project: values.project, patch: patchData });
+    console.log(JSON.stringify(result));
   } catch (err) {
     console.error(`Validation failed: ${err instanceof Error ? err.message : err}`);
     process.exit(1);
   }
 }
-
-main();
