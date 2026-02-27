@@ -13,8 +13,13 @@ import type { MemoryChunk } from "../../../src/memory/internal.js";
 import type { EmbeddingContext } from "../../../src/memory/manager-embeddings.js";
 import type { SearchRowResult } from "../../../src/memory/manager-search.js";
 import type { VectorState } from "../../../src/memory/manager-vectors.js";
-import { DEFAULT_CONTEXT_PARAMS } from "../../../src/agents/dynamic-context.js";
+import {
+  DEFAULT_CONTEXT_PARAMS,
+  type ContextParams,
+  loadContextParams,
+} from "../../../src/agents/dynamic-context.js";
 import { loadConfig } from "../../../src/config/io.js";
+import { applyDiversityPipeline, type DiverseChunk } from "../../../src/memory/chunk-diversity.js";
 import { createEmbeddingProvider } from "../../../src/memory/embeddings.js";
 import { bm25RankToScore, buildFtsQuery, mergeHybridResults } from "../../../src/memory/hybrid.js";
 import {
@@ -24,6 +29,7 @@ import {
   hashText,
   ensureDir,
 } from "../../../src/memory/internal.js";
+import { loadFactorSpace, queryToSubqueries } from "../../../src/memory/latent-factors.js";
 import {
   createBatchFailureTracker,
   runBatchWithFallback,
@@ -370,8 +376,15 @@ export class NovelMemoryStore {
   }
 
   /**
-   * Search the index using hierarchical search with hybrid (vector + FTS).
-   * Query settings (maxResults, minScore, hybrid weights) come from verso config.
+   * Search the index using hierarchical search with hybrid (vector + FTS),
+   * latent factor multi-dimensional sub-queries, and greedy MMR diversity selection.
+   *
+   * Pipeline:
+   *   1. Embed query
+   *   2. If latent factors enabled: project query → factor space → generate sub-queries
+   *   3. Run hierarchical/flat hybrid search per sub-query (or single query if factors disabled)
+   *   4. Merge all candidates → dedup → threshold filter → greedy MMR selection
+   *   5. Return top results with maximized marginal information gain
    */
   async search(params: { query: string }): Promise<SearchRowResult[]> {
     const query = params.query.trim();
@@ -381,23 +394,124 @@ export class NovelMemoryStore {
       200,
       Math.max(1, Math.floor(qs.maxResults * qs.hybrid.candidateMultiplier)),
     );
-    const minScore = qs.minScore;
 
     const ctx = this.buildEmbeddingContext();
     const queryVec = await embedQueryWithTimeout(ctx, query);
     const hasVector = queryVec.some((v) => v !== 0);
 
+    // Load context params for MMR + latent factor settings
+    const ctxParams = await loadContextParams();
+    const mmrLambda = ctxParams.mmrLambda ?? 0.6;
+    const threshold = ctxParams.baseThreshold;
+    const thresholdFloor = ctxParams.thresholdFloor;
+
+    // Determine sub-queries via latent factor projection
+    let queries: Array<{ query: string; queryVec: number[]; factorId?: string }> = [
+      { query, queryVec },
+    ];
+
+    if (ctxParams.latentFactorEnabled && hasVector) {
+      try {
+        const space = await loadFactorSpace();
+        if (space.factors.length > 0) {
+          const providerModel = this.provider.model;
+          const { subqueries } = queryToSubqueries({
+            queryVec,
+            queryText: query,
+            space,
+            providerModel,
+            useCase: "novel",
+            threshold: ctxParams.factorActivationThreshold ?? 0.35,
+            mmrLambda: ctxParams.factorMmrLambda ?? 0.7,
+          });
+          if (subqueries.length > 0) {
+            // Embed sub-queries and run them alongside the original
+            const subVecs = await Promise.all(
+              subqueries.map((sq) => embedQueryWithTimeout(ctx, sq.subquery).catch(() => queryVec)),
+            );
+            queries = [
+              { query, queryVec },
+              ...subqueries.map((sq, i) => ({
+                query: sq.subquery,
+                queryVec: subVecs[i],
+                factorId: sq.factorId,
+              })),
+            ];
+          }
+        }
+      } catch {
+        // Latent factor failure is non-fatal — continue with original query
+      }
+    }
+
+    // Run searches for all queries in parallel, collect all candidates
+    const allCandidates: DiverseChunk[] = [];
+    await Promise.all(
+      queries.map(async (q) => {
+        const results = await this.runSingleSearch(q.query, q.queryVec, candidates);
+        for (const r of results) {
+          const chunk: DiverseChunk = {
+            key: `${r.path}:${r.startLine}`,
+            path: r.path,
+            startLine: r.startLine,
+            endLine: r.endLine,
+            snippet: r.snippet,
+            score: r.score,
+            source: r.source ?? this.source,
+            timestamp: r.timestamp,
+            factorsUsed: q.factorId ? [{ id: q.factorId, score: r.score }] : undefined,
+          };
+          allCandidates.push(chunk);
+        }
+      }),
+    );
+
+    if (allCandidates.length === 0) return [];
+
+    // Apply diversity pipeline: dedup → threshold → greedy MMR
+    const budgetTokens = qs.maxResults * 200; // generous budget for novel search
+    const { chunks: diverseResults } = applyDiversityPipeline({
+      chunks: allCandidates,
+      budgetTokens,
+      threshold,
+      thresholdFloor,
+      mmrLambda,
+    });
+
+    // Convert back to SearchRowResult
+    return diverseResults.slice(0, qs.maxResults).map((c) => ({
+      id: `${c.path}:${c.startLine}`,
+      path: c.path,
+      startLine: c.startLine,
+      endLine: c.endLine,
+      source: c.source,
+      snippet: c.snippet,
+      score: c.score,
+      timestamp: c.timestamp,
+    })) as SearchRowResult[];
+  }
+
+  /**
+   * Run a single hybrid search (hierarchical → flat fallback) for one query.
+   * Extracted from the old search() to support multi-query latent factor pipeline.
+   */
+  private async runSingleSearch(
+    query: string,
+    queryVec: number[],
+    limit: number,
+  ): Promise<SearchRowResult[]> {
+    const hasVector = queryVec.some((v) => v !== 0);
     const sourceFilter = this.buildSourceFilter();
     const sourceFilterAliased = this.buildSourceFilter("c");
 
     // Try hierarchical search first
     if (hasVector) {
       try {
-        const results = await searchHierarchical({
+        return await searchHierarchical({
           db: this.db,
           queryVec,
           query,
-          limit: Math.min(200, candidates),
+          limit: Math.min(200, limit),
           snippetMaxChars: SNIPPET_MAX_CHARS,
           providerModel: this.provider.model,
           vectorTable: VECTOR_TABLE,
@@ -417,8 +531,6 @@ export class NovelMemoryStore {
           sourceFilterVec: sourceFilterAliased,
           sourceFilterChunks: sourceFilter,
         });
-
-        return results.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
       } catch {
         // Fall through to flat search
       }
@@ -431,7 +543,7 @@ export class NovelMemoryStore {
           vectorTable: VECTOR_TABLE,
           providerModel: this.provider.model,
           queryVec,
-          limit: candidates,
+          limit,
           snippetMaxChars: SNIPPET_MAX_CHARS,
           ensureVectorReady: async (dims) => this.ensureVectorReady(dims),
           sourceFilterVec: sourceFilterAliased,
@@ -440,7 +552,7 @@ export class NovelMemoryStore {
       : [];
 
     if (!this.fts.available) {
-      return vectorResults.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
+      return vectorResults;
     }
 
     const keywordResults = await searchKeyword({
@@ -448,7 +560,7 @@ export class NovelMemoryStore {
       ftsTable: FTS_TABLE,
       providerModel: this.provider.model,
       query,
-      limit: candidates,
+      limit,
       snippetMaxChars: SNIPPET_MAX_CHARS,
       sourceFilter,
       buildFtsQuery: (raw) => buildFtsQuery(raw),
@@ -456,10 +568,10 @@ export class NovelMemoryStore {
     }).catch(() => []);
 
     if (keywordResults.length === 0) {
-      return vectorResults.filter((r) => r.score >= minScore).slice(0, qs.maxResults);
+      return vectorResults;
     }
 
-    const merged = mergeHybridResults({
+    return mergeHybridResults({
       vector: vectorResults.map((r) => ({
         id: r.id,
         path: r.path,
@@ -479,11 +591,9 @@ export class NovelMemoryStore {
         snippet: r.snippet,
         textScore: r.textScore,
       })),
-      vectorWeight: qs.hybrid.vectorWeight,
-      textWeight: qs.hybrid.textWeight,
-    });
-
-    return merged.filter((r) => r.score >= minScore).slice(0, qs.maxResults) as SearchRowResult[];
+      vectorWeight: this.querySettings.hybrid.vectorWeight,
+      textWeight: this.querySettings.hybrid.textWeight,
+    }) as SearchRowResult[];
   }
 
   /** Get stats about the index. */
