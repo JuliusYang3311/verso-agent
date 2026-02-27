@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_GEMINI_EMBEDDING_MODEL } from "./embeddings-gemini.js";
 
@@ -18,38 +17,6 @@ const createFetchMock = () =>
     status: 200,
     json: async () => ({ data: [{ embedding: [1, 2, 3] }] }),
   })) as unknown as typeof fetch;
-
-/** Mock node:https.request — captures (options) and returns a fake 200 response with `body`. */
-function createHttpsMock(body: unknown) {
-  const calls: Array<{
-    hostname: string;
-    path: string;
-    method: string;
-    headers: Record<string, string>;
-  }> = [];
-  const mockRequest = vi.fn(
-    (
-      options: Record<string, unknown>,
-      cb: (res: EventEmitter & { statusCode: number }) => void,
-    ) => {
-      calls.push({
-        hostname: options.hostname as string,
-        path: options.path as string,
-        method: options.method as string,
-        headers: options.headers as Record<string, string>,
-      });
-      const res = Object.assign(new EventEmitter(), { statusCode: 200 });
-      process.nextTick(() => {
-        cb(res);
-        res.emit("data", Buffer.from(JSON.stringify(body)));
-        res.emit("end");
-      });
-      const req = Object.assign(new EventEmitter(), { end: vi.fn(), destroy: vi.fn() });
-      return req;
-    },
-  );
-  return { mockRequest, calls };
-}
 
 describe("embedding provider remote overrides", () => {
   afterEach(() => {
@@ -153,8 +120,12 @@ describe("embedding provider remote overrides", () => {
   });
 
   it("builds Gemini embeddings requests with api key header", async () => {
-    const { mockRequest, calls } = createHttpsMock({ embedding: { values: [1, 2, 3] } });
-    vi.doMock("node:https", () => ({ default: { request: mockRequest }, request: mockRequest }));
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ embedding: { values: [1, 2, 3] } }),
+    })) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
 
     const { createEmbeddingProvider } = await import("./embeddings.js");
     const authModule = await import("../agents/model-auth.js");
@@ -186,11 +157,13 @@ describe("embedding provider remote overrides", () => {
 
     await result.provider.embedQuery("hello");
 
-    expect(calls).toHaveLength(1);
-    expect(calls[0].hostname).toBe("generativelanguage.googleapis.com");
-    expect(calls[0].path).toBe("/v1beta/models/text-embedding-004:embedContent");
-    expect(calls[0].headers["x-goog-api-key"]).toBe("gemini-key");
-    expect(calls[0].headers["Content-Type"]).toBe("application/json");
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent",
+    );
+    const headers = (init?.headers ?? {}) as Record<string, string>;
+    expect(headers["x-goog-api-key"]).toBe("gemini-key");
+    expect(headers["Content-Type"]).toBe("application/json");
   });
 });
 
@@ -223,8 +196,12 @@ describe("embedding provider auto selection", () => {
   });
 
   it("uses gemini when openai is missing", async () => {
-    const { mockRequest, calls } = createHttpsMock({ embedding: { values: [1, 2, 3] } });
-    vi.doMock("node:https", () => ({ default: { request: mockRequest }, request: mockRequest }));
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ embedding: { values: [1, 2, 3] } }),
+    })) as unknown as typeof fetch;
+    vi.stubGlobal("fetch", fetchMock);
 
     const { createEmbeddingProvider } = await import("./embeddings.js");
     const authModule = await import("../agents/model-auth.js");
@@ -248,9 +225,10 @@ describe("embedding provider auto selection", () => {
     expect(result.requestedProvider).toBe("auto");
     expect(result.provider.id).toBe("gemini");
     await result.provider.embedQuery("hello");
-    expect(calls).toHaveLength(1);
-    expect(calls[0].hostname).toBe("generativelanguage.googleapis.com");
-    expect(calls[0].path).toBe(`/v1beta/models/${DEFAULT_GEMINI_EMBEDDING_MODEL}:embedContent`);
+    const [url] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe(
+      `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_GEMINI_EMBEDDING_MODEL}:embedContent`,
+    );
   });
 
   it("keeps explicit model when openai is selected", async () => {
