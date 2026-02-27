@@ -181,23 +181,32 @@ export function applyPlotPatch(plot: AnyObj, patch: AnyObj): AnyObj {
     if (t.thread_id) byId.set(t.thread_id, t);
   }
 
+  // LLM patches may use "id" instead of "thread_id" — normalize both
+  const tid = (item: AnyObj): string | undefined => item.thread_id ?? item.id ?? undefined;
+
   for (const item of (patch.add ?? []) as AnyObj[]) {
-    if (!item.thread_id) continue;
-    byId.set(item.thread_id, item);
+    const id = tid(item);
+    if (!id) continue;
+    const normalized: AnyObj = { ...item, thread_id: id };
+    delete normalized.id;
+    byId.set(id, normalized);
   }
 
   for (const item of (patch.update ?? []) as AnyObj[]) {
-    if (!item.thread_id) continue;
-    const base = byId.get(item.thread_id) ?? {};
-    byId.set(item.thread_id, { ...base, ...item });
+    const id = tid(item);
+    if (!id) continue;
+    const base = byId.get(id) ?? {};
+    const normalized: AnyObj = { ...base, ...item, thread_id: id };
+    delete normalized.id;
+    byId.set(id, normalized);
   }
 
   for (const item of (patch.close ?? []) as any[]) {
-    const tid = typeof item === "object" ? item?.thread_id : item;
-    if (!tid) continue;
-    const base = byId.get(tid) ?? { thread_id: tid };
+    const id = typeof item === "object" ? (item?.thread_id ?? item?.id) : item;
+    if (!id) continue;
+    const base = byId.get(id) ?? { thread_id: id };
     base.status = "closed";
-    byId.set(tid, base);
+    byId.set(id, base);
   }
 
   return { threads: [...byId.values()] };
@@ -265,13 +274,13 @@ export function buildPrePatchSnapshot(
   }
   snapshot.plot_threads = {
     added_ids: ((plotPatch.add ?? []) as AnyObj[])
-      .map((t) => t.thread_id)
+      .map((t) => t.thread_id ?? t.id)
       .filter((id: string) => id && !existingThreads.has(id)),
     updated_originals: ((plotPatch.update ?? []) as AnyObj[])
-      .map((t) => existingThreads.get(t.thread_id))
+      .map((t) => existingThreads.get(t.thread_id ?? t.id))
       .filter(Boolean),
     closed_originals: ((plotPatch.close ?? []) as any[])
-      .map((t) => existingThreads.get(typeof t === "object" ? t?.thread_id : t))
+      .map((t) => existingThreads.get(typeof t === "object" ? (t?.thread_id ?? t?.id) : t))
       .filter(Boolean),
   };
 

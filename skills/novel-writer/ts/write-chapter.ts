@@ -149,58 +149,67 @@ async function initProjectMemory(
 
   const init = safeParseJson(rawText) as AnyObj;
   console.error(`[initProjectMemory] Parsed keys: ${Object.keys(init).join(", ")}`);
-  const changes: string[] = [];
 
-  // Save characters
-  if (init.characters?.characters?.length) {
-    saveJson(memPath(project, "characters.json"), { characters: init.characters.characters });
-    changes.push(`characters: ${init.characters.characters.map((c: AnyObj) => c.name).join(", ")}`);
-  } else {
-    saveJson(memPath(project, "characters.json"), { characters: [] });
+  // Ensure memory dir exists before saving initial empty files (applyPatch needs them)
+  projectDir(project);
+  saveJson(memPath(project, "characters.json"), { characters: [] });
+  saveJson(memPath(project, "world_bible.json"), { world: {}, protected_keys: [] });
+  saveJson(memPath(project, "plot_threads.json"), { threads: [] });
+
+  // Convert LLM output into a patch and apply through applyPatch (chapter 0 = premise)
+  const patch: AnyObj = {
+    characters: {
+      add: init.characters?.characters ?? [],
+      update: [],
+      delete: [],
+    },
+    world_bible: {
+      add: init.world_bible?.world ?? {},
+      update: {},
+      delete: [],
+    },
+    plot_threads: {
+      add: init.plot_threads?.threads ?? [],
+      update: [],
+      close: [],
+    },
+    timeline: {
+      summary: init.timeline?.summary ?? outline,
+      events: init.timeline?.events ?? [],
+      consequences: init.timeline?.consequences ?? [],
+      pov: init.timeline?.pov ?? "",
+      locations: init.timeline?.locations ?? [],
+      characters: init.timeline?.characters ?? [],
+    },
+  };
+
+  // Save protected_keys into world_bible.json before applying patch
+  if (init.world_bible?.protected_keys?.length) {
+    saveJson(memPath(project, "world_bible.json"), {
+      world: {},
+      protected_keys: init.world_bible.protected_keys,
+    });
   }
 
-  // Save world bible
+  console.error(`[initProjectMemory] Applying step 0 patch via applyPatch...`);
+  await applyPatch({ project, patch, chapter: 0, title: "premise" });
+  console.error(`[initProjectMemory] Step 0 patch applied`);
+
+  // Summarize changes for caller
+  const changes: string[] = [];
+  if (init.characters?.characters?.length) {
+    changes.push(`characters: ${init.characters.characters.map((c: AnyObj) => c.name).join(", ")}`);
+  }
   if (init.world_bible?.world) {
-    saveJson(memPath(project, "world_bible.json"), {
-      world: init.world_bible.world,
-      protected_keys: init.world_bible.protected_keys ?? [],
-    });
     const keys = Object.keys(init.world_bible.world);
     if (keys.length) changes.push(`world: ${keys.join(", ")}`);
-  } else {
-    saveJson(memPath(project, "world_bible.json"), { world: {}, protected_keys: [] });
   }
-
-  // Save plot threads
   if (init.plot_threads?.threads?.length) {
-    saveJson(memPath(project, "plot_threads.json"), { threads: init.plot_threads.threads });
     changes.push(
       `threads: ${init.plot_threads.threads.map((t: AnyObj) => t.promise ?? t.thread_id).join(", ")}`,
     );
-  } else {
-    saveJson(memPath(project, "plot_threads.json"), { threads: [] });
   }
-
-  // Save initial timeline entry (chapter 0 = premise)
-  {
-    const tl = init.timeline ?? {};
-    const summary = tl.summary ?? outline;
-    const entry = {
-      chapter: 0,
-      title: "premise",
-      summary,
-      events: tl.events ?? [],
-      consequences: tl.consequences ?? [],
-      pov: tl.pov ?? "",
-      locations: tl.locations ?? [],
-      characters: tl.characters ?? [],
-      updated_at: new Date().toISOString().replace("T", " "),
-    };
-    const tlPath = memPath(project, "timeline.jsonl");
-    fsSync.mkdirSync(path.dirname(tlPath), { recursive: true });
-    fsSync.writeFileSync(tlPath, JSON.stringify(entry) + "\n", "utf-8");
-    changes.push(`premise: ${String(summary)}`);
-  }
+  changes.push(`premise: ${String(init.timeline?.summary ?? outline)}`);
 
   return changes;
 }
@@ -345,29 +354,29 @@ function sanitizeChapterText(raw: string): string {
 export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult> {
   const { project, outline, style, budget } = opts;
 
-  // Auto-detect next chapter number
-  const state = loadState(project);
-  const chapter = ((state.last_chapter as number) ?? 0) + 1;
-  const title = opts.title ?? `Chapter ${chapter}`;
-
-  // Ensure project dirs exist
-  projectDir(project);
-
-  // 0. Initialize memory if this is a new project (project memory dir doesn't exist)
+  // 0. Initialize memory if this is a new project (no state.json yet)
   const llm = await resolveLlmModel();
   let initChanges: string[] = [];
-  const memDir = path.join(PROJECTS_DIR, project, "memory");
-  if (!fsSync.existsSync(memDir)) {
+  const stateFile = path.join(PROJECTS_DIR, project, "state.json");
+  if (!fsSync.existsSync(stateFile)) {
     console.error("New project detected, initializing memory from outline...");
     try {
       initChanges = await initProjectMemory(project, outline, llm);
       console.error(`Memory initialized: ${initChanges.join("; ")}`);
     } catch (err) {
       console.error(`WARNING: initProjectMemory failed, continuing without initial memory: ${err}`);
-      // Ensure memory dir exists so we don't retry on next call
-      fsSync.mkdirSync(memDir, { recursive: true });
+      // Ensure project dirs exist so we don't crash later
+      projectDir(project);
     }
   }
+
+  // Auto-detect next chapter number (after step 0 which may set last_chapter=0)
+  const state = loadState(project);
+  const chapter = ((state.last_chapter as number) ?? 0) + 1;
+  const title = opts.title ?? `Chapter ${chapter}`;
+
+  // Ensure project dirs exist
+  projectDir(project);
 
   // 1. Assemble context (memory + style + timeline)
   const context = await assembleContext({ project, outline, style, budget: budget ?? 12000 });
