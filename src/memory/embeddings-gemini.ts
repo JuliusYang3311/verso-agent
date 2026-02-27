@@ -3,6 +3,16 @@ import { requireApiKey, resolveApiKeyForProvider } from "../agents/model-auth.js
 import { isTruthyEnvValue } from "../infra/env.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 
+// Node.js built-in fetch (undici) can hang on HTTP/2 ALPN negotiation with some
+// endpoints unless a global dispatcher is configured. pi-ai sets one via a
+// fire-and-forget import().then(), but that races with early fetch calls in
+// subprocesses. We eagerly await the same setup so embedding fetches are safe.
+const _dispatcherReady: Promise<void> = import("undici")
+  .then(({ EnvHttpProxyAgent, setGlobalDispatcher }) => {
+    setGlobalDispatcher(new EnvHttpProxyAgent());
+  })
+  .catch(() => {});
+
 export type GeminiEmbeddingClient = {
   baseUrl: string;
   headers: Record<string, string>;
@@ -65,6 +75,7 @@ function buildGeminiModelPath(model: string): string {
 export async function createGeminiEmbeddingProvider(
   options: EmbeddingProviderOptions,
 ): Promise<{ provider: EmbeddingProvider; client: GeminiEmbeddingClient }> {
+  await _dispatcherReady;
   const client = await resolveGeminiEmbeddingClient(options);
   const baseUrl = client.baseUrl.replace(/\/$/, "");
   const embedUrl = `${baseUrl}/${client.modelPath}:embedContent`;
