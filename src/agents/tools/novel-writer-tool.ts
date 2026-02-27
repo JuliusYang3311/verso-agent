@@ -1,0 +1,140 @@
+/**
+ * novel-writer-tool.ts
+ * Tool-dispatch entry point for the novel-writer skill.
+ * Spawns write-chapter.js in the background, returns immediately,
+ * and delivers the result back to the calling session when done.
+ */
+
+import { execFile } from "node:child_process";
+import path from "node:path";
+import type { VersoConfig } from "../../config/types.js";
+import type { GatewayMessageChannel } from "../../utils/message-channel.js";
+import type { AnyAgentTool } from "./common.js";
+import { logVerbose } from "../../globals.js";
+import { deliverOutboundPayloads } from "../../infra/outbound/deliver.js";
+import { jsonResult } from "./common.js";
+
+export interface NovelWriterToolOptions {
+  agentChannel?: GatewayMessageChannel;
+  agentTo?: string;
+  agentThreadId?: string | number;
+  config?: VersoConfig;
+}
+
+const NovelWriterSchema = {
+  type: "object" as const,
+  properties: {
+    command: { type: "string" as const, description: "Raw command arguments" },
+  },
+  required: ["command"] as const,
+};
+
+const SCRIPT_PATH = path.resolve(import.meta.dirname, "../../skills/novel-writer/write-chapter.js");
+
+function parseArgs(raw: string): string[] {
+  const args: string[] = [];
+  const re = /--(\S+)\s+(?:"([^"]*)"|'([^']*)'|(\S+))/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    args.push(`--${m[1]}`, m[2] ?? m[3] ?? m[4]);
+  }
+  // Handle bare flags like --rewrite
+  const flagRe = /--(\S+)(?=\s+--|$)/g;
+  while ((m = flagRe.exec(raw)) !== null) {
+    if (!args.includes(`--${m[1]}`)) {
+      args.push(`--${m[1]}`);
+    }
+  }
+  return args;
+}
+
+function runScript(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile("node", [SCRIPT_PATH, ...args], { timeout: 600_000 }, (err, stdout, stderr) => {
+      if (err) {
+        reject(new Error(stderr || err.message));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+}
+
+function formatResult(json: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (json.rewritten) {
+    parts.push("Rewrite complete");
+  } else {
+    parts.push("Chapter written");
+  }
+  if (json.summary) {
+    parts.push(`Summary: ${json.summary}`);
+  }
+  if (json.chapterPath) {
+    parts.push(`File: ${json.chapterPath}`);
+  }
+  if (json.wordCount) {
+    parts.push(`Words: ${json.wordCount}`);
+  }
+  const mem = json.memoryUpdated as string[] | undefined;
+  if (mem?.length) {
+    parts.push(`Memory updated: ${mem.join(", ")}`);
+  }
+  return parts.join("\n");
+}
+
+export function createNovelWriterTool(options?: NovelWriterToolOptions): AnyAgentTool {
+  const cfg = options?.config;
+  const channel = options?.agentChannel;
+  const to = options?.agentTo;
+  const threadId = options?.agentThreadId;
+
+  return {
+    label: "NovelWriter",
+    name: "novel_writer",
+    description:
+      "Autonomous novel-writing engine. Write or rewrite chapters with full memory management. " +
+      "Args: --project <name> --outline <text> [--title <title>] [--style <style>] [--budget <n>] " +
+      "[--rewrite --chapter <n> --notes <text>]",
+    parameters: NovelWriterSchema,
+    execute: async (_toolCallId, input) => {
+      const params = input as { command?: string };
+      const raw = (params.command ?? "").trim();
+      if (!raw) {
+        return jsonResult({ error: "Missing command arguments" });
+      }
+
+      const args = parseArgs(raw);
+      const isRewrite = args.includes("--rewrite");
+
+      // Fire-and-forget: spawn script, deliver result when done
+      runScript(args)
+        .then(({ stdout }) => {
+          const json = JSON.parse(stdout) as Record<string, unknown>;
+          const text = formatResult(json);
+          if (cfg && channel && channel !== "none" && to) {
+            void deliverOutboundPayloads({ cfg, channel, to, threadId, payloads: [{ text }] });
+          } else {
+            logVerbose(`[novel-writer] No delivery channel, result: ${text}`);
+          }
+        })
+        .catch((err) => {
+          const errText = `Write failed: ${err instanceof Error ? err.message : String(err)}`;
+          if (cfg && channel && channel !== "none" && to) {
+            void deliverOutboundPayloads({
+              cfg,
+              channel,
+              to,
+              threadId,
+              payloads: [{ text: errText }],
+            });
+          } else {
+            logVerbose(`[novel-writer] ${errText}`);
+          }
+        });
+
+      const ack = isRewrite ? "Rewriting chapter..." : "Writing new chapter...";
+      return jsonResult({ status: "started", message: ack });
+    },
+  } as AnyAgentTool;
+}

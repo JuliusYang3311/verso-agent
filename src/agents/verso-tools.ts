@@ -11,6 +11,7 @@ import { createGatewayTool } from "./tools/gateway-tool.js";
 import { createImageTool } from "./tools/image-tool.js";
 import { createMessageTool } from "./tools/message-tool.js";
 import { createNodesTool } from "./tools/nodes-tool.js";
+import { createNovelWriterTool } from "./tools/novel-writer-tool.js";
 import { createSessionStatusTool } from "./tools/session-status-tool.js";
 import { createSessionsHistoryTool } from "./tools/sessions-history-tool.js";
 import { createTtsTool } from "./tools/tts-tool.js";
@@ -142,6 +143,12 @@ export function createVersoTools(options?: {
     ...(webSearchTool ? [webSearchTool] : []),
     ...(webFetchTool ? [webFetchTool] : []),
     ...(imageTool ? [imageTool] : []),
+    createNovelWriterTool({
+      agentChannel: options?.agentChannel,
+      agentTo: options?.agentTo,
+      agentThreadId: options?.agentThreadId,
+      config: options?.config,
+    }),
   ];
 
   if (options?.config?.google?.enabled) {

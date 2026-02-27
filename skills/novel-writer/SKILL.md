@@ -1,6 +1,9 @@
 ---
 name: novel-writer
 description: Autonomous long-form fiction engine with style library, four-layer continuity memory, latent factor search, and greedy MMR diversity selection. Ingest corpora for style indexing, generate 10000+ token chapters from outlines, auto-update character/world/timeline/plot-thread memory after each chapter.
+command-dispatch: tool
+command-tool: novel_writer
+command-arg-mode: raw
 ---
 
 ## Mandatory Rules
