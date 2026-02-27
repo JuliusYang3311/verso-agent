@@ -70,6 +70,8 @@ export async function createGeminiEmbeddingProvider(
   const embedUrl = `${baseUrl}/${client.modelPath}:embedContent`;
   const batchUrl = `${baseUrl}/${client.modelPath}:batchEmbedContents`;
 
+  const FETCH_TIMEOUT_MS = 30_000; // 30s hard timeout on fetch itself
+
   const embedQuery = async (text: string): Promise<number[]> => {
     if (!text.trim()) {
       return [];
@@ -80,6 +82,7 @@ export async function createGeminiEmbeddingProvider(
       res = await fetch(embedUrl, {
         method: "POST",
         headers: client.headers,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         body: JSON.stringify({
           content: { parts: [{ text }] },
           taskType: "RETRIEVAL_QUERY",
@@ -111,6 +114,7 @@ export async function createGeminiEmbeddingProvider(
     const res = await fetch(batchUrl, {
       method: "POST",
       headers: client.headers,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       body: JSON.stringify({ requests }),
     });
     if (!res.ok) {
