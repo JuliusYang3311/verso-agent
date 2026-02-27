@@ -296,6 +296,9 @@ export interface ApplyResult {
 export async function applyPatch(opts: ApplyPatchOpts): Promise<ApplyResult> {
   const { project, chapter, title, summary = "" } = opts;
   const patchData = opts.patch as AnyObj;
+  console.error(
+    `[applyPatch] chapter=${chapter} title=${title} patchKeys=${Object.keys(patchData).join(",")}`,
+  );
   const pDir = projectDir(project);
 
   // --- Backup current state ---
@@ -330,6 +333,7 @@ export async function applyPatch(opts: ApplyPatchOpts): Promise<ApplyResult> {
     saveJson(charPath, newChars);
     saveJson(worldPath, newWorld);
     saveJson(plotPath, newPlot);
+    console.error(`[applyPatch] characters/world/plot saved`);
 
     // --- Append timeline entry ---
     const tlPatch = patchData.timeline ?? {};
@@ -345,6 +349,7 @@ export async function applyPatch(opts: ApplyPatchOpts): Promise<ApplyResult> {
       updated_at: nowTs(),
     };
     appendJsonl(timelinePath, timelineEntry);
+    console.error(`[applyPatch] timeline entry appended`);
 
     // --- Auto-index timeline entry into verso memory DB ---
     try {
@@ -397,7 +402,7 @@ export async function applyPatch(opts: ApplyPatchOpts): Promise<ApplyResult> {
     state.updated_at = nowTs();
     state.chapters_written = written;
     saveJson(statePath, state);
-
+    console.error(`[applyPatch] state.json updated, last_chapter=${chapter}`);
     // --- Archive patch ---
     saveJson(path.join(patchesDir, `patch-${padChapter}.json`), patchData);
 

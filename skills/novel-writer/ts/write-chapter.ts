@@ -382,9 +382,13 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   const chapterPath = saveChapterFile(project, chapter, chapterText);
 
   // 5. Extract memory updates → validate → apply
+  console.error(`[writeChapter] extracting updates for chapter ${chapter}...`);
   const patch = await extractUpdates({ chapter, title, chapterText, llm });
+  console.error(`[writeChapter] patch keys: ${Object.keys(patch).join(", ")}`);
   validatePatchOrThrow({ project, patch });
+  console.error(`[writeChapter] patch validated, applying...`);
   await applyPatch({ project, patch, chapter, title });
+  console.error(`[writeChapter] patch applied successfully`);
 
   return {
     summary: (patch as AnyObj).timeline?.summary ?? "",
