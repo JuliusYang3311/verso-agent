@@ -74,6 +74,7 @@ export async function createGeminiEmbeddingProvider(
     if (!text.trim()) {
       return [];
     }
+    console.error(`[gemini-embedding] embedQuery URL=${embedUrl}`);
     const res = await fetch(embedUrl, {
       method: "POST",
       headers: client.headers,
