@@ -67,13 +67,13 @@ function formatResult(json: Record<string, unknown>): string {
   } else {
     parts.push("Chapter written");
   }
-  if (json.summary) {
+  if (typeof json.summary === "string") {
     parts.push(`Summary: ${json.summary}`);
   }
-  if (json.chapterPath) {
+  if (typeof json.chapterPath === "string") {
     parts.push(`File: ${json.chapterPath}`);
   }
-  if (json.wordCount) {
+  if (typeof json.wordCount === "number") {
     parts.push(`Words: ${json.wordCount}`);
   }
   const mem = json.memoryUpdated as string[] | undefined;

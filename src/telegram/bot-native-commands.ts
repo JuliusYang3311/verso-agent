@@ -369,6 +369,9 @@ export const registerTelegramNativeCommands = ({
   // Telegram Bot API limits commands to 100 per scope.
   // Truncate with a warning rather than failing with BOT_COMMANDS_TOO_MUCH.
   const TELEGRAM_MAX_COMMANDS = 100;
+  logVerbose(
+    `telegram: registering ${allCommandsFull.length} commands (native=${nativeCommands.length}, plugin=${pluginCommands.length}, custom=${customCommands.length})`,
+  );
   if (allCommandsFull.length > TELEGRAM_MAX_COMMANDS) {
     runtime.log?.(
       `telegram: truncating ${allCommandsFull.length} commands to ${TELEGRAM_MAX_COMMANDS} (Telegram Bot API limit)`,
