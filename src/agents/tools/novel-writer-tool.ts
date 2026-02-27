@@ -68,13 +68,18 @@ function parseArgs(raw: string): string[] {
 
 function runScript(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile("node", [SCRIPT_PATH, ...args], { timeout: 600_000 }, (err, stdout, stderr) => {
-      if (err) {
-        reject(new Error(stderr || err.message));
-      } else {
-        resolve({ stdout, stderr });
-      }
-    });
+    execFile(
+      "node",
+      [SCRIPT_PATH, ...args],
+      { timeout: 1_200_000, maxBuffer: 50 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(stderr || err.message));
+        } else {
+          resolve({ stdout, stderr });
+        }
+      },
+    );
   });
 }
 
