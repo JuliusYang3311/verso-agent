@@ -754,7 +754,11 @@ async function resolveEmbeddingProvider(): Promise<EmbeddingProviderResult> {
   // and custom provider keys (OAuth, newapi, etc.) are not found.
   const agentDir = resolveAgentDir(cfg, "main");
 
-  return createEmbeddingProvider({
+  console.error(
+    `[novel-memory] embedding resolve: provider=${provider} model=${model} fallback=${fallback} agentDir=${agentDir} hasConfig=${!!cfg?.agents}`,
+  );
+
+  const result = await createEmbeddingProvider({
     config: cfg,
     agentDir,
     provider: provider as any,
@@ -763,6 +767,12 @@ async function resolveEmbeddingProvider(): Promise<EmbeddingProviderResult> {
     remote,
     local,
   });
+
+  console.error(
+    `[novel-memory] embedding resolved: id=${result.provider.id} model=${result.provider.model} requested=${result.requestedProvider} fallbackFrom=${result.fallbackFrom ?? "none"} fallbackReason=${result.fallbackReason ?? "none"}`,
+  );
+
+  return result;
 }
 
 function resolveQuerySettings(): NovelQuerySettings {
@@ -784,8 +794,11 @@ function resolveQuerySettings(): NovelQuerySettings {
 
 function loadVersoConfig() {
   try {
-    return loadConfig();
-  } catch {
+    const cfg = loadConfig();
+    console.error(`[novel-memory] loadConfig OK, hasAgents=${!!cfg?.agents}`);
+    return cfg;
+  } catch (err) {
+    console.error(`[novel-memory] loadConfig FAILED: ${err}`);
     return {} as any;
   }
 }
