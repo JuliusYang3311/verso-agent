@@ -109,7 +109,10 @@ export function createNovelWriterTool(options?: NovelWriterToolOptions): AnyAgen
 
       // Fire-and-forget: spawn script, deliver result when done
       runScript(args)
-        .then(({ stdout }) => {
+        .then(({ stdout, stderr }) => {
+          if (stderr?.trim()) {
+            logVerbose(`[novel-writer] stderr: ${stderr.trim()}`);
+          }
           const json = JSON.parse(stdout) as Record<string, unknown>;
           const text = formatResult(json);
           if (cfg && channel && channel !== "none" && to) {

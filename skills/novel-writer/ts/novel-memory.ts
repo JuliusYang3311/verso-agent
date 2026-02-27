@@ -13,6 +13,7 @@ import type { MemoryChunk } from "../../../src/memory/internal.js";
 import type { EmbeddingContext } from "../../../src/memory/manager-embeddings.js";
 import type { SearchRowResult } from "../../../src/memory/manager-search.js";
 import type { VectorState } from "../../../src/memory/manager-vectors.js";
+import { resolveAgentDir } from "../../../src/agents/agent-scope.js";
 import {
   DEFAULT_CONTEXT_PARAMS,
   type ContextParams,
@@ -221,6 +222,11 @@ export class NovelMemoryStore {
     const ctx = this.buildEmbeddingContext();
     const embeddings = await embedChunksInBatches(ctx, chunks);
     const sample = embeddings.find((e) => e.length > 0);
+    if (!sample) {
+      console.error(
+        `[novel-memory] embedChunksInBatches returned no vectors for ${chunks.length} chunks — indexing with FTS only`,
+      );
+    }
     const vectorReady = sample ? await this.ensureVectorReady(sample.length) : false;
     const now = Date.now();
 
@@ -396,8 +402,14 @@ export class NovelMemoryStore {
     );
 
     const ctx = this.buildEmbeddingContext();
-    const queryVec = await embedQueryWithTimeout(ctx, query);
-    const hasVector = queryVec.some((v) => v !== 0);
+    let queryVec: number[];
+    try {
+      queryVec = await embedQueryWithTimeout(ctx, query);
+    } catch (err) {
+      console.error(`[novel-memory] query embedding failed, falling back to FTS-only: ${err}`);
+      queryVec = [];
+    }
+    const hasVector = queryVec.length > 0 && queryVec.some((v) => v !== 0);
 
     // Load context params for MMR + latent factor settings
     const ctxParams = await loadContextParams();
@@ -731,12 +743,20 @@ async function resolveEmbeddingProvider(): Promise<EmbeddingProviderResult> {
   const memSearch = cfg?.agents?.defaults?.memorySearch;
   const provider = memSearch?.provider ?? "auto";
   const model = memSearch?.model ?? "";
-  const fallback = memSearch?.fallback ?? "none";
+  // Default fallback to "local" instead of "none" — with "auto" + "none",
+  // all remote providers fail silently when config is empty, leaving no provider.
+  const fallback = memSearch?.fallback ?? "local";
   const remote = memSearch?.remote;
   const local = memSearch?.local;
 
+  // Resolve agentDir the same way the main memory manager does —
+  // without this, auth resolution falls back to the default agent dir
+  // and custom provider keys (OAuth, newapi, etc.) are not found.
+  const agentDir = resolveAgentDir(cfg, "main");
+
   return createEmbeddingProvider({
     config: cfg,
+    agentDir,
     provider: provider as any,
     model,
     fallback: fallback as any,
