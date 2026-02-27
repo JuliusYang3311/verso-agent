@@ -28,7 +28,7 @@ import {
   memPath,
 } from "./apply-patch.js";
 import { assembleContext } from "./context.js";
-import { extractUpdates, resolveLlmModel, stripCodeFences } from "./extract-updates.js";
+import { extractUpdates, resolveLlmModel, safeParseJson } from "./extract-updates.js";
 import { revertChapterMemory } from "./revert-memory.js";
 import { validatePatchOrThrow } from "./validate-patch.js";
 
@@ -142,7 +142,7 @@ async function initProjectMemory(
     .map((block) => block.text)
     .join("");
 
-  const init = JSON.parse(stripCodeFences(rawText)) as AnyObj;
+  const init = safeParseJson(rawText) as AnyObj;
   const changes: string[] = [];
 
   // Save characters

@@ -56,6 +56,66 @@ export function stripCodeFences(text: string): string {
   return match ? match[1].trim() : trimmed;
 }
 
+/**
+ * Attempt to repair common LLM JSON errors:
+ * - Trailing commas before } or ]
+ * - Missing closing brackets
+ * - Single-line // comments
+ */
+function repairJson(raw: string): string {
+  let s = raw;
+  // Strip single-line comments
+  s = s.replace(/\/\/[^\n]*/g, "");
+  // Remove trailing commas before } or ]
+  s = s.replace(/,\s*([}\]])/g, "$1");
+  // Try to balance brackets
+  const opens = (s.match(/[{[]/g) ?? []).length;
+  const closes = (s.match(/[}\]]/g) ?? []).length;
+  if (opens > closes) {
+    // Count unmatched { vs [
+    let braces = 0;
+    let brackets = 0;
+    for (const ch of s) {
+      if (ch === "{") {
+        braces++;
+      }
+      if (ch === "}") {
+        braces--;
+      }
+      if (ch === "[") {
+        brackets++;
+      }
+      if (ch === "]") {
+        brackets--;
+      }
+    }
+    for (let i = 0; i < brackets; i++) {
+      s += "]";
+    }
+    for (let i = 0; i < braces; i++) {
+      s += "}";
+    }
+  }
+  return s;
+}
+
+export function safeParseJson(text: string): Record<string, unknown> {
+  const stripped = stripCodeFences(text);
+  // First try direct parse
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    // Try repair
+    try {
+      return JSON.parse(repairJson(stripped));
+    } catch (e) {
+      throw new Error(
+        `Failed to parse LLM JSON after repair: ${e instanceof Error ? e.message : String(e)}\nRaw: ${stripped.slice(0, 500)}`,
+      );
+    }
+  }
+}
+
 export interface ExtractUpdatesOpts {
   chapter: number;
   title: string;
@@ -119,7 +179,7 @@ export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<s
     .map((block) => block.text)
     .join("");
 
-  return JSON.parse(stripCodeFences(rawText));
+  return safeParseJson(rawText);
 }
 
 // CLI entry point
