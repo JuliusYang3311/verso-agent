@@ -14,7 +14,6 @@
  *     --project my_novel --rewrite --chapter 8 --notes "节奏太慢，加强悬疑"
  */
 
-import { type Api, completeSimple, type Model } from "@mariozechner/pi-ai";
 import fsSync from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,7 +27,13 @@ import {
   memPath,
 } from "./apply-patch.js";
 import { assembleContext } from "./context.js";
-import { extractUpdates, resolveLlmModel, safeParseJson } from "./extract-updates.js";
+import {
+  extractUpdates,
+  novelComplete,
+  resolveLlmModel,
+  safeParseJson,
+  type ResolvedLlm,
+} from "./extract-updates.js";
 import { revertChapterMemory } from "./revert-memory.js";
 import { validatePatchOrThrow } from "./validate-patch.js";
 
@@ -106,8 +111,7 @@ function summarizeMemoryChanges(patch: AnyObj): string[] {
 async function initProjectMemory(
   project: string,
   outline: string,
-  model: Model<Api>,
-  apiKey: string,
+  llm: ResolvedLlm,
 ): Promise<string[]> {
   const systemPrompt = [
     "You are a fiction planning assistant. Given a novel outline/synopsis, extract the initial story setup as JSON.",
@@ -128,13 +132,13 @@ async function initProjectMemory(
     "- timeline.summary should be a one-line synopsis of the entire story premise",
   ].join("\n");
 
-  const res = await completeSimple(
-    model,
+  const res = await novelComplete(
+    llm,
     {
       systemPrompt,
       messages: [{ role: "user", content: outline, timestamp: Date.now() }],
     },
-    { apiKey, maxTokens: 2000 },
+    { maxTokens: 2000 },
   );
 
   const rawText = res.content
@@ -209,6 +213,9 @@ function buildWritingPrompt(context: AnyObj, opts: { outline: string; title?: st
   parts.push(
     "IMPORTANT: Write in the SAME LANGUAGE as the outline. Match the language of the provided outline exactly.",
   );
+  parts.push(
+    "CRITICAL: You are NOT an AI assistant or coding agent. You have NO tools. Do NOT output XML tags, function calls, tool_call blocks, or any markup. Output ONLY the raw chapter text as plain prose.",
+  );
   parts.push("");
 
   if (context.characters) {
@@ -281,13 +288,9 @@ function buildRewritePrompt(context: AnyObj, originalText: string, notes: string
   return base + "\n" + extra.join("\n");
 }
 
-async function generateChapter(
-  model: Model<Api>,
-  apiKey: string,
-  systemPrompt: string,
-): Promise<string> {
-  const res = await completeSimple(
-    model,
+async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<string> {
+  const res = await novelComplete(
+    llm,
     {
       systemPrompt,
       messages: [
@@ -298,7 +301,7 @@ async function generateChapter(
         },
       ],
     },
-    { apiKey, maxTokens: 16384 },
+    { maxTokens: 16384 },
   );
 
   let text = res.content
@@ -311,13 +314,13 @@ async function generateChapter(
   // plot_threads, timeline, style), so the continuation has access to all memory.
   if (text.length < 10000) {
     const contPrompt = `Here is what has been written so far. Continue writing from where it left off. Do NOT repeat any existing content:\n\n---\n${text}\n---\n\nContinue directly.`;
-    const cont = await completeSimple(
-      model,
+    const cont = await novelComplete(
+      llm,
       {
         systemPrompt,
         messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
       },
-      { apiKey, maxTokens: 16384 },
+      { maxTokens: 16384 },
     );
     text += cont.content
       .filter((block) => block.type === "text")
@@ -325,7 +328,22 @@ async function generateChapter(
       .join("");
   }
 
-  return text.trim();
+  return sanitizeChapterText(text);
+}
+
+/** Strip tool-call / agent artifacts that LLMs sometimes emit. */
+function sanitizeChapterText(raw: string): string {
+  let s = raw;
+  // Remove <tool_call>...</tool_call>, <function_calls>...</function_calls>, <invoke>...</invoke>
+  s = s.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, "");
+  s = s.replace(/<function_calls>[\s\S]*?<\/function_calls>/g, "");
+  s = s.replace(/<\/?invoke[^>]*>/g, "");
+  s = s.replace(/<\/?parameter[^>]*>/g, "");
+  // Remove ```...``` code fences wrapping the entire output
+  s = s.replace(/^```(?:text|markdown)?\s*\n?([\s\S]*?)\n?\s*```$/g, "$1");
+  // Remove stray agent preamble lines
+  s = s.replace(/^(?:创作中\.\.\.|Let me write.*|I will write.*|Here is the chapter.*)\n*/gim, "");
+  return s.trim();
 }
 
 // --- Exported API ---
@@ -342,12 +360,12 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   projectDir(project);
 
   // 0. Initialize memory if this is a new project (project memory dir doesn't exist)
-  const { model, apiKey } = await resolveLlmModel();
+  const llm = await resolveLlmModel();
   let initChanges: string[] = [];
   const memDir = path.join(PROJECTS_DIR, project, "memory");
   if (!fsSync.existsSync(memDir)) {
     console.error("New project detected, initializing memory from outline...");
-    initChanges = await initProjectMemory(project, outline, model, apiKey);
+    initChanges = await initProjectMemory(project, outline, llm);
     console.error(`Memory initialized: ${initChanges.join("; ")}`);
   }
 
@@ -358,7 +376,7 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   const systemPrompt = buildWritingPrompt(context, { outline, title });
 
   // 3. Call LLM to write chapter
-  const chapterText = await generateChapter(model, apiKey, systemPrompt);
+  const chapterText = await generateChapter(llm, systemPrompt);
 
   // 4. Save chapter as .txt
   const chapterPath = saveChapterFile(project, chapter, chapterText);
@@ -393,8 +411,8 @@ export async function rewriteChapter(opts: RewriteChapterOpts): Promise<WriteRes
   const systemPrompt = buildRewritePrompt(context, originalText, notes);
 
   // 5. Call LLM to rewrite
-  const { model, apiKey } = await resolveLlmModel();
-  const newText = await generateChapter(model, apiKey, systemPrompt);
+  const llm = await resolveLlmModel();
+  const newText = await generateChapter(llm, systemPrompt);
 
   // 6. Overwrite chapter file
   const chapterPath = saveChapterFile(project, chapter, newText);

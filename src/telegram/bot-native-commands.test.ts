@@ -79,7 +79,7 @@ describe("registerTelegramNativeCommands", () => {
     expect(listSkillCommandsForAgents).toHaveBeenCalledWith({ cfg });
   });
 
-  it("truncates Telegram command registration to 100 commands", () => {
+  it("truncates Telegram command registration to 80 commands", () => {
     const cfg: VersoConfig = {
       commands: { native: false },
     };
@@ -109,10 +109,10 @@ describe("registerTelegramNativeCommands", () => {
       command: string;
       description: string;
     }>;
-    expect(registeredCommands).toHaveLength(100);
-    expect(registeredCommands).toEqual(customCommands.slice(0, 100));
+    expect(registeredCommands).toHaveLength(80);
+    expect(registeredCommands).toEqual(customCommands.slice(0, 80));
     expect(runtimeLog).toHaveBeenCalledWith(
-      "telegram: truncating 120 commands to 100 (Telegram Bot API limit)",
+      "telegram: truncating 120 commands to 80 (Telegram Bot API limit)",
     );
   });
 });

@@ -10,44 +10,100 @@
  *     --project mynovel --chapter 8 --title "回响" --text chapter.txt
  */
 
-import { type Api, completeSimple, type Model } from "@mariozechner/pi-ai";
+import type { AuthStorage } from "@mariozechner/pi-coding-agent";
+import {
+  type Api,
+  type AssistantMessage,
+  type Context,
+  completeSimple,
+  type Model,
+  type SimpleStreamOptions,
+} from "@mariozechner/pi-ai";
 import fsSync from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { getApiKeyForModel, requireApiKey } from "../../../src/agents/model-auth.js";
 import { resolveConfiguredModelRef } from "../../../src/agents/model-selection.js";
 import { resolveModel } from "../../../src/agents/pi-embedded-runner/model.js";
 import { loadConfig } from "../../../src/config/config.js";
 
-function loadVersoConfig() {
-  try {
-    return loadConfig();
-  } catch {
-    return {} as any;
-  }
+// --- LLM resolution (mirrors evolver/sandbox-agent.ts) ---
+
+export interface ResolvedLlm {
+  model: Model<Api>;
+  authStorage: AuthStorage;
+  provider: string;
 }
 
-export async function resolveLlmModel(): Promise<{ model: Model<Api>; apiKey: string }> {
-  const cfg = loadVersoConfig();
+/**
+ * Resolve the model + auth for novel-writer LLM calls.
+ * Mirrors the evolver pattern (sandbox-agent.ts):
+ *   1. NOVEL_WRITER_MODEL env → or config defaults
+ *   2. resolveModel() → Model + AuthStorage + ModelRegistry
+ *   3. Bridge verso auth into AuthStorage via setRuntimeApiKey()
+ *
+ * Callers should use {@link novelComplete} instead of completeSimple directly.
+ */
+export async function resolveLlmModel(): Promise<ResolvedLlm> {
+  const cfg = (() => {
+    try {
+      return loadConfig();
+    } catch {
+      return {} as any;
+    }
+  })();
 
-  // Resolve model ref from agents.defaults.model.primary
-  const ref = resolveConfiguredModelRef({
-    cfg,
-    defaultProvider: "anthropic",
-    defaultModel: "claude-sonnet-4-20250514",
-  });
+  const envModel = process.env.NOVEL_WRITER_MODEL;
+  let provider: string;
+  let modelId: string;
 
-  // Resolve the full Model object (handles all provider types, baseUrl, api format)
-  const { model, error } = resolveModel(ref.provider, ref.model, undefined, cfg);
-  if (!model || error) {
-    throw new Error(`Failed to resolve model ${ref.provider}/${ref.model}: ${error ?? "unknown"}`);
+  if (envModel && envModel.includes("/")) {
+    [provider, modelId] = envModel.split("/", 2);
+  } else {
+    const ref = resolveConfiguredModelRef({
+      cfg,
+      defaultProvider: "anthropic",
+      defaultModel: "claude-sonnet-4-20250514",
+    });
+    provider = ref.provider;
+    modelId = ref.model;
   }
 
-  // Resolve auth
-  const auth = await getApiKeyForModel({ model, cfg });
-  const apiKey = requireApiKey(auth, ref.provider);
+  const agentDir = process.env.NOVEL_WRITER_AGENT_DIR || undefined;
+  const { model, error, authStorage } = resolveModel(provider, modelId, agentDir, cfg);
+  if (!model || error) {
+    throw new Error(`Failed to resolve model ${provider}/${modelId}: ${error ?? "unknown"}`);
+  }
 
-  return { model, apiKey };
+  // Bridge verso's auth into pi-coding-agent's AuthStorage so custom providers
+  // (e.g. OAuth, "newapi") are recognized. resolveApiKeyForProvider walks verso's
+  // full auth chain (profiles → env → config apiKey → OAuth token refresh) and we
+  // inject the result as a runtime override — no disk writes, no side effects.
+  const { resolveApiKeyForProvider } = await import("../../../src/agents/model-auth.js");
+  try {
+    const auth = await resolveApiKeyForProvider({ provider, cfg, agentDir });
+    if (auth.apiKey) {
+      authStorage.setRuntimeApiKey(provider, auth.apiKey);
+    }
+  } catch {
+    // best-effort: if verso can't resolve the key, let pi-coding-agent
+    // try its own fallbacks (env vars, auth.json, OAuth refresh, etc.)
+  }
+
+  return { model, authStorage, provider };
+}
+
+/**
+ * High-level LLM completion for novel-writer.
+ * Auth is resolved from AuthStorage (supports API key, OAuth, token, etc.)
+ * — callers never handle raw credentials.
+ */
+export async function novelComplete(
+  llm: ResolvedLlm,
+  context: Context,
+  opts?: Omit<SimpleStreamOptions, "apiKey">,
+): Promise<AssistantMessage> {
+  const apiKey = (await llm.authStorage.getApiKey(llm.provider)) ?? "";
+  return completeSimple(llm.model, context, { ...opts, apiKey });
 }
 
 export function stripCodeFences(text: string): string {
@@ -154,10 +210,10 @@ export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<s
     0,
   );
 
-  const { model, apiKey } = await resolveLlmModel();
+  const llm = await resolveLlmModel();
 
-  const res = await completeSimple(
-    model,
+  const res = await novelComplete(
+    llm,
     {
       systemPrompt,
       messages: [
@@ -168,10 +224,7 @@ export async function extractUpdates(opts: ExtractUpdatesOpts): Promise<Record<s
         },
       ],
     },
-    {
-      apiKey,
-      maxTokens,
-    },
+    { maxTokens },
   );
 
   const rawText = res.content

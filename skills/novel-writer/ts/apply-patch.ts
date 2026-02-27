@@ -40,7 +40,6 @@ export function projectDir(project: string): string {
   const dir = path.join(PROJECTS_DIR, project);
   fsSync.mkdirSync(path.join(dir, "memory"), { recursive: true });
   fsSync.mkdirSync(path.join(dir, "chapters"), { recursive: true });
-  fsSync.mkdirSync(path.join(dir, "style"), { recursive: true });
   return dir;
 }
 
