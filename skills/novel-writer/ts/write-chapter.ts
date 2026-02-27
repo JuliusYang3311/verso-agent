@@ -379,13 +379,17 @@ export async function writeChapter(opts: WriteChapterOpts): Promise<WriteResult>
   projectDir(project);
 
   // 1. Assemble context (memory + style + timeline)
+  console.error(`[writeChapter] step 1: assembling context for chapter ${chapter}...`);
   const context = await assembleContext({ project, outline, style, budget: budget ?? 12000 });
+  console.error(`[writeChapter] step 1 done: context assembled`);
 
   // 2. Build writing prompt
   const systemPrompt = buildWritingPrompt(context, { outline, title });
 
   // 3. Call LLM to write chapter
+  console.error(`[writeChapter] step 3: calling LLM to write chapter ${chapter}...`);
   const chapterText = await generateChapter(llm, systemPrompt);
+  console.error(`[writeChapter] step 3 done: ${chapterText.length} chars written`);
 
   // 4. Save chapter as .txt
   const chapterPath = saveChapterFile(project, chapter, chapterText);
