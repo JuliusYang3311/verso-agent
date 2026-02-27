@@ -460,7 +460,7 @@ export class NovelMemoryStore {
     const allCandidates: DiverseChunk[] = [];
     await Promise.all(
       queries.map(async (q) => {
-        const results = await this.runSingleSearch(q.query, q.queryVec, candidates);
+        const results = await this.runSingleSearch(q.query, q.queryVec, candidates, ctxParams);
         for (const r of results) {
           const chunk: DiverseChunk = {
             key: `${r.path}:${r.startLine}`,
@@ -511,6 +511,7 @@ export class NovelMemoryStore {
     query: string,
     queryVec: number[],
     limit: number,
+    ctxParams: ContextParams = DEFAULT_CONTEXT_PARAMS,
   ): Promise<SearchRowResult[]> {
     const hasVector = queryVec.some((v) => v !== 0);
     const sourceFilter = this.buildSourceFilter();
@@ -531,7 +532,7 @@ export class NovelMemoryStore {
           filesFtsTable: "files_fts",
           ftsAvailable: this.fts.available,
           filesFtsAvailable: this.filesFts.available,
-          contextParams: DEFAULT_CONTEXT_PARAMS,
+          contextParams: ctxParams,
           ensureVectorReady: async (dims) => this.ensureVectorReady(dims),
           ensureFileVectorReady: async (dims) => {
             const ready = await this.ensureVectorReady(dims);

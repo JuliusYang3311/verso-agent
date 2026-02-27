@@ -37,6 +37,7 @@ export type ContextParams = {
   flushSoftThreshold: number;
   // Hierarchical search params
   hierarchicalSearch?: boolean;
+  hierarchicalFileLimit?: number;
   hierarchicalFileThreshold?: number;
   hierarchicalFileThresholdFloor?: number;
   hierarchicalAlpha?: number;

@@ -10,6 +10,7 @@
   "compactSafetyMargin": 1.2,
   "flushSoftThreshold": 4000,
   "hierarchicalSearch": true,
+  "hierarchicalFileLimit": 10,
   "hierarchicalFileThreshold": 0.5,
   "hierarchicalFileThresholdFloor": 0.3,
   "hierarchicalAlpha": 0.7,

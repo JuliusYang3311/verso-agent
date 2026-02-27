@@ -51,6 +51,7 @@ export async function searchHierarchical(
   const fileBm25Weight = contextParams.fileBm25Weight ?? 0.3;
 
   // No limit — threshold filtering decides the final count.
+  const fileLimit = contextParams.hierarchicalFileLimit ?? 10;
 
   // ---- Phase 1: File-level pre-filter ----
 
@@ -60,6 +61,7 @@ export async function searchHierarchical(
           db,
           filesVectorTable,
           queryVec,
+          limit: fileLimit,
           ensureFileVectorReady: params.ensureFileVectorReady,
         }).catch(() => [])
       : [];
@@ -70,6 +72,7 @@ export async function searchHierarchical(
           db,
           filesFtsTable,
           query,
+          limit: fileLimit,
           buildFtsQuery,
           bm25RankToScore,
         })
