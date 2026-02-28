@@ -312,7 +312,7 @@ async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<
         },
       ],
     },
-    { maxTokens: 8192 },
+    { maxTokens: 16384 },
   );
 
   let text = res.content
@@ -331,7 +331,7 @@ async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<
         systemPrompt,
         messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
       },
-      { maxTokens: 8192 },
+      { maxTokens: 16384 },
     );
     text += cont.content
       .filter((block) => block.type === "text")
