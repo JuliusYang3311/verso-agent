@@ -1,6 +1,6 @@
 ---
 name: novel-writer
-description: Autonomous long-form fiction engine with style library, four-layer continuity memory, latent factor search, and greedy MMR diversity selection. Ingest corpora for style indexing, generate 10000+ token chapters from outlines, auto-update character/world/timeline/plot-thread memory after each chapter.
+description: Autonomous long-form fiction engine with style library, four-layer continuity memory, latent factor search, and greedy MMR diversity selection. Ingest corpora for style indexing, generate 6000+ token chapters from outlines, auto-update character/world/timeline/plot-thread memory after each chapter.
 command-dispatch: tool
 command-tool: novel_writer
 command-arg-mode: raw
@@ -8,7 +8,7 @@ command-arg-mode: raw
 
 ## Mandatory Rules
 
-1. **10000+ tokens per chapter.** The engine auto-continues if output is too short. Never accept a short chapter.
+1. **6000+ tokens per chapter.** The engine auto-continues if output is too short. Never accept a short chapter.
 2. **Write to file, NEVER to chat.** Chapters are saved as `{project}_chapter_XX.txt`. Only output a one-line confirmation in conversation.
 3. **Language follows input.** Writing language matches the outline (write mode) or original chapter (rewrite mode). Not hardcoded to any language.
 4. **Use `--rewrite` for revisions.** Rewrite mode automatically reverts memory, rewrites, and re-applies a fresh patch. Never manually edit memory files to "fix" a chapter.
@@ -81,7 +81,7 @@ Controlled by `context_params.json`: `latentFactorEnabled`, `factorActivationThr
 
 ## Autonomous Mode (Primary)
 
-One command completes the full pipeline: context assembly → LLM writing (10000+ tokens) → save chapter → extract updates → validate → apply patch → update memory.
+One command completes the full pipeline: context assembly → LLM writing (6000+ tokens) → save chapter → extract updates → validate → apply patch → update memory.
 
 **Write new chapter** (auto-detects next chapter number):
 

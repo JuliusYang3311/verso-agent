@@ -271,7 +271,7 @@ function buildWritingPrompt(context: AnyObj, opts: { outline: string; title?: st
 
   parts.push("## Writing Requirements");
   parts.push("- Output the chapter text directly, no title, chapter number, or metadata");
-  parts.push("- Final output MUST exceed 8000 tokens");
+  parts.push("- Final output MUST be at least 6000 tokens");
   parts.push("- Keep character personalities consistent, follow world-building rules");
   parts.push("- Advance foreshadowing, create suspense");
   parts.push("- Write in the SAME LANGUAGE as the outline");
@@ -288,7 +288,7 @@ function buildRewritePrompt(context: AnyObj, originalText: string, notes: string
     "",
     "## Rewrite Mode",
     "Below is the original chapter. Rewrite it based on the rewrite notes.",
-    "Write in the SAME LANGUAGE as the original chapter. Output MUST exceed 8000 tokens.",
+    "Write in the SAME LANGUAGE as the original chapter. Output MUST be at least 6000 tokens.",
     "",
     "### Rewrite Notes",
     notes,
@@ -316,10 +316,10 @@ async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<
     .map((block) => block.text)
     .join("");
 
-  // Continuation if output is too short (8000+ tokens required ≈ 8000+ chars)
+  // Continuation if output is too short (6000 tokens ≈ 6000 chars for Chinese)
   // Note: systemPrompt already contains full memory context (characters, world_bible,
   // plot_threads, timeline, style), so the continuation has access to all memory.
-  if (text.length < 8000) {
+  if (text.length < 6000) {
     const contPrompt = `Here is what has been written so far. Continue writing from where it left off. Do NOT repeat any existing content:\n\n---\n${text}\n---\n\nContinue directly.`;
     const cont = await novelComplete(llm, {
       systemPrompt,
