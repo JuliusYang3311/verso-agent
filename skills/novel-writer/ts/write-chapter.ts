@@ -300,16 +300,20 @@ function buildRewritePrompt(context: AnyObj, originalText: string, notes: string
 }
 
 async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<string> {
-  const res = await novelComplete(llm, {
-    systemPrompt,
-    messages: [
-      {
-        role: "user",
-        content: "Begin writing now. Output the chapter text directly, no preamble.",
-        timestamp: Date.now(),
-      },
-    ],
-  });
+  const res = await novelComplete(
+    llm,
+    {
+      systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: "Begin writing now. Output the chapter text directly, no preamble.",
+          timestamp: Date.now(),
+        },
+      ],
+    },
+    { maxTokens: 8192 },
+  );
 
   let text = res.content
     .filter((block) => block.type === "text")
@@ -321,10 +325,14 @@ async function generateChapter(llm: ResolvedLlm, systemPrompt: string): Promise<
   // plot_threads, timeline, style), so the continuation has access to all memory.
   if (text.length < 6000) {
     const contPrompt = `Here is what has been written so far. Continue writing from where it left off. Do NOT repeat any existing content:\n\n---\n${text}\n---\n\nContinue directly.`;
-    const cont = await novelComplete(llm, {
-      systemPrompt,
-      messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
-    });
+    const cont = await novelComplete(
+      llm,
+      {
+        systemPrompt,
+        messages: [{ role: "user", content: contPrompt, timestamp: Date.now() }],
+      },
+      { maxTokens: 8192 },
+    );
     text += cont.content
       .filter((block) => block.type === "text")
       .map((block) => block.text)
